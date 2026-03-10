@@ -25,29 +25,21 @@ const CartScreen = ({ navigation }) => {
             return;
         }
 
+        const orderData = {
+            userId: user.id || user._id,
+            items: cartItems.map(item => ({
+                offerId: item.offerId,
+                title: item.title,
+                price: item.price,
+                quantity: item.quantity
+            })),
+            totalAmount: getTotalAmount(),
+            date: new Date().toISOString(),
+        };
+
         const proceed = () => {
-            const orderData = {
-                userId: user.id,
-                items: cartItems.map(item => ({
-                    offerId: item.offerId,
-                    title: item.title,
-                    price: item.price,
-                    quantity: item.quantity
-                })),
-                totalAmount: getTotalAmount(),
-                paymentStatus: 'Pending',
-                date: new Date().toISOString(),
-            };
-
-            placeOrder(orderData);
             clearCart();
-
-            if (Platform.OS === 'web') {
-                alert('Order placed successfully! 🎉');
-            } else {
-                Alert.alert('Success', 'Order placed successfully! 🎉');
-            }
-            navigation.navigate('Home');
+            navigation.navigate('PaymentSimulator', { orderData });
         };
 
         if (Platform.OS === 'web') {

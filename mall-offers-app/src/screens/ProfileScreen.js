@@ -4,8 +4,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 
-const ProfileScreen = () => {
+const ProfileScreen = ({ navigation }) => {
     const { user, logout } = useAuth();
+    const { refetchOrders } = useData();
 
     const getRoleLabel = (role) => {
         const map = { customer: 'Customer', store_owner: 'Store Owner', admin: 'Administrator' };
@@ -16,6 +17,17 @@ const ProfileScreen = () => {
         const map = { customer: '#4ECDC4', store_owner: '#FF8E53', admin: '#A18CD1' };
         return map[role] || '#8E8E93';
     };
+
+    const menuItems = [
+        { icon: 'receipt-outline', label: 'My Orders', color: '#FF6B6B', onPress: () => {
+            refetchOrders();
+            navigation.navigate('OrderHistory');
+        }},
+        { icon: 'person-outline', label: 'Edit Profile', color: '#4ECDC4' },
+        { icon: 'notifications-outline', label: 'Notifications', color: '#FF8E53' },
+        { icon: 'settings-outline', label: 'Settings', color: '#A18CD1' },
+        { icon: 'help-circle-outline', label: 'Help & Support', color: '#667EEA' },
+    ];
 
     return (
         <View style={s.container}>
@@ -35,13 +47,12 @@ const ProfileScreen = () => {
                         </View>
                     </View>
                     <View style={s.menuSection}>
-                        {[
-                            { icon: 'person-outline', label: 'Edit Profile', color: '#4ECDC4' },
-                            { icon: 'notifications-outline', label: 'Notifications', color: '#FF8E53' },
-                            { icon: 'settings-outline', label: 'Settings', color: '#A18CD1' },
-                            { icon: 'help-circle-outline', label: 'Help & Support', color: '#667EEA' },
-                        ].map((item, i) => (
-                            <TouchableOpacity key={i} style={s.menuItem}>
+                        {menuItems.map((item, i) => (
+                            <TouchableOpacity 
+                                key={i} 
+                                style={s.menuItem}
+                                onPress={item.onPress}
+                            >
                                 <View style={[s.menuIcon, { backgroundColor: `${item.color}15` }]}>
                                     <Ionicons name={item.icon} size={20} color={item.color} />
                                 </View>

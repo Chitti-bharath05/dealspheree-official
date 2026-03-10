@@ -42,15 +42,17 @@ router.get('/owner/:ownerId', async (req, res) => {
 // Create new store (Protected)
 router.post('/', protect, validateRequest('registerStore'), async (req, res) => {
     try {
-        const { storeName, ownerId, location, category, logoUrl, bannerUrl } = req.body;
+        const { storeName, ownerId, location, address, category, logoUrl, bannerUrl, hasDeliveryPartner } = req.body;
         
         const newStore = await Store.create({
             storeName,
             ownerId, 
             location,
+            address: address || '',
             category,
             logoUrl: logoUrl || null,
             bannerUrl: bannerUrl || null,
+            hasDeliveryPartner: !!hasDeliveryPartner,
             approved: false 
         });
 
@@ -92,7 +94,7 @@ router.put('/:id/reject', protect, authorize('admin'), async (req, res) => {
 // Update store (Protected: Owner or Admin)
 router.put('/:id', protect, async (req, res) => {
     try {
-        const { storeName, location, category, logoUrl, bannerUrl } = req.body;
+        const { storeName, location, address, category, logoUrl, bannerUrl, hasDeliveryPartner } = req.body;
         const store = await Store.findById(req.params.id);
 
         if (!store) {
@@ -106,7 +108,7 @@ router.put('/:id', protect, async (req, res) => {
 
         const updatedStore = await Store.findByIdAndUpdate(
             req.params.id,
-            { storeName, location, category, logoUrl, bannerUrl },
+            { storeName, location, address, category, logoUrl, bannerUrl, hasDeliveryPartner },
             { new: true }
         );
 

@@ -23,7 +23,9 @@ const StoreOwnerDashboardScreen = () => {
     const [offerIsOnline, setOfferIsOnline] = useState(false);
     const [storeName, setStoreName] = useState('');
     const [storeLocation, setStoreLocation] = useState('');
+    const [storeAddress, setStoreAddress] = useState('');
     const [storeCategory, setStoreCategory] = useState('Fashion');
+    const [storeHasDelivery, setStoreHasDelivery] = useState(false);
     const [storeLogo, setStoreLogo] = useState(null);
     const [storeBanner, setStoreBanner] = useState(null);
     const [offerImage, setOfferImage] = useState(null);
@@ -31,6 +33,25 @@ const StoreOwnerDashboardScreen = () => {
     const [isUploadingStoreAsset, setIsUploadingStoreAsset] = useState(false);
     const [editingStore, setEditingStore] = useState(null);
     const [selectedStoreId, setSelectedStoreId] = useState('');
+    const [analytics, setAnalytics] = useState([]);
+    const { getStoreAnalytics } = useData();
+
+    const myStores = getStoresByOwner(user._id || user.id) || [];
+    const approvedStores = myStores.filter(s => s && s.approved);
+
+    React.useEffect(() => {
+        const fetchAnalytics = async () => {
+            if (approvedStores.length > 0) {
+                try {
+                    const results = await Promise.all(approvedStores.map(s => getStoreAnalytics(s._id || s.id)));
+                    setAnalytics(results.flat());
+                } catch (err) {
+                    console.error('Analytics fetch error:', err);
+                }
+            }
+        };
+        fetchAnalytics();
+    }, [approvedStores.length]);
 
     if (isLoading || !user) {
         return (
@@ -41,8 +62,6 @@ const StoreOwnerDashboardScreen = () => {
         );
     }
 
-    const myStores = getStoresByOwner(user._id || user.id) || [];
-    const approvedStores = myStores.filter(s => s && s.approved);
     const allMyOffers = myStores.flatMap(store => {
         const storeId = store._id || store.id;
         return (getOffersByStore(storeId) || []).map(o => ({ ...o, storeName: store.storeName }));
@@ -226,16 +245,18 @@ const StoreOwnerDashboardScreen = () => {
                 await updateStore(editingStore._id || editingStore.id, {
                     storeName: storeName.trim(),
                     location: storeLocation.trim(),
+                    address: storeAddress.trim(),
                     category: storeCategory,
                     logoUrl: storeLogo,
-                    bannerUrl: storeBanner
+                    bannerUrl: storeBanner,
+                    hasDeliveryPartner: storeHasDelivery
                 });
                 Alert.alert('Success', 'Store updated successfully');
             } else {
-                await registerStore(storeName.trim(), user._id || user.id, storeLocation.trim(), storeCategory, storeLogo, storeBanner);
+                await registerStore(storeName.trim(), user._id || user.id, storeLocation.trim(), storeAddress.trim(), storeCategory, storeLogo, storeBanner, storeHasDelivery);
                 Alert.alert('Success', 'Store submitted for approval');
             }
-            setStoreName(''); setStoreLocation(''); setStoreLogo(null); setStoreBanner(null); setEditingStore(null); setShowAddStore(false);
+            setStoreName(''); setStoreLocation(''); setStoreAddress(''); setStoreLogo(null); setStoreBanner(null); setStoreHasDelivery(false); setEditingStore(null); setShowAddStore(false);
         } catch (e) {
             Alert.alert('Error', 'Failed to save store');
         }
@@ -244,9 +265,11 @@ const StoreOwnerDashboardScreen = () => {
     const handleEditStore = (store) => {
         setStoreName(store.storeName);
         setStoreLocation(store.location);
+        setStoreAddress(store.address || '');
         setStoreCategory(store.category);
         setStoreLogo(store.logoUrl);
         setStoreBanner(store.bannerUrl);
+        setStoreHasDelivery(!!store.hasDeliveryPartner);
         setEditingStore(store);
         setShowAddStore(true);
     };
@@ -283,8 +306,16 @@ const StoreOwnerDashboardScreen = () => {
                     </View>
                 </View>
                 <View style={s.statsRow}>
-                    {[{ v: myStores.length, l: 'Stores' }, { v: allMyOffers.length, l: 'Offers' }, { v: approvedStores.length, l: 'Approved' }].map((st, i) => (
-                        <View key={i} style={s.statCard}><Text style={s.statVal}>{st.v}</Text><Text style={s.statLbl}>{st.l}</Text></View>
+                    {[
+                        { v: myStores.length, l: 'Stores', c: '#FF8E53' },
+                        { v: allMyOffers.length, l: 'Offers', c: '#A18CD1' },
+                        { v: analytics.length, l: 'Orders', c: '#4ECDC4' },
+                        { v: `₹${analytics.reduce((s, o) => s + o.storeRevenue, 0).toLocaleString()}`, l: 'Revenue', c: '#FF6B6B' }
+                    ].map((st, i) => (
+                        <View key={i} style={s.statCard}>
+                            <Text style={[s.statVal, { color: st.c }]}>{st.v}</Text>
+                            <Text style={s.statLbl}>{st.l}</Text>
+                        </View>
                     ))}
                 </View>
                 <View style={s.tabRow}>
@@ -445,7 +476,23 @@ const StoreOwnerDashboardScreen = () => {
                                 <TouchableOpacity onPress={() => { setShowAddStore(false); setEditingStore(null); }}><Ionicons name="close-circle" size={28} color="#8E8E93" /></TouchableOpacity>
                             </View>
                             <TextInput style={s.mInput} placeholder="Store Name *" placeholderTextColor="#8E8E93" value={storeName} onChangeText={setStoreName} />
-                            <TextInput style={s.mInput} placeholder="Location *" placeholderTextColor="#8E8E93" value={storeLocation} onChangeText={setStoreLocation} />
+                            <TextInput style={s.mInput} placeholder="Area/Location *" placeholderTextColor="#8E8E93" value={storeLocation} onChangeText={setStoreLocation} />
+                            <TextInput style={[s.mInput, { height: 80 }]} placeholder="Detailed Address (Optional)" placeholderTextColor="#8E8E93" value={storeAddress} onChangeText={setStoreAddress} multiline />
+                            
+                            <TouchableOpacity 
+                                style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }} 
+                                onPress={() => setStoreHasDelivery(!storeHasDelivery)}
+                            >
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                    <Ionicons name="bicycle" size={20} color="#FF6B6B" />
+                                    <View>
+                                        <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600' }}>Delivery Partner</Text>
+                                        <Text style={{ color: '#8E8E93', fontSize: 12 }}>Does this store offer delivery?</Text>
+                                    </View>
+                                </View>
+                                <Ionicons name={storeHasDelivery ? 'toggle' : 'toggle-outline'} size={36} color={storeHasDelivery ? '#4ECDC4' : '#8E8E93'} />
+                            </TouchableOpacity>
+
                             <Text style={s.mLabel}>Category</Text>
                             <ScrollView horizontal showsHorizontalScrollIndicator={false}><View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
                                 {categories.filter(c => c !== 'All').map(c => <TouchableOpacity key={c} style={[s.chip, storeCategory === c && s.chipA]} onPress={() => setStoreCategory(c)}><Text style={[s.chipT, storeCategory === c && s.chipTA]}>{c}</Text></TouchableOpacity>)}

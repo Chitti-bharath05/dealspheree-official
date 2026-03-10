@@ -7,6 +7,7 @@ const crypto = require('crypto');
 const { protect } = require('../middleware/authMiddleware');
 const validateRequest = require('../middleware/validation');
 const sendEmail = require('../utils/emailService');
+const sendSMS = require('../utils/smsService');
 
 const generateAccessToken = (id) => {
     return jwt.sign({ id }, process.env.JWT_SECRET || 'supersecret_placeholder_key', {
@@ -61,7 +62,7 @@ router.post('/login', validateRequest('login'), async (req, res) => {
 // Register Route
 router.post('/register', validateRequest('register'), async (req, res) => {
     try {
-        const { name, email, password, role } = req.body;
+        const { name, email, password, role, mobileNumber } = req.body;
         console.log(`Registration attempt for: ${email}`);
 
         const existingUser = await User.findOne({ email: email.toLowerCase() });
@@ -75,6 +76,7 @@ router.post('/register', validateRequest('register'), async (req, res) => {
             name,
             email: email.toLowerCase(),
             password,
+            mobileNumber,
             role
         });
 
@@ -191,39 +193,35 @@ router.post('/forgotpassword', async (req, res) => {
             return res.status(404).json({ success: false, message: 'User not found with that email' });
         }
 
-        // Get reset token
-        const resetToken = crypto.randomBytes(20).toString('hex');
+        // Generate 6-digit OTP
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-        // Hash and set resetToken field
-        user.resetPasswordToken = crypto.createHash('sha256').update(resetToken).digest('hex');
-
-        // Set expire
-        user.resetPasswordExpire = Date.now() + 10 * 60 * 1000; // 10 minutes
+        // Set OTP and expire
+        user.resetPasswordOTP = otp;
+        user.resetPasswordOTPExpire = Date.now() + 10 * 60 * 1000; // 10 minutes
 
         await user.save();
 
         console.log('\n*********************************');
-        console.log('       PASSWORD RESET TOKEN      ');
+        console.log('       PASSWORD RESET OTP        ');
         console.log(`EMAIL: ${user.email}`);
-        console.log(`CODE:  ${resetToken}`);
+        console.log(`OTP:   ${otp}`);
         console.log('*********************************\n');
 
-        // Create reset URL (In a real app, this would use the frontend URL)
-        // For Expo/Mobile, we might just send the code for manual entry
-        const message = `You are receiving this email because you (or someone else) has requested the reset of a password. Please use the following code to reset your password:\n\n${resetToken}\n\nIf you did not request this, please ignore this email and your password will remain unchanged.`;
+        const message = `You are receiving this email because you (or someone else) has requested the reset of a password. Please use the following 6-digit code to reset your password:\n\n${otp}\n\nIf you did not request this, please ignore this email.`;
 
         try {
             await sendEmail({
                 email: user.email,
-                subject: 'Password Reset Token',
+                subject: 'Password Reset OTP',
                 message,
             });
 
             res.status(200).json({ success: true, message: 'Email sent' });
         } catch (err) {
             console.error(err);
-            user.resetPasswordToken = undefined;
-            user.resetPasswordExpire = undefined;
+            user.resetPasswordOTP = undefined;
+            user.resetPasswordOTPExpire = undefined;
             await user.save();
 
             return res.status(500).json({ success: false, message: 'Email could not be sent' });
@@ -233,30 +231,85 @@ router.post('/forgotpassword', async (req, res) => {
     }
 });
 
-// @desc    Reset password
-// @route   PUT /api/auth/resetpassword/:resettoken
+// @desc    Forgot password via Mobile
+// @route   POST /api/auth/forgotpassword/mobile
 // @access  Public
-router.put('/resetpassword/:resettoken', async (req, res) => {
+router.post('/forgotpassword/mobile', async (req, res) => {
     try {
-        // Get hashed token
-        const resetPasswordToken = crypto
-            .createHash('sha256')
-            .update(req.params.resettoken)
-            .digest('hex');
-
-        const user = await User.findOne({
-            resetPasswordToken,
-            resetPasswordExpire: { $gt: Date.now() },
-        });
+        const user = await User.findOne({ mobileNumber: req.body.mobileNumber });
 
         if (!user) {
-            return res.status(400).json({ success: false, message: 'Invalid or expired token' });
+            return res.status(404).json({ success: false, message: 'User not found with that mobile number' });
+        }
+
+        // Generate 6-digit OTP
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+        // Set OTP and expire
+        user.resetPasswordOTP = otp;
+        user.resetPasswordOTPExpire = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+        await user.save();
+
+        console.log('\n*********************************');
+        console.log('       PASSWORD RESET OTP (SMS)  ');
+        console.log(`MOBILE: ${user.mobileNumber}`);
+        console.log(`OTP:    ${otp}`);
+        console.log('*********************************\n');
+
+        const message = `Your password reset code is: ${otp}. It will expire in 10 minutes.`;
+
+        try {
+            await sendSMS({
+                mobileNumber: user.mobileNumber,
+                message,
+            });
+
+            res.status(200).json({ success: true, message: 'OTP sent to mobile number' });
+        } catch (err) {
+            console.error(err);
+            user.resetPasswordOTP = undefined;
+            user.resetPasswordOTPExpire = undefined;
+            await user.save();
+
+            return res.status(500).json({ success: false, message: 'SMS could not be sent' });
+        }
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// @desc    Reset password via OTP
+// @route   PUT /api/auth/resetpassword
+// @access  Public
+router.put('/resetpassword', async (req, res) => {
+    try {
+        const { otp, password, email, mobileNumber } = req.body;
+
+        let query = {
+            resetPasswordOTP: otp,
+            resetPasswordOTPExpire: { $gt: Date.now() },
+        };
+
+        if (email) {
+            query.email = email.toLowerCase();
+        } else if (mobileNumber) {
+            query.mobileNumber = mobileNumber;
+        } else {
+            return res.status(400).json({ success: false, message: 'Please provide email or mobile number' });
+        }
+
+        const user = await User.findOne(query);
+
+        if (!user) {
+            return res.status(400).json({ success: false, message: 'Invalid or expired OTP' });
         }
 
         // Set new password
-        user.password = req.body.password;
-        user.resetPasswordToken = undefined;
-        user.resetPasswordExpire = undefined;
+        user.password = password;
+        user.resetPasswordOTP = undefined;
+        user.resetPasswordOTPExpire = undefined;
+        user.resetPasswordToken = undefined; // Clear old token too
         await user.save();
 
         res.status(200).json({ success: true, message: 'Password reset successful' });

@@ -13,6 +13,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useData } from '../context/DataContext';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import apiClient from '../services/apiClient';
 
 const { width } = Dimensions.get('window');
@@ -21,10 +22,12 @@ const OfferDetailsScreen = ({ route, navigation }) => {
     const { offerId } = route.params;
     const { getOfferById, getStoreById } = useData();
     const { addToCart } = useCart();
+    const { favorites, toggleFavorite, user: currentUser } = useAuth();
 
     const offer = getOfferById(offerId);
     const store = offer?.storeId; // storeId is populated object
 
+    const isFavorite = favorites.includes(offerId);
 
     useEffect(() => {
         if (offerId) {
@@ -73,10 +76,25 @@ const OfferDetailsScreen = ({ route, navigation }) => {
                     >
                         <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
                     </TouchableOpacity>
+                    
                     <Text style={styles.headerTitle}>Offer Details</Text>
-                    <TouchableOpacity style={styles.shareBtn}>
-                        <Ionicons name="share-outline" size={22} color="#FFFFFF" />
-                    </TouchableOpacity>
+                    
+                    <View style={{ flexDirection: 'row', gap: 10 }}>
+                        <TouchableOpacity 
+                            style={[styles.headerIconBtn, isFavorite && styles.favoriteActive]}
+                            onPress={() => toggleFavorite(offerId)}
+                        >
+                            <Ionicons 
+                                name={isFavorite ? "heart" : "heart-outline"} 
+                                size={22} 
+                                color={isFavorite ? "#FF6B6B" : "#FFFFFF"} 
+                            />
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={styles.headerIconBtn}>
+                            <Ionicons name="share-outline" size={22} color="#FFFFFF" />
+                        </TouchableOpacity>
+                    </View>
                 </View>
 
                 <ScrollView
@@ -218,8 +236,29 @@ const OfferDetailsScreen = ({ route, navigation }) => {
                         )}
                         <View style={styles.storeDetailRow}>
                              <Ionicons name="location-outline" size={16} color="#8E8E93" />
-                             <Text style={styles.storeDetailText}>{store?.location || 'Location not available'}</Text>
+                             <Text style={styles.storeDetailText}>{store?.address || store?.location || 'Location not available'}</Text>
                         </View>
+
+                        {!offer.isOnline && (
+                            <View style={[styles.deliveryInfoCard, { backgroundColor: store?.hasDeliveryPartner ? 'rgba(78,205,196,0.1)' : 'rgba(255,107,107,0.1)' }]}>
+                                <Ionicons 
+                                    name={store?.hasDeliveryPartner ? "bicycle" : "walk"} 
+                                    size={20} 
+                                    color={store?.hasDeliveryPartner ? "#4ECDC4" : "#FF6B6B"} 
+                                />
+                                <View style={{ flex: 1 }}>
+                                    <Text style={[styles.deliveryTitle, { color: store?.hasDeliveryPartner ? "#4ECDC4" : "#FF6B6B" }]}>
+                                        {store?.hasDeliveryPartner ? "Home Delivery Available" : "In-Store Purchase Only"}
+                                    </Text>
+                                    <Text style={styles.deliverySub}>
+                                        {store?.hasDeliveryPartner 
+                                            ? "You can order this item for delivery or visit the store."
+                                            : "This store does not offer delivery. Please visit the location above."}
+                                    </Text>
+                                </View>
+                            </View>
+                        )}
+
                         <TouchableOpacity 
                             style={styles.visitStoreBtn}
                             onPress={() => { /* Navigation to full store profile could go here */ }}
@@ -236,20 +275,46 @@ const OfferDetailsScreen = ({ route, navigation }) => {
                         <Text style={styles.bottomPriceLabel}>Total Price</Text>
                         <Text style={styles.bottomPriceValue}>₹{discountedPrice.toLocaleString()}</Text>
                     </View>
-                    <TouchableOpacity
-                        style={styles.addToCartBtn}
-                        onPress={handleAddToCart}
-                    >
-                        <LinearGradient
-                            colors={['#FF6B6B', '#FF8E53']}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 0 }}
-                            style={styles.addToCartGradient}
+                    
+                    <View style={{ flexDirection: 'row', gap: 10 }}>
+                        <TouchableOpacity
+                            style={styles.cartIconBtn}
+                            onPress={handleAddToCart}
                         >
-                            <Ionicons name="cart-outline" size={20} color="#fff" />
-                            <Text style={styles.addToCartText}>Add to Cart</Text>
-                        </LinearGradient>
-                    </TouchableOpacity>
+                            <Ionicons name="cart-outline" size={24} color="#FFF" />
+                        </TouchableOpacity>
+
+                        {(offer.isOnline || store?.hasDeliveryPartner) ? (
+                            <TouchableOpacity
+                                style={styles.buyNowBtn}
+                                onPress={() => {
+                                    addToCart(offer);
+                                    navigation.navigate('Cart');
+                                }}
+                            >
+                                <LinearGradient
+                                    colors={['#FF6B6B', '#FF8E53']}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 0 }}
+                                    style={styles.buyNowGradient}
+                                >
+                                    <Text style={styles.buyNowText}>Buy Now</Text>
+                                </LinearGradient>
+                            </TouchableOpacity>
+                        ) : (
+                            <TouchableOpacity
+                                style={styles.visitBtn}
+                                onPress={() => Alert.alert('Visit Store', `Please visit ${store?.storeName} at ${store?.location} to purchase this item.`)}
+                            >
+                                <LinearGradient
+                                    colors={['#4A4A5A', '#2D2D3A']}
+                                    style={styles.visitGradient}
+                                >
+                                    <Text style={styles.visitText}>Visit Store</Text>
+                                </LinearGradient>
+                            </TouchableOpacity>
+                        )}
+                    </View>
                 </View>
             </LinearGradient>
         </View>
@@ -286,13 +351,18 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: '700',
     },
-    shareBtn: {
+    headerIconBtn: {
         width: 40,
         height: 40,
         borderRadius: 12,
         backgroundColor: 'rgba(255,255,255,0.1)',
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    favoriteActive: {
+        backgroundColor: 'rgba(255,107,107,0.1)',
+        borderColor: 'rgba(255,107,107,0.2)',
+        borderWidth: 1,
     },
     scrollContent: {
         paddingBottom: 100,
@@ -583,6 +653,70 @@ const styles = StyleSheet.create({
         borderRadius: 16,
     },
     addToCartText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '700',
+    },
+    deliveryInfoCard: {
+        flexDirection: 'row',
+        gap: 12,
+        padding: 16,
+        borderRadius: 14,
+        marginTop: 8,
+        marginBottom: 16,
+        alignItems: 'center',
+    },
+    deliveryTitle: {
+        fontSize: 15,
+        fontWeight: '700',
+    },
+    deliverySub: {
+        color: '#8E8E93',
+        fontSize: 12,
+        marginTop: 2,
+    },
+    cartIconBtn: {
+        width: 50,
+        height: 50,
+        borderRadius: 14,
+        backgroundColor: 'rgba(255,255,255,0.08)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.1)',
+    },
+    buyNowBtn: {
+        borderRadius: 14,
+        overflow: 'hidden',
+        flex: 1,
+        minWidth: 140,
+    },
+    buyNowGradient: {
+        flex: 1,
+        paddingHorizontal: 24,
+        paddingVertical: 14,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    buyNowText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '700',
+    },
+    visitBtn: {
+        borderRadius: 14,
+        overflow: 'hidden',
+        flex: 1,
+        minWidth: 140,
+    },
+    visitGradient: {
+        flex: 1,
+        paddingHorizontal: 24,
+        paddingVertical: 14,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    visitText: {
         color: '#FFFFFF',
         fontSize: 16,
         fontWeight: '700',

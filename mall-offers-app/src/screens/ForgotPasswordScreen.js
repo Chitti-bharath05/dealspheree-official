@@ -27,21 +27,29 @@ const ForgotPasswordScreen = ({ navigation }) => {
 
         setLoading(true);
         try {
-            const response = await apiClient.post('/auth/forgotpassword', { email: email.trim().toLowerCase() });
+            const response = await apiClient.post('/auth/forgotpassword', { 
+                email: email.trim().toLowerCase() 
+            });
             setLoading(false);
             
             if (response.success) {
+                const message = 'A 6-digit OTP code has been sent to your email.';
+
                 if (Platform.OS === 'web') {
-                    alert('A reset token has been sent to your email. Please check your inbox.');
-                    navigation.navigate('ResetPassword', { email: email.trim().toLowerCase() });
+                    alert(message);
+                    navigation.navigate('ResetPassword', { 
+                        email: email.trim().toLowerCase() 
+                    });
                 } else {
                     Alert.alert(
                         'Success',
-                        'A reset token has been sent to your email. Please check your inbox.',
+                        message,
                         [
                             { 
-                                text: 'Enter Token', 
-                                onPress: () => navigation.navigate('ResetPassword', { email: email.trim().toLowerCase() }) 
+                                text: 'Enter OTP', 
+                                onPress: () => navigation.navigate('ResetPassword', { 
+                                    email: email.trim().toLowerCase() 
+                                }) 
                             }
                         ]
                     );
@@ -49,7 +57,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
             }
         } catch (error) {
             setLoading(false);
-            const message = error.response?.data?.message || 'Failed to send reset email';
+            const message = error.response?.data?.message || 'Failed to send reset code';
             Alert.alert('Error', message);
         }
     };
@@ -74,7 +82,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
                                 <Ionicons name="lock-open-outline" size={40} color="#FF6B6B" />
                             </View>
                             <Text style={styles.title}>Forgot Password?</Text>
-                            <Text style={styles.subtitle}>Enter your email to receive a password reset token</Text>
+                            <Text style={styles.subtitle}>Enter your email to receive a 6-digit OTP code</Text>
                         </View>
 
                         <View style={styles.formContainer}>
@@ -105,7 +113,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
                                     {loading ? (
                                         <ActivityIndicator color="#fff" />
                                     ) : (
-                                        <Text style={styles.resetButtonText}>Send Reset Link</Text>
+                                        <Text style={styles.resetButtonText}>Send OTP Code</Text>
                                     )}
                                 </LinearGradient>
                             </TouchableOpacity>

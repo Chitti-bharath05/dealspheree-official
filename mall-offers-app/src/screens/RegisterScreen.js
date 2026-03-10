@@ -20,6 +20,7 @@ const RegisterScreen = ({ navigation }) => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [mobileNumber, setMobileNumber] = useState('');
     const [role, setRole] = useState('customer');
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -42,7 +43,7 @@ const RegisterScreen = ({ navigation }) => {
             return;
         }
         setLoading(true);
-        const result = await register(name.trim(), email.trim().toLowerCase(), password, role);
+        const result = await register(name.trim(), email.trim().toLowerCase(), password, role, mobileNumber.trim());
         setLoading(false);
         if (!result.success) {
             if (Platform.OS === 'web') alert(`Registration Failed: ${result.message}`);
@@ -126,6 +127,18 @@ const RegisterScreen = ({ navigation }) => {
                                     onChangeText={setEmail}
                                     keyboardType="email-address"
                                     autoCapitalize="none"
+                                />
+                            </View>
+
+                            <View style={styles.inputContainer}>
+                                <Ionicons name="call-outline" size={20} color="#8E8E93" style={styles.inputIcon} />
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Mobile Number"
+                                    placeholderTextColor="#8E8E93"
+                                    value={mobileNumber}
+                                    onChangeText={setMobileNumber}
+                                    keyboardType="phone-pad"
                                 />
                             </View>
 

@@ -6,7 +6,8 @@ const schemas = {
         name: Joi.string().min(2).max(50).required(),
         email: Joi.string().email().required(),
         password: Joi.string().min(6).required(),
-        role: Joi.string().valid('customer', 'store_owner', 'admin').required()
+        role: Joi.string().valid('customer', 'store_owner', 'admin').required(),
+        mobileNumber: Joi.string().allow('', null)
     }),
     login: Joi.object({
         email: Joi.string().email().required(),
@@ -16,9 +17,10 @@ const schemas = {
     // Stores
     registerStore: Joi.object({
         storeName: Joi.string().min(2).max(100).required(),
-        ownerId: Joi.string().length(24).hex().required(), // MongoDB ObjectId
+        ownerId: Joi.string().length(24).hex().required(), 
         location: Joi.string().required(),
-        category: Joi.string().required()
+        category: Joi.string().required(),
+        hasDeliveryPartner: Joi.boolean().default(false)
     }),
 
     // Offers

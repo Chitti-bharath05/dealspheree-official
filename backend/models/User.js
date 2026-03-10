@@ -5,11 +5,13 @@ const userSchema = new mongoose.Schema({
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
+    mobileNumber: { type: String, unique: true, sparse: true },
     role: { type: String, enum: ['customer', 'store_owner', 'admin'], default: 'customer' },
     refreshToken: { type: String },
     favorites: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Offer' }],
-    resetPasswordToken: { type: String },
-    resetPasswordExpire: { type: Date }
+    resetPasswordToken: { type: String }, // For email link (keeping if needed, but will use OTP mostly)
+    resetPasswordOTP: { type: String },
+    resetPasswordOTPExpire: { type: Date }
 }, { timestamps: true });
 
 // Hash password before saving to the database

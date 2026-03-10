@@ -17,6 +17,8 @@ import ProfileScreen from '../screens/ProfileScreen';
 import FavoritesScreen from '../screens/FavoritesScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import ResetPasswordScreen from '../screens/ResetPasswordScreen';
+import OrderHistoryScreen from '../screens/OrderHistoryScreen';
+import PaymentSimulatorScreen from '../screens/PaymentSimulatorScreen';
 import { useCart } from '../context/CartContext';
 
 const Stack = createNativeStackNavigator();
@@ -29,6 +31,14 @@ const CustomerHomeStack = () => (
     <Stack.Navigator screenOptions={screenOptions}>
         <Stack.Screen name="HomeMain" component={HomeScreen} />
         <Stack.Screen name="OfferDetails" component={OfferDetailsScreen} />
+    </Stack.Navigator>
+);
+
+// Profile Stack (Unified for all roles)
+const ProfileStack = () => (
+    <Stack.Navigator screenOptions={screenOptions}>
+        <Stack.Screen name="ProfileMain" component={ProfileScreen} />
+        <Stack.Screen name="OrderHistory" component={OrderHistoryScreen} />
     </Stack.Navigator>
 );
 
@@ -62,7 +72,7 @@ const CustomerTabs = () => {
             <Tab.Screen name="Home" component={CustomerHomeStack} />
             <Tab.Screen name="Favorites" component={FavoritesScreen} />
             <Tab.Screen name="Cart" component={CartScreen} />
-            <Tab.Screen name="Profile" component={ProfileScreen} />
+            <Tab.Screen name="Profile" component={ProfileStack} />
         </Tab.Navigator>
     );
 };
@@ -84,7 +94,7 @@ const StoreOwnerTabs = () => (
     >
         <Tab.Screen name="Dashboard" component={StoreOwnerDashboardScreen} />
         <Tab.Screen name="Browse" component={CustomerHomeStack} />
-        <Tab.Screen name="Profile" component={ProfileScreen} />
+        <Tab.Screen name="Profile" component={ProfileStack} />
     </Tab.Navigator>
 );
 
@@ -104,7 +114,7 @@ const AdminTabs = () => (
         })}
     >
         <Tab.Screen name="Dashboard" component={AdminDashboardScreen} />
-        <Tab.Screen name="Profile" component={ProfileScreen} />
+        <Tab.Screen name="Profile" component={ProfileStack} />
     </Tab.Navigator>
 );
 
@@ -145,6 +155,7 @@ const AppNavigator = () => {
         <NavigationContainer>
             <Stack.Navigator screenOptions={screenOptions} key={user ? 'app-root' : 'auth-root'}>
                 {getMainScreens()}
+                <Stack.Screen name="PaymentSimulator" component={PaymentSimulatorScreen} />
             </Stack.Navigator>
         </NavigationContainer>
     );

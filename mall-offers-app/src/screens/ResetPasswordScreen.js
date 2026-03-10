@@ -17,14 +17,14 @@ import apiClient from '../services/apiClient';
 
 const ResetPasswordScreen = ({ route, navigation }) => {
     const { email } = route.params || {};
-    const [token, setToken] = useState('');
+    const [otp, setOtp] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
 
     const handleResetPassword = async () => {
-        if (!token.trim() || !newPassword.trim() || !confirmPassword.trim()) {
+        if (!otp.trim() || !newPassword.trim() || !confirmPassword.trim()) {
             Alert.alert('Error', 'Please fill in all fields');
             return;
         }
@@ -41,8 +41,10 @@ const ResetPasswordScreen = ({ route, navigation }) => {
 
         setLoading(true);
         try {
-            const response = await apiClient.put(`/auth/resetpassword/${token.trim()}`, {
+            const response = await apiClient.put('/auth/resetpassword', {
+                otp: otp.trim(),
                 password: newPassword,
+                email: email
             });
             setLoading(false);
 
@@ -83,7 +85,9 @@ const ResetPasswordScreen = ({ route, navigation }) => {
                                 <Ionicons name="shield-checkmark-outline" size={40} color="#4ECDC4" />
                             </View>
                             <Text style={styles.title}>Reset Password</Text>
-                            <Text style={styles.subtitle}>Enter the token sent to your email and choose a new password</Text>
+                            <Text style={styles.subtitle}>
+                                Enter the 6-digit OTP sent to your email and choose a new password
+                            </Text>
                         </View>
 
                         <View style={styles.formContainer}>
@@ -91,11 +95,12 @@ const ResetPasswordScreen = ({ route, navigation }) => {
                                 <Ionicons name="key-outline" size={20} color="#8E8E93" style={styles.inputIcon} />
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="Reset Token"
+                                    placeholder="6-Digit OTP"
                                     placeholderTextColor="#8E8E93"
-                                    value={token}
-                                    onChangeText={setToken}
-                                    autoCapitalize="none"
+                                    value={otp}
+                                    onChangeText={setOtp}
+                                    keyboardType="number-pad"
+                                    maxLength={6}
                                 />
                             </View>
 

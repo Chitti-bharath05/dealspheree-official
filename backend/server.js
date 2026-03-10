@@ -39,6 +39,7 @@ app.use('/api/offers', require('./routes/offers'));
 app.use('/api/stores', require('./routes/stores'));
 app.use('/api/orders', require('./routes/orders'));
 app.use('/api/upload', require('./routes/upload'));
+app.use('/api/admin', require('./routes/admin'));
 
 app.get('/api/categories', (req, res) => {
     const { CATEGORIES } = require('./data/mockData');
