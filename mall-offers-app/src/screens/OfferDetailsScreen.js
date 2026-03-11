@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -8,25 +8,33 @@ import {
     Alert,
     Image,
     Dimensions,
+    Linking,
+    Platform,
+    ActivityIndicator,
+    TextInput,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useData } from '../context/DataContext';
-import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import apiClient from '../services/apiClient';
 
 const { width } = Dimensions.get('window');
 
+import { useLanguage } from '../context/LanguageContext';
+
 const OfferDetailsScreen = ({ route, navigation }) => {
     const { offerId } = route.params;
-    const { getOfferById, getStoreById } = useData();
-    const { addToCart } = useCart();
-    const { favorites, toggleFavorite, user: currentUser } = useAuth();
+    const { getOfferById, refetchStores } = useData();
+    const { favorites, toggleFavorite, user } = useAuth();
+    const { t } = useLanguage();
+    
+    const [rating, setRating] = useState(0);
+    const [comment, setComment] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const offer = getOfferById(offerId);
-    const store = offer?.storeId; // storeId is populated object
-
+    const store = offer?.storeId;
     const isFavorite = favorites.includes(offerId);
 
     useEffect(() => {
@@ -37,690 +45,232 @@ const OfferDetailsScreen = ({ route, navigation }) => {
 
     if (!offer) {
         return (
-            <View style={styles.container}>
-                <LinearGradient colors={['#0f0c29', '#302b63', '#24243e']} style={styles.gradient}>
-                    <Text style={styles.errorText}>Offer not found</Text>
+            <View style={s.container}>
+                <LinearGradient colors={['#1a150d', '#000']} style={s.gradient}>
+                    <Text style={s.errorText}>Offer not found</Text>
                 </LinearGradient>
             </View>
         );
     }
 
-    const discountedPrice = Math.round(
-        offer.originalPrice * (1 - offer.discount / 100)
-    );
-    const savings = offer.originalPrice - discountedPrice;
+    const discountedPrice = Math.round(offer.originalPrice * (1 - offer.discount / 100));
 
-    const handleAddToCart = () => {
-        addToCart(offer);
-        Alert.alert('Added to Cart', `${offer.title} has been added to your cart!`, [
-            { text: 'Continue Shopping', style: 'cancel' },
-            { text: 'Go to Cart', onPress: () => navigation.navigate('Cart') },
-        ]);
+    const openMapsNavigation = async () => {
+        const address = [store?.houseNo, store?.street, store?.area, store?.city, store?.pincode].filter(Boolean).join(', ');
+        if (!address) {
+            Alert.alert('Address Not Available', 'This store has not provided a location.');
+            return;
+        }
+        const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`;
+        Linking.openURL(googleMapsUrl).catch(() => Alert.alert('Error', 'Could not open maps.'));
     };
 
-    const daysLeft = Math.ceil(
-        (new Date(offer.expiryDate) - new Date()) / (1000 * 60 * 60 * 24)
+    const submitRating = async () => {
+        if (rating === 0) {
+            Alert.alert('Error', 'Please select a star rating.');
+            return;
+        }
+        setIsSubmitting(true);
+        try {
+            const response = await apiClient.post(`/stores/${store._id || store.id}/rate`, {
+                score: rating,
+                comment: comment
+            });
+            if (response.success) {
+                Alert.alert('Success', 'Thank you for your rating!');
+                setRating(0);
+                setComment('');
+                refetchStores(); // Refresh store data to see new rating
+            }
+        } catch (error) {
+            Alert.alert('Error', 'Failed to submit rating. Please try again later.');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const RatingStars = ({ current, max = 5, onSelect, size = 24 }) => (
+        <View style={s.starsRow}>
+            {[...Array(max)].map((_, i) => (
+                <TouchableOpacity key={i} onPress={() => onSelect && onSelect(i + 1)}>
+                    <Ionicons 
+                        name={(i < current) ? "star" : "star-outline"} 
+                        size={size} 
+                        color="#D4AF37" 
+                    />
+                </TouchableOpacity>
+            ))}
+        </View>
     );
 
     return (
-        <View style={styles.container}>
-            <LinearGradient
-                colors={['#0f0c29', '#302b63', '#24243e']}
-                style={styles.gradient}
-            >
+        <View style={s.container}>
+            <LinearGradient colors={['#1a150d', '#000']} style={s.gradient}>
+                
                 {/* Header */}
-                <View style={styles.header}>
-                    <TouchableOpacity
-                        style={styles.backBtn}
-                        onPress={() => navigation.goBack()}
-                    >
+                <View style={s.header}>
+                    <TouchableOpacity style={s.backBtn} onPress={() => navigation.goBack()}>
                         <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
                     </TouchableOpacity>
-                    
-                    <Text style={styles.headerTitle}>Offer Details</Text>
-                    
-                    <View style={{ flexDirection: 'row', gap: 10 }}>
-                        <TouchableOpacity 
-                            style={[styles.headerIconBtn, isFavorite && styles.favoriteActive]}
-                            onPress={() => toggleFavorite(offerId)}
-                        >
-                            <Ionicons 
-                                name={isFavorite ? "heart" : "heart-outline"} 
-                                size={22} 
-                                color={isFavorite ? "#FF6B6B" : "#FFFFFF"} 
-                            />
-                        </TouchableOpacity>
-
-                        <TouchableOpacity style={styles.headerIconBtn}>
-                            <Ionicons name="share-outline" size={22} color="#FFFFFF" />
-                        </TouchableOpacity>
-                    </View>
+                    <Text style={s.headerTitle}>{t('deal_details')}</Text>
+                    <TouchableOpacity style={s.shareBtn}>
+                        <Ionicons name="share-social" size={22} color="#FFFFFF" />
+                    </TouchableOpacity>
                 </View>
 
-                <ScrollView
-                    showsVerticalScrollIndicator={false}
-                    contentContainerStyle={styles.scrollContent}
-                >
-                    {offer.image ? (
-                        <Image source={{ uri: offer.image }} style={styles.heroImage} />
-                    ) : (
-                        <LinearGradient
-                            colors={
-                                offer.category === 'Fashion'
-                                    ? ['#FF6B6B', '#FF8E53']
-                                    : offer.category === 'Electronics'
-                                        ? ['#667EEA', '#764BA2']
-                                        : ['#4ECDC4', '#44B39D']
-                            }
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
-                            style={styles.heroBanner}
-                        >
-                            <View style={styles.heroContent}>
-                                <View style={styles.discountCircle}>
-                                    <Text style={styles.discountBigText}>{offer.discount}%</Text>
-                                    <Text style={styles.discountOffText}>OFF</Text>
-                                </View>
-                                <Ionicons
-                                    name={
-                                        offer.category === 'Fashion'
-                                            ? 'shirt'
-                                            : offer.category === 'Electronics'
-                                                ? 'phone-portrait'
-                                                : 'pricetag'
-                                    }
-                                    size={80}
-                                    color="rgba(255,255,255,0.2)"
-                                    style={styles.heroIcon}
-                                />
-                            </View>
-                        </LinearGradient>
-                    )}
-                    {offer.isOnline && (
-                        <View style={styles.onlineTag}>
-                            <Ionicons name="globe-outline" size={14} color="#fff" />
-                            <Text style={styles.onlineTagText}>Available Online</Text>
-                        </View>
-                    )}
-
-                    {/* Title & Store Info */}
-                    <View style={styles.titleSection}>
-                        <Text style={styles.offerTitle}>{offer.title}</Text>
-                        
-                        <View style={styles.storeRow}>
-                            <View style={styles.storeIconContainer}>
-                                {store?.logoUrl ? (
-                                    <Image source={{ uri: store.logoUrl }} style={styles.storeLogo} />
-                                ) : (
-                                    <Ionicons name="storefront" size={16} color="#FF8E53" />
-                                )}
-                            </View>
-                            <View>
-                                <Text style={styles.storeNameText}>{store?.storeName || 'Store'}</Text>
-                                <Text style={styles.storeLocation}>{store?.location || ''}</Text>
-                            </View>
-                        </View>
-                    </View>
-
-                    {/* Price Card */}
-                    <View style={styles.priceCard}>
-                        <View style={styles.priceLeft}>
-                            <Text style={styles.priceLabel}>Deal Price</Text>
-                            <Text style={styles.discountedPriceText}>₹{discountedPrice.toLocaleString()}</Text>
-                            <Text style={styles.originalPriceText}>
-                                MRP: ₹{offer.originalPrice.toLocaleString()}
-                            </Text>
-                        </View>
-                        <View style={styles.savingsContainer}>
-                            <LinearGradient
-                                colors={['#4ECDC4', '#44B39D']}
-                                style={styles.savingsBadge}
-                            >
-                                <Text style={styles.savingsText}>
-                                    You save ₹{savings.toLocaleString()}
-                                </Text>
-                            </LinearGradient>
-                        </View>
-                    </View>
-
-                    {/* Info Cards */}
-                    <View style={styles.infoGrid}>
-                        <View style={styles.infoCard}>
-                            <Ionicons name="time-outline" size={22} color="#FF8E53" />
-                            <Text style={styles.infoCardValue}>
-                                {daysLeft > 0 ? `${daysLeft} days` : 'Expired'}
-                            </Text>
-                            <Text style={styles.infoCardLabel}>Left</Text>
-                        </View>
-                        <View style={styles.infoCard}>
-                            <Ionicons name="pricetag-outline" size={22} color="#4ECDC4" />
-                            <Text style={styles.infoCardValue}>{offer.category}</Text>
-                            <Text style={styles.infoCardLabel}>Category</Text>
-                        </View>
-                        <View style={styles.infoCard}>
-                            <Ionicons
-                                name={offer.isOnline ? 'globe-outline' : 'location-outline'}
-                                size={22}
-                                color="#A18CD1"
-                            />
-                            <Text style={styles.infoCardValue}>
-                                {offer.isOnline ? 'Online' : 'In-Store'}
-                            </Text>
-                            <Text style={styles.infoCardLabel}>Type</Text>
-                        </View>
-                    </View>
-
-                    {/* Description */}
-                    <View style={styles.descriptionSection}>
-                        <Text style={styles.sectionTitle}>About this offer</Text>
-                        <Text style={styles.descriptionText}>{offer.description}</Text>
-                    </View>
-
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
                     
-                    {/* Store Info Section */}
-                    <View style={styles.storeInfoSection}>
-                        <View style={styles.expirySectionMini}>
-                            <Ionicons name="calendar-outline" size={16} color="#FF6B6B" />
-                            <Text style={styles.expiryInfoText}>
-                                Valid until {new Date(offer.expiryDate).toLocaleDateString('en-IN', {
-                                    year: 'numeric',
-                                    month: 'long',
-                                    day: 'numeric',
-                                })}
-                            </Text>
+                    {/* Hero Section */}
+                    <View style={s.heroWrapper}>
+                        <Image source={{ uri: offer.image }} style={s.heroImage} />
+                        <LinearGradient colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.8)']} style={s.heroOverlay} />
+                        
+                        <View style={s.badgeRow}>
+                            <View style={s.limitedBadge}>
+                                <Ionicons name="flash" size={12} color="#000" />
+                                <Text style={s.limitedTxt}> {t('limited_offer')}</Text>
+                            </View>
                         </View>
 
-                        <Text style={styles.sectionTitle}>About the Store</Text>
-                        {store?.bannerUrl && (
-                            <Image source={{ uri: store.bannerUrl }} style={styles.storeBanner} />
-                        )}
-                        <View style={styles.storeDetailRow}>
-                             <Ionicons name="location-outline" size={16} color="#8E8E93" />
-                             <Text style={styles.storeDetailText}>{store?.address || store?.location || 'Location not available'}</Text>
+                        <View style={s.heroContent}>
+                            <Text style={s.discountTitle}>{offer.discount}% Off {offer.title}</Text>
+                            <Text style={s.storeSub}>{store?.storeName || 'Valoris Luxury Store'}</Text>
                         </View>
+                    </View>
 
-                        {!offer.isOnline && (
-                            <View style={[styles.deliveryInfoCard, { backgroundColor: store?.hasDeliveryPartner ? 'rgba(78,205,196,0.1)' : 'rgba(255,107,107,0.1)' }]}>
-                                <Ionicons 
-                                    name={store?.hasDeliveryPartner ? "bicycle" : "walk"} 
-                                    size={20} 
-                                    color={store?.hasDeliveryPartner ? "#4ECDC4" : "#FF6B6B"} 
-                                />
-                                <View style={{ flex: 1 }}>
-                                    <Text style={[styles.deliveryTitle, { color: store?.hasDeliveryPartner ? "#4ECDC4" : "#FF6B6B" }]}>
-                                        {store?.hasDeliveryPartner ? "Home Delivery Available" : "In-Store Purchase Only"}
-                                    </Text>
-                                    <Text style={styles.deliverySub}>
-                                        {store?.hasDeliveryPartner 
-                                            ? "You can order this item for delivery or visit the store."
-                                            : "This store does not offer delivery. Please visit the location above."}
-                                    </Text>
+                    {/* Price & Rating Intro */}
+                    <View style={s.statsRow}>
+                        <View style={s.statCard}>
+                            <Text style={s.statLabel}>{t('exclusive_price')}</Text>
+                            <Text style={s.statValue}>₹{discountedPrice.toLocaleString()}</Text>
+                        </View>
+                        {store?.averageRating > 0 && (
+                            <View style={s.statCard}>
+                                <Text style={s.statLabel}>{t('store_rating')}</Text>
+                                <View style={s.miniRate}>
+                                    <Text style={s.statValue}>{store.averageRating.toFixed(1)}</Text>
+                                    <Ionicons name="star" size={16} color="#D4AF37" style={{ marginLeft: 5 }} />
                                 </View>
                             </View>
                         )}
-
-                        <TouchableOpacity 
-                            style={styles.visitStoreBtn}
-                            onPress={() => { /* Navigation to full store profile could go here */ }}
-                        >
-                            <Text style={styles.visitStoreText}>Visit Store Profile</Text>
-                            <Ionicons name="chevron-forward" size={16} color="#FF8E53" />
-                        </TouchableOpacity>
                     </View>
+
+                    {/* Description Section */}
+                    <View style={s.content}>
+                        <View style={s.sectionHeader}>
+                            <View style={s.goldBar} />
+                            <Text style={s.sectionTitle}>{t('about_offer')}</Text>
+                        </View>
+                        <Text style={s.descTxt}>{offer.description || 'Experience unmatched luxury with this exclusive deal from our premium boutique.'}</Text>
+                    </View>
+
+                    {/* Store & Rating Section */}
+                    <View style={s.content}>
+                        <View style={s.sectionHeader}>
+                            <View style={s.goldBar} />
+                            <Text style={s.sectionTitle}>{t('rate_store')}</Text>
+                        </View>
+                        <View style={s.ratingCard}>
+                            <Text style={s.ratingHint}>{t('rating_hint')} {store?.storeName || 'this store'}?</Text>
+                            <RatingStars current={rating} onSelect={setRating} size={32} />
+                            <TextInput 
+                                placeholder={t('rating_input_hint')} 
+                                placeholderTextColor="#555" 
+                                style={s.ratingInput}
+                                value={comment}
+                                onChangeText={setComment}
+                            />
+                            <TouchableOpacity style={s.rateBtn} onPress={submitRating} disabled={isSubmitting}>
+                                {isSubmitting ? (
+                                    <ActivityIndicator color="#000" />
+                                ) : (
+                                    <Text style={s.rateBtnTxt}>{t('submit_rating')}</Text>
+                                )}
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+
+                    {/* Status Cards */}
+                    <View style={s.statusCards}>
+                        <View style={s.statusCard}>
+                            <View style={s.statusIcon}><Ionicons name="checkmark-circle" size={24} color="#D4AF37" /></View>
+                            <View>
+                                <Text style={s.statusTitle}>{t('verified_deal')}</Text>
+                                <Text style={s.statusSub}>{t('validated_by')}</Text>
+                            </View>
+                        </View>
+                        <View style={s.statusCard}>
+                            <View style={[s.statusIcon, { backgroundColor: 'rgba(212,175,55,0.1)' }]}><Ionicons name="location" size={24} color="#D4AF37" /></View>
+                            <View>
+                                <Text style={s.statusTitle}>{t('in_store_offer')}</Text>
+                                <Text style={s.statusSub}>{store?.location || 'Valoris Central Mall'}</Text>
+                            </View>
+                        </View>
+                    </View>
+
                 </ScrollView>
 
-                {/* Bottom CTA */}
-                <View style={styles.bottomCTA}>
-                    <View style={styles.bottomPriceInfo}>
-                        <Text style={styles.bottomPriceLabel}>Total Price</Text>
-                        <Text style={styles.bottomPriceValue}>₹{discountedPrice.toLocaleString()}</Text>
-                    </View>
-                    
-                    <View style={{ flexDirection: 'row', gap: 10 }}>
-                        <TouchableOpacity
-                            style={styles.cartIconBtn}
-                            onPress={handleAddToCart}
-                        >
-                            <Ionicons name="cart-outline" size={24} color="#FFF" />
-                        </TouchableOpacity>
-
-                        {(offer.isOnline || store?.hasDeliveryPartner) ? (
-                            <TouchableOpacity
-                                style={styles.buyNowBtn}
-                                onPress={() => {
-                                    addToCart(offer);
-                                    navigation.navigate('Cart');
-                                }}
-                            >
-                                <LinearGradient
-                                    colors={['#FF6B6B', '#FF8E53']}
-                                    start={{ x: 0, y: 0 }}
-                                    end={{ x: 1, y: 0 }}
-                                    style={styles.buyNowGradient}
-                                >
-                                    <Text style={styles.buyNowText}>Buy Now</Text>
-                                </LinearGradient>
-                            </TouchableOpacity>
-                        ) : (
-                            <TouchableOpacity
-                                style={styles.visitBtn}
-                                onPress={() => Alert.alert('Visit Store', `Please visit ${store?.storeName} at ${store?.location} to purchase this item.`)}
-                            >
-                                <LinearGradient
-                                    colors={['#4A4A5A', '#2D2D3A']}
-                                    style={styles.visitGradient}
-                                >
-                                    <Text style={styles.visitText}>Visit Store</Text>
-                                </LinearGradient>
-                            </TouchableOpacity>
-                        )}
-                    </View>
+                {/* Bottom Buttons */}
+                <View style={s.bottomRow}>
+                    <TouchableOpacity style={s.favBtn} onPress={() => toggleFavorite(offerId)}>
+                        <Ionicons name={isFavorite ? "heart" : "heart-outline"} size={22} color={isFavorite ? "#FFD700" : "#fff"} />
+                        <Text style={[s.favTxt, isFavorite && {color: '#FFD700'}]}>{t('favorite')}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={s.navBtn} onPress={openMapsNavigation}>
+                        <Ionicons name="navigate" size={22} color="#000" />
+                        <Text style={s.navTxt}>{t('navigate')}</Text>
+                    </TouchableOpacity>
                 </View>
+
             </LinearGradient>
         </View>
     );
 };
 
-const styles = StyleSheet.create({
+const s = StyleSheet.create({
     container: { flex: 1 },
     gradient: { flex: 1 },
-    errorText: {
-        color: '#fff',
-        fontSize: 16,
-        textAlign: 'center',
-        marginTop: 100,
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        paddingTop: 56,
-        paddingBottom: 12,
-    },
-    backBtn: {
-        width: 40,
-        height: 40,
-        borderRadius: 12,
-        backgroundColor: 'rgba(255,255,255,0.1)',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    headerTitle: {
-        color: '#FFFFFF',
-        fontSize: 18,
-        fontWeight: '700',
-    },
-    headerIconBtn: {
-        width: 40,
-        height: 40,
-        borderRadius: 12,
-        backgroundColor: 'rgba(255,255,255,0.1)',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    favoriteActive: {
-        backgroundColor: 'rgba(255,107,107,0.1)',
-        borderColor: 'rgba(255,107,107,0.2)',
-        borderWidth: 1,
-    },
-    scrollContent: {
-        paddingBottom: 100,
-    },
-    heroBanner: {
-        marginHorizontal: 20,
-        borderRadius: 24,
-        height: 200,
-        padding: 24,
-        justifyContent: 'center',
-        overflow: 'hidden',
-    },
-    heroImage: {
-        marginHorizontal: 20,
-        borderRadius: 24,
-        height: 320,
-        width: width - 40,
-        resizeMode: 'contain',
-        backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    },
-    heroContent: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    discountCircle: {
-        width: 90,
-        height: 90,
-        borderRadius: 45,
-        backgroundColor: 'rgba(0,0,0,0.25)',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    discountBigText: {
-        color: '#fff',
-        fontSize: 32,
-        fontWeight: '900',
-    },
-    discountOffText: {
-        color: '#fff',
-        fontSize: 12,
-        fontWeight: '700',
-        marginTop: -4,
-    },
-    heroIcon: {
-        opacity: 0.4,
-    },
-    onlineTag: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 5,
-        position: 'absolute',
-        top: 30,
-        left: 30,
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        borderRadius: 12,
-        paddingHorizontal: 10,
-        paddingVertical: 5,
-    },
-    onlineTagText: { color: '#fff', fontSize: 12, fontWeight: '600' },
-    titleSection: {
-        paddingHorizontal: 20,
-        marginTop: 20,
-    },
-    offerTitle: {
-        color: '#FFFFFF',
-        fontSize: 24,
-        fontWeight: '800',
-        lineHeight: 30,
-        marginBottom: 12,
-    },
-    storeRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
-    },
-    storeIconContainer: {
-        width: 40,
-        height: 40,
-        borderRadius: 12,
-        backgroundColor: 'rgba(255, 142, 83, 0.1)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 12,
-        overflow: 'hidden',
-    },
-    storeLogo: {
-        width: '100%',
-        height: '100%',
-        resizeMode: 'cover',
-    },
-    storeBanner: {
-        width: '100%',
-        height: 160,
-        borderRadius: 12,
-        marginBottom: 16,
-        resizeMode: 'contain',
-        backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    },
-    storeNameText: {
-        color: '#FFFFFF',
-        fontSize: 16,
-        fontWeight: '700',
-    },
-    storeLocation: {
-        color: '#8E8E93',
-        fontSize: 12,
-    },
-    priceCard: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        backgroundColor: 'rgba(255,255,255,0.07)',
-        borderRadius: 18,
-        padding: 18,
-        marginHorizontal: 20,
-        marginTop: 20,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.08)',
-    },
-    priceLeft: {},
-    priceLabel: {
-        color: '#8E8E93',
-        fontSize: 12,
-        fontWeight: '600',
-        marginBottom: 4,
-    },
-    discountedPriceText: {
-        color: '#4ECDC4',
-        fontSize: 28,
-        fontWeight: '900',
-    },
-    originalPriceText: {
-        color: '#6E6E7E',
-        fontSize: 14,
-        textDecorationLine: 'line-through',
-        marginTop: 2,
-    },
-    savingsContainer: {
-        alignItems: 'flex-end',
-    },
-    savingsBadge: {
-        borderRadius: 12,
-        paddingHorizontal: 14,
-        paddingVertical: 8,
-    },
-    savingsText: {
-        color: '#FFFFFF',
-        fontSize: 13,
-        fontWeight: '700',
-    },
-    infoGrid: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        marginTop: 16,
-        gap: 10,
-    },
-    infoCard: {
-        flex: 1,
-        backgroundColor: 'rgba(255,255,255,0.06)',
-        borderRadius: 16,
-        padding: 14,
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.06)',
-    },
-    infoCardValue: {
-        color: '#FFFFFF',
-        fontSize: 14,
-        fontWeight: '700',
-        marginTop: 6,
-    },
-    infoCardLabel: {
-        color: '#8E8E93',
-        fontSize: 11,
-        marginTop: 2,
-    },
-    descriptionSection: {
-        paddingHorizontal: 20,
-        marginTop: 24,
-    },
-    sectionTitle: {
-        color: '#FFFFFF',
-        fontSize: 18,
-        fontWeight: '700',
-        marginBottom: 10,
-    },
-    descriptionText: {
-        color: '#B0B0C0',
-        fontSize: 14,
-        lineHeight: 22,
-    },
-    storeInfoSection: {
-        paddingHorizontal: 20,
-        marginTop: 32,
-        paddingBottom: 40,
-    },
-    storeDetailRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        marginTop: 12,
-        marginBottom: 20,
-    },
-    storeDetailText: {
-        color: '#8E8E93',
-        fontSize: 13,
-    },
-    visitStoreBtn: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 6,
-        paddingVertical: 12,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: 'rgba(255,142,83,0.3)',
-    },
-    visitStoreText: {
-        color: '#FF8E53',
-        fontSize: 14,
-        fontWeight: '700',
-    },
-    expirySectionMini: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        marginBottom: 16,
-        backgroundColor: 'rgba(255,107,107,0.1)',
-        padding: 10,
-        borderRadius: 10,
-        alignSelf: 'flex-start',
-    },
-    expirySection: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        paddingHorizontal: 20,
-        marginTop: 20,
-        backgroundColor: 'rgba(255,107,107,0.1)',
-        marginHorizontal: 20,
-        padding: 14,
-        borderRadius: 14,
-        borderWidth: 1,
-        borderColor: 'rgba(255,107,107,0.15)',
-    },
-    expiryInfoText: {
-        color: '#FF6B6B',
-        fontSize: 13,
-        fontWeight: '600',
-    },
-    bottomCTA: {
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        backgroundColor: 'rgba(15, 12, 41, 0.95)',
-        paddingHorizontal: 20,
-        paddingVertical: 14,
-        paddingBottom: 30,
-        borderTopWidth: 1,
-        borderTopColor: 'rgba(255,255,255,0.08)',
-    },
-    bottomPriceInfo: {},
-    bottomPriceLabel: {
-        color: '#8E8E93',
-        fontSize: 12,
-    },
-    bottomPriceValue: {
-        color: '#FFFFFF',
-        fontSize: 22,
-        fontWeight: '800',
-    },
-    addToCartBtn: {
-        borderRadius: 16,
-        overflow: 'hidden',
-    },
-    addToCartGradient: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        paddingHorizontal: 28,
-        paddingVertical: 14,
-        borderRadius: 16,
-    },
-    addToCartText: {
-        color: '#FFFFFF',
-        fontSize: 16,
-        fontWeight: '700',
-    },
-    deliveryInfoCard: {
-        flexDirection: 'row',
-        gap: 12,
-        padding: 16,
-        borderRadius: 14,
-        marginTop: 8,
-        marginBottom: 16,
-        alignItems: 'center',
-    },
-    deliveryTitle: {
-        fontSize: 15,
-        fontWeight: '700',
-    },
-    deliverySub: {
-        color: '#8E8E93',
-        fontSize: 12,
-        marginTop: 2,
-    },
-    cartIconBtn: {
-        width: 50,
-        height: 50,
-        borderRadius: 14,
-        backgroundColor: 'rgba(255,255,255,0.08)',
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
-    },
-    buyNowBtn: {
-        borderRadius: 14,
-        overflow: 'hidden',
-        flex: 1,
-        minWidth: 140,
-    },
-    buyNowGradient: {
-        flex: 1,
-        paddingHorizontal: 24,
-        paddingVertical: 14,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    buyNowText: {
-        color: '#FFFFFF',
-        fontSize: 16,
-        fontWeight: '700',
-    },
-    visitBtn: {
-        borderRadius: 14,
-        overflow: 'hidden',
-        flex: 1,
-        minWidth: 140,
-    },
-    visitGradient: {
-        flex: 1,
-        paddingHorizontal: 24,
-        paddingVertical: 14,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    visitText: {
-        color: '#FFFFFF',
-        fontSize: 16,
-        fontWeight: '700',
-    },
+    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, paddingTop: 60, paddingBottom: 20 },
+    backBtn: { width: 44, height: 44, borderRadius: 15, backgroundColor: 'rgba(255,255,255,0.05)', alignItems: 'center', justifyContent: 'center' },
+    headerTitle: { color: '#fff', fontSize: 18, fontWeight: '800' },
+    shareBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+    scroll: { paddingBottom: 120 },
+    heroWrapper: { marginHorizontal: 24, height: 320, borderRadius: 32, overflow: 'hidden', position: 'relative' },
+    heroImage: { width: '100%', height: '100%' },
+    heroOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, height: '70%' },
+    badgeRow: { position: 'absolute', top: 20, left: 20 },
+    limitedBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFD700', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10 },
+    limitedTxt: { color: '#000', fontSize: 11, fontWeight: '900' },
+    heroContent: { position: 'absolute', bottom: 30, left: 25, right: 25 },
+    discountTitle: { color: '#fff', fontSize: 28, fontWeight: '900', lineHeight: 36 },
+    storeSub: { color: '#D4AF37', fontSize: 16, fontWeight: '700', marginTop: 8 },
+    statsRow: { flexDirection: 'row', gap: 15, paddingHorizontal: 24, marginTop: 24 },
+    statCard: { flex: 1, minHeight: 80, backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 24, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(212,175,55,0.1)', paddingVertical: 10 },
+    statLabel: { color: '#D4AF37', fontSize: 10, fontWeight: '800', marginBottom: 8 },
+    statValue: { color: '#fff', fontSize: 22, fontWeight: '900' },
+    miniRate: { flexDirection: 'row', alignItems: 'center' },
+    content: { paddingHorizontal: 24, marginTop: 32 },
+    sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 15 },
+    goldBar: { width: 4, height: 24, backgroundColor: '#D4AF37', borderRadius: 2 },
+    sectionTitle: { color: '#fff', fontSize: 20, fontWeight: '800' },
+    descTxt: { color: '#8E8E93', fontSize: 15, lineHeight: 24 },
+    ratingCard: { backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 24, padding: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)', alignItems: 'center' },
+    ratingHint: { color: '#fff', fontSize: 14, fontWeight: '600', marginBottom: 15, textAlign: 'center' },
+    starsRow: { flexDirection: 'row', gap: 8, marginBottom: 20 },
+    ratingInput: { width: '100%', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 15, padding: 12, color: '#fff', fontSize: 14, minHeight: 60, textAlignVertical: 'top' },
+    rateBtn: { width: '100%', backgroundColor: '#D4AF37', borderRadius: 15, paddingVertical: 12, alignItems: 'center', marginTop: 15 },
+    rateBtnTxt: { color: '#000', fontWeight: '800', fontSize: 15 },
+    statusCards: { paddingHorizontal: 24, marginTop: 24, gap: 12 },
+    statusCard: { flexDirection: 'row', alignItems: 'center', gap: 15, backgroundColor: 'rgba(255,255,255,0.03)', padding: 18, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
+    statusIcon: { width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(212,175,55,0.1)', alignItems: 'center', justifyContent: 'center' },
+    statusTitle: { color: '#fff', fontSize: 16, fontWeight: '700' },
+    statusSub: { color: '#8E8E93', fontSize: 13, marginTop: 2 },
+    bottomRow: { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', gap: 15, paddingHorizontal: 24, paddingBottom: 40, paddingTop: 20, backgroundColor: 'rgba(26,21,13,0.98)' },
+    favBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 60, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+    favTxt: { color: '#fff', fontWeight: '800', fontSize: 15 },
+    navBtn: { flex: 1.2, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 60, borderRadius: 20, backgroundColor: '#FFD700' },
+    navTxt: { color: '#000', fontWeight: '800', fontSize: 15 },
+    errorText: { color: '#fff', textAlign: 'center', marginTop: 100 },
 });
 
 export default OfferDetailsScreen;

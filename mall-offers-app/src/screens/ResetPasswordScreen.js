@@ -14,6 +14,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import apiClient from '../services/apiClient';
+import { useLanguage } from '../context/LanguageContext';
 
 const ResetPasswordScreen = ({ route, navigation }) => {
     const { email } = route.params || {};
@@ -22,20 +23,21 @@ const ResetPasswordScreen = ({ route, navigation }) => {
     const [confirmPassword, setConfirmPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
+    const { t } = useLanguage();
 
     const handleResetPassword = async () => {
         if (!otp.trim() || !newPassword.trim() || !confirmPassword.trim()) {
-            Alert.alert('Error', 'Please fill in all fields');
+            Alert.alert(t('error'), t('missing_fields'));
             return;
         }
 
         if (newPassword !== confirmPassword) {
-            Alert.alert('Error', 'Passwords do not match');
+            Alert.alert(t('error'), t('passwords_not_match'));
             return;
         }
 
         if (newPassword.length < 6) {
-            Alert.alert('Error', 'Password must be at least 6 characters long');
+            Alert.alert(t('error'), t('password_too_short'));
             return;
         }
 
@@ -49,28 +51,26 @@ const ResetPasswordScreen = ({ route, navigation }) => {
             setLoading(false);
 
             if (response.success) {
+                const message = t('password_reset_success');
                 if (Platform.OS === 'web') {
-                    alert('Password has been reset successfully. Please login with your new password.');
+                    alert(message);
                     navigation.navigate('Login');
                 } else {
-                    Alert.alert('Success', 'Password has been reset successfully. Please login with your new password.', [
-                        { text: 'Login Now', onPress: () => navigation.navigate('Login') }
+                    Alert.alert(t('success'), message, [
+                        { text: t('login_here'), onPress: () => navigation.navigate('Login') }
                     ]);
                 }
             }
         } catch (error) {
             setLoading(false);
-            const message = error.response?.data?.message || 'Failed to reset password';
-            Alert.alert('Error', message);
+            const message = error.response?.data?.message || t('failed_reset_password');
+            Alert.alert(t('error'), message);
         }
     };
 
     return (
         <View style={styles.container}>
-            <LinearGradient
-                colors={['#0f0c29', '#302b63', '#24243e']}
-                style={styles.gradient}
-            >
+            <LinearGradient colors={['#1a150d', '#000']} style={styles.gradient}>
                 <KeyboardAvoidingView
                     behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                     style={styles.keyboardView}
@@ -82,12 +82,10 @@ const ResetPasswordScreen = ({ route, navigation }) => {
 
                         <View style={styles.headerContainer}>
                             <View style={styles.iconCircle}>
-                                <Ionicons name="shield-checkmark-outline" size={40} color="#4ECDC4" />
+                                <Ionicons name="shield-checkmark-outline" size={40} color="#D4AF37" />
                             </View>
-                            <Text style={styles.title}>Reset Password</Text>
-                            <Text style={styles.subtitle}>
-                                Enter the 6-digit OTP sent to your email and choose a new password
-                            </Text>
+                            <Text style={styles.title}>{t('reset_password')}</Text>
+                            <Text style={styles.subtitle}>{t('otp_sent_to_email')}</Text>
                         </View>
 
                         <View style={styles.formContainer}>
@@ -95,7 +93,7 @@ const ResetPasswordScreen = ({ route, navigation }) => {
                                 <Ionicons name="key-outline" size={20} color="#8E8E93" style={styles.inputIcon} />
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="6-Digit OTP"
+                                    placeholder={t('otp_code')}
                                     placeholderTextColor="#8E8E93"
                                     value={otp}
                                     onChangeText={setOtp}
@@ -108,7 +106,7 @@ const ResetPasswordScreen = ({ route, navigation }) => {
                                 <Ionicons name="lock-closed-outline" size={20} color="#8E8E93" style={styles.inputIcon} />
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="New Password"
+                                    placeholder={t('new_password')}
                                     placeholderTextColor="#8E8E93"
                                     value={newPassword}
                                     onChangeText={setNewPassword}
@@ -127,7 +125,7 @@ const ResetPasswordScreen = ({ route, navigation }) => {
                                 <Ionicons name="lock-closed-outline" size={20} color="#8E8E93" style={styles.inputIcon} />
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="Confirm New Password"
+                                    placeholder={t('confirm_password')}
                                     placeholderTextColor="#8E8E93"
                                     value={confirmPassword}
                                     onChangeText={setConfirmPassword}
@@ -141,15 +139,15 @@ const ResetPasswordScreen = ({ route, navigation }) => {
                                 disabled={loading}
                             >
                                 <LinearGradient
-                                    colors={['#4ECDC4', '#45B7AF']}
+                                    colors={['#D4AF37', '#B8860B']}
                                     start={{ x: 0, y: 0 }}
                                     end={{ x: 1, y: 0 }}
                                     style={styles.resetGradient}
                                 >
                                     {loading ? (
-                                        <ActivityIndicator color="#fff" />
+                                        <ActivityIndicator color="#000" />
                                     ) : (
-                                        <Text style={styles.resetButtonText}>Update Password</Text>
+                                        <Text style={styles.resetButtonText}>{t('update_pass')}</Text>
                                     )}
                                 </LinearGradient>
                             </TouchableOpacity>
@@ -186,7 +184,7 @@ const styles = StyleSheet.create({
         width: 80,
         height: 80,
         borderRadius: 40,
-        backgroundColor: 'rgba(78, 205, 196, 0.15)',
+        backgroundColor: 'rgba(212, 175, 55, 0.15)',
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: 16,
@@ -204,25 +202,25 @@ const styles = StyleSheet.create({
         paddingHorizontal: 10,
     },
     formContainer: {
-        backgroundColor: 'rgba(255, 255, 255, 0.07)',
+        backgroundColor: 'rgba(255, 255, 255, 0.04)',
         borderRadius: 24,
         padding: 24,
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.1)',
+        borderColor: 'rgba(212, 175, 55, 0.1)',
     },
     inputContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(255, 255, 255, 0.08)',
+        backgroundColor: 'rgba(255, 255, 255, 0.04)',
         borderRadius: 14,
         paddingHorizontal: 16,
         marginBottom: 14,
         height: 52,
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.06)',
+        borderColor: 'rgba(255, 255, 255, 0.05)',
     },
     inputIcon: { marginRight: 12 },
-    input: { flex: 1, fontSize: 15, color: '#FFFFFF' },
+    input: { flex: 1, fontSize: 16, color: '#FFFFFF' },
     resetButton: {
         borderRadius: 14,
         overflow: 'hidden',
@@ -233,9 +231,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     resetButtonText: {
-        color: '#FFFFFF',
+        color: '#000',
         fontSize: 16,
-        fontWeight: '700',
+        fontWeight: '800',
     },
 });
 

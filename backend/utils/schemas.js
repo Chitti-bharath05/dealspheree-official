@@ -19,6 +19,11 @@ const schemas = {
         storeName: Joi.string().min(2).max(100).required(),
         ownerId: Joi.string().length(24).hex().required(), 
         location: Joi.string().required(),
+        houseNo: Joi.string().allow('', null),
+        street: Joi.string().allow('', null),
+        area: Joi.string().allow('', null),
+        pincode: Joi.string().allow('', null),
+        city: Joi.string().allow('', null),
         category: Joi.string().required(),
         hasDeliveryPartner: Joi.boolean().default(false)
     }),
@@ -33,6 +38,7 @@ const schemas = {
         expiryDate: Joi.date().greater('now').required(),
         category: Joi.string().required(),
         isOnline: Joi.boolean().default(false),
+        platformLink: Joi.string().uri().allow('', null),
         image: Joi.string().allow(null, '')
     }),
     updateOffer: Joi.object({
@@ -44,6 +50,7 @@ const schemas = {
         expiryDate: Joi.date(),
         category: Joi.string(),
         isOnline: Joi.boolean(),
+        platformLink: Joi.string().uri().allow('', null),
         image: Joi.string().allow(null, '')
     }).min(1) // At least one field must be present for update
 };

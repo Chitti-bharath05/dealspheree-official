@@ -42,12 +42,17 @@ router.get('/owner/:ownerId', async (req, res) => {
 // Create new store (Protected)
 router.post('/', protect, validateRequest('registerStore'), async (req, res) => {
     try {
-        const { storeName, ownerId, location, address, category, logoUrl, bannerUrl, hasDeliveryPartner } = req.body;
+        const { storeName, ownerId, location, houseNo, street, area, pincode, city, address, category, logoUrl, bannerUrl, hasDeliveryPartner } = req.body;
         
         const newStore = await Store.create({
             storeName,
             ownerId, 
             location,
+            houseNo: houseNo || '',
+            street: street || '',
+            area: area || '',
+            pincode: pincode || '',
+            city: city || '',
             address: address || '',
             category,
             logoUrl: logoUrl || null,
@@ -94,7 +99,7 @@ router.put('/:id/reject', protect, authorize('admin'), async (req, res) => {
 // Update store (Protected: Owner or Admin)
 router.put('/:id', protect, async (req, res) => {
     try {
-        const { storeName, location, address, category, logoUrl, bannerUrl, hasDeliveryPartner } = req.body;
+        const { storeName, location, houseNo, street, area, pincode, city, address, category, logoUrl, bannerUrl, hasDeliveryPartner } = req.body;
         const store = await Store.findById(req.params.id);
 
         if (!store) {
@@ -108,11 +113,47 @@ router.put('/:id', protect, async (req, res) => {
 
         const updatedStore = await Store.findByIdAndUpdate(
             req.params.id,
-            { storeName, location, address, category, logoUrl, bannerUrl, hasDeliveryPartner },
+            { storeName, location, houseNo, street, area, pincode, city, address, category, logoUrl, bannerUrl, hasDeliveryPartner },
             { new: true }
         );
 
         res.json({ success: true, store: updatedStore });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// Add rating to store (Protected: Customer only)
+router.post('/:id/rate', protect, async (req, res) => {
+    try {
+        const { score, comment } = req.body;
+        const storeId = req.params.id;
+
+        if (!score || score < 1 || score > 5) {
+            return res.status(400).json({ success: false, message: 'Invalid score' });
+        }
+
+        const store = await Store.findById(storeId);
+        if (!store) {
+            return res.status(404).json({ success: false, message: 'Store not found' });
+        }
+
+        // Add new rating
+        const newRating = {
+            user: req.user._id,
+            score,
+            comment: comment || ''
+        };
+
+        store.ratings.push(newRating);
+
+        // Recalculate average rating
+        const totalScore = store.ratings.reduce((acc, curr) => acc + curr.score, 0);
+        store.averageRating = totalScore / store.ratings.length;
+
+        await store.save();
+
+        res.json({ success: true, store });
     } catch (error) {
         res.status(500).json({ success: false, message: 'Server error' });
     }

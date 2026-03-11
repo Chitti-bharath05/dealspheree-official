@@ -11,18 +11,44 @@ import {
     TouchableOpacity,
     StyleSheet,
     Dimensions,
+    ActivityIndicator,
+    Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 
+import { useLanguage } from '../context/LanguageContext';
+
+const catIcons = {
+    'All': 'apps',
+    'Fashion': 'shirt',
+    'Electronics': 'phone-portrait',
+    'Beauty': 'sparkles',
+    'Sports': 'fitness',
+    'Home & Living': 'home',
+    'Footwear': 'footsteps',
+    'Watches & Accessories': 'watch',
+};
+
+const catKeys = {
+    'All': 'cat_all',
+    'Fashion': 'cat_fashion',
+    'Electronics': 'cat_electronics',
+    'Beauty': 'cat_beauty',
+    'Sports': 'cat_sports',
+    'Home & Living': 'cat_home',
+    'Footwear': 'cat_footwear',
+    'Watches & Accessories': 'cat_watches',
+};
+
 const { width } = Dimensions.get('window');
-const CARD_WIDTH = width * 0.44;
 
 export default function HomeScreen({ navigation }) {
-    const { user, logout, favorites, toggleFavorite } = useAuth();
-    const { offers, categories, isLoading, getActiveOffers, getStoreById } = useData();
+    const { user } = useAuth();
+    const { offers, categories, isLoading, getActiveOffers } = useData();
+    const { t } = useLanguage();
     const [selectedCategory, setSelectedCategory] = useState('All');
     const [searchQuery, setSearchQuery] = useState('');
 
@@ -46,515 +72,179 @@ export default function HomeScreen({ navigation }) {
 
     if (isLoading) {
         return (
-            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-                <LinearGradient colors={['#0f0c29', '#302b63', '#24243e']} style={StyleSheet.absoluteFill} />
-                <Text style={{ color: '#fff', fontSize: 18 }}>Loading Offers...</Text>
+            <View style={[s.container, { justifyContent: 'center', alignItems: 'center' }]}>
+                <LinearGradient colors={['#1a150d', '#000']} style={StyleSheet.absoluteFill} />
+                <ActivityIndicator color="#D4AF37" size="large" />
             </View>
         );
     }
 
-    const getCategoryIcon = (cat) => {
-        const icons = {
-            All: 'grid-outline',
-            Fashion: 'shirt-outline',
-            Electronics: 'phone-portrait-outline',
-            Food: 'fast-food-outline',
-            Beauty: 'sparkles-outline',
-            Sports: 'fitness-outline',
-            Home: 'home-outline',
-        };
-        return icons[cat] || 'pricetag-outline';
-    };
-
-    const getOfferColor = (index) => {
-        const colors = [
-            ['#FF6B6B', '#FF8E53'],
-            ['#4ECDC4', '#44B39D'],
-            ['#A18CD1', '#FBC2EB'],
-            ['#667EEA', '#764BA2'],
-            ['#F093FB', '#F5576C'],
-            ['#4FACFE', '#00F2FE'],
-        ];
-        return colors[index % colors.length];
-    };
-
-    const renderOfferCard = ({ item, index }) => {
-        const store = item.storeId; // storeId is populated object from backend
-        const originalPrice = item.originalPrice || 0;
-        const discount = item.discount || 0;
-        const discountedPrice = Math.round(
-            originalPrice * (1 - discount / 100)
-        );
-        const gradientColors = getOfferColor(index);
-        const isFavorite = favorites.includes(item._id || item.id);
-
-        return (
-            <TouchableOpacity
-                style={styles.offerCard}
-                onPress={() => navigation.navigate('OfferDetails', { offerId: item._id || item.id })}
-                activeOpacity={0.85}
-            >
-                <View style={styles.cardHeaderWrapper}>
-                    {item.image ? (
-                        <Image source={{ uri: item.image }} style={styles.cardImage} />
-                    ) : (
-                        <LinearGradient
-                            colors={gradientColors}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
-                            style={styles.cardHeader}
-                        >
-                            <Ionicons
-                                name={
-                                    item.category === 'Fashion'
-                                        ? 'shirt'
-                                        : item.category === 'Electronics'
-                                            ? 'phone-portrait'
-                                            : 'pricetag'
-                                }
-                                size={40}
-                                color="rgba(255,255,255,0.3)"
-                                style={styles.cardIcon}
-                            />
-                        </LinearGradient>
-                    )}
-
-                    <TouchableOpacity 
-                        style={styles.favoriteButton}
-                        onPress={() => toggleFavorite(item._id || item.id)}
-                    >
-                        <Ionicons 
-                            name={isFavorite ? "heart" : "heart-outline"} 
-                            size={20} 
-                            color={isFavorite ? "#FF6B6B" : "#fff"} 
-                        />
-                    </TouchableOpacity>
-
-                    <View style={styles.discountBadge}>
-                        <Text style={styles.discountText}>{item.discount}%</Text>
-                        <Text style={styles.offText}>OFF</Text>
-                    </View>
-                    {item.isOnline && (
-                        <View style={styles.onlineBadge}>
-                            <Ionicons name="globe-outline" size={10} color="#fff" />
-                            <Text style={styles.onlineBadgeText}>Online</Text>
-                        </View>
-                    )}
-                </View>
-
-                {/* Card Body */}
-                <View style={styles.cardBody}>
-                    <Text style={styles.offerTitle} numberOfLines={2}>
-                        {item.title}
-                    </Text>
-                    <View style={styles.storeMiniRow}>
-                        {store?.logoUrl ? (
-                            <Image source={{ uri: store.logoUrl }} style={styles.miniStoreLogo} />
-                        ) : (
-                            <Ionicons name="storefront" size={12} color="#8E8E93" style={{ marginRight: 4 }} />
-                        )}
-                        <Text style={styles.storeName} numberOfLines={1}>
-                            {store?.storeName || 'Store'}
-                        </Text>
-                    </View>
-                    <View style={styles.priceRow}>
-                        <Text style={styles.discountedPrice}>₹{(discountedPrice || 0).toLocaleString()}</Text>
-                        <Text style={styles.originalPrice}>₹{(item?.originalPrice || 0).toLocaleString()}</Text>
-                    </View>
-                    <View style={styles.expiryRow}>
-                        <Ionicons name="time-outline" size={12} color="#8E8E93" />
-                        <Text style={styles.expiryText}>
-                            Expires: {item?.expiryDate ? new Date(item.expiryDate).toLocaleDateString() : 'N/A'}
-                        </Text>
-                    </View>
-                </View>
-            </TouchableOpacity>
-        );
-    };
+    const CategoryCard = ({ title, icon }) => (
+        <TouchableOpacity 
+            style={[s.catBtn, selectedCategory === title && s.catBtnActive]}
+            onPress={() => navigation.navigate('Deals', { category: title })}
+        >
+            <View style={s.catIconBox}>
+                <Ionicons name={icon} size={28} color={selectedCategory === title ? "#fff" : "#D4AF37"} />
+            </View>
+            <Text style={[s.catLabel, selectedCategory === title && s.catLabelActive]}>
+                {t(catKeys[title] || 'cat_all')}
+            </Text>
+        </TouchableOpacity>
+    );
 
     return (
-        <View style={styles.container}>
-            <LinearGradient
-                colors={['#0f0c29', '#302b63', '#24243e']}
-                style={styles.gradient}
-            >
-                {/* Header */}
-                <View style={styles.header}>
-                    <View>
-                        <Text style={styles.greeting}>
-                            Hello, {user?.name?.split(' ')[0] || 'there'} 👋
-                        </Text>
-                        <Text style={styles.subtitle}>Find the best deals today</Text>
-                    </View>
-                    <TouchableOpacity
-                        style={styles.headerLogout}
-                        onPress={() => {
-                            const doLogout = () => logout();
-                            if (Platform.OS === 'web') {
-                                try {
-                                    if (window.confirm('Sign out?')) doLogout();
-                                } catch (e) {
-                                    doLogout();
-                                }
-                            } else {
-                                Alert.alert('Sign Out', 'Are you sure?', [
-                                    { text: 'Cancel', style: 'cancel' },
-                                    { text: 'Sign Out', style: 'destructive', onPress: doLogout }
-                                ]);
-                            }
-                        }}
-                    >
-                        <Ionicons name="log-out-outline" size={24} color="#FF6B6B" />
-                    </TouchableOpacity>
-                </View>
-
-                {/* Search Bar */}
-                <View style={styles.searchContainer}>
-                    <Ionicons name="search-outline" size={20} color="#8E8E93" />
-                    <TextInput
-                        style={styles.searchInput}
-                        placeholder="Search offers, brands, stores..."
-                        placeholderTextColor="#8E8E93"
-                        value={searchQuery}
-                        onChangeText={setSearchQuery}
-                    />
-                    {searchQuery.length > 0 && (
-                        <TouchableOpacity onPress={() => setSearchQuery('')}>
-                            <Ionicons name="close-circle" size={20} color="#8E8E93" />
-                        </TouchableOpacity>
-                    )}
-                </View>
-
-                {/* Categories */}
-                <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    style={styles.categoriesContainer}
-                    contentContainerStyle={styles.categoriesContent}
-                >
-                    {(categories || []).map((cat) => (
-                        <TouchableOpacity
-                            key={cat}
-                            style={[
-                                styles.categoryChip,
-                                selectedCategory === cat && styles.categoryChipActive,
-                            ]}
-                            onPress={() => setSelectedCategory(cat)}
-                        >
-                            <Ionicons
-                                name={getCategoryIcon(cat)}
-                                size={16}
-                                color={selectedCategory === cat ? '#FFFFFF' : '#A0A0B0'}
-                            />
-                            <Text
-                                style={[
-                                    styles.categoryText,
-                                    selectedCategory === cat && styles.categoryTextActive,
-                                ]}
-                            >
-                                {cat}
-                            </Text>
-                        </TouchableOpacity>
-                    ))}
-                </ScrollView>
-
-                {/* Offers Count */}
-                <View style={styles.offersHeader}>
-                    <Text style={styles.offersCount}>
-                        {filteredOffers.length} offers available
-                    </Text>
-                    <View style={styles.filterBadge}>
-                        <Ionicons name="flame" size={14} color="#FF6B6B" />
-                        <Text style={styles.filterBadgeText}>Hot Deals</Text>
-                    </View>
-                </View>
-
-                {/* Offers Grid */}
-                <FlatList
-                    data={filteredOffers}
-                    renderItem={renderOfferCard}
-                    keyExtractor={(item) => item.id}
-                    numColumns={2}
-                    contentContainerStyle={styles.offersGrid}
-                    showsVerticalScrollIndicator={Platform.OS !== 'web'}
-                    columnWrapperStyle={styles.columnWrapper}
-                    ListEmptyComponent={
-                        <View style={styles.emptyContainer}>
-                            <Ionicons name="search" size={60} color="#4A4A5A" />
-                            <Text style={styles.emptyText}>No offers found</Text>
-                            <Text style={styles.emptySubtext}>
-                                Try adjusting your search or filters
-                            </Text>
+        <View style={s.container}>
+            <LinearGradient colors={['#1a150d', '#000']} style={s.gradient}>
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
+                    
+                    {/* Top Header */}
+                    <View style={s.header}>
+                        <View style={s.logoMini}>
+                            <Ionicons name="diamond" size={20} color="#D4AF37" />
+                            <Text style={s.logoTxt}>Sizzling Valoris</Text>
                         </View>
-                    }
-                />
+                        <View style={s.headerActions}>
+                            <TouchableOpacity style={s.headerBtn} onPress={() => navigation.navigate('Favorites')}>
+                                <Ionicons name="heart-outline" size={20} color="#fff" />
+                            </TouchableOpacity>
+                            <TouchableOpacity style={s.headerBtn}><Ionicons name="notifications" size={20} color="#fff" /></TouchableOpacity>
+                        </View>
+                    </View>
+
+                    {/* Search Bar - Integrated for better UX */}
+                    <View style={s.searchWrap}>
+                        <View style={s.searchBox}>
+                            <Ionicons name="search" size={18} color="#D4AF37" style={{ marginRight: 10 }} />
+                            <TextInput 
+                                placeholder={t('search_deals')} 
+                                placeholderTextColor="#555" 
+                                style={s.searchInput}
+                                value={searchQuery}
+                                onChangeText={setSearchQuery}
+                            />
+                        </View>
+                    </View>
+
+                    {/* Map Banner */}
+                    <TouchableOpacity style={s.mapCard} onPress={() => navigation.navigate('Map')}>
+                        <ImageBackground 
+                            source={require('../../assets/luxury_map_bg.png')} 
+                            style={s.mapBg}
+                            imageStyle={{ borderRadius: 24, opacity: 0.6 }}
+                        >
+                            <LinearGradient colors={['rgba(0,0,0,0.2)', 'rgba(0,0,0,0.8)']} style={s.mapOverlay}>
+                                <View style={s.mapIcon}><Ionicons name="map" size={24} color="#000" /></View>
+                                <View>
+                                    <Text style={s.mapTitle}>{t('interactive_map')}</Text>
+                                    <Text style={s.mapSub}>{t('map_sub')}</Text>
+                                </View>
+                            </LinearGradient>
+                        </ImageBackground>
+                    </TouchableOpacity>
+
+                    {/* Recommended Section */}
+                    <View style={s.sectionHeader}>
+                        <Text style={s.sectionTitle}>{t('recommended')}</Text>
+                        <TouchableOpacity onPress={() => navigation.navigate('Deals', { category: 'All' })}>
+                            <Text style={s.viewAll}>{t('view_all')}</Text>
+                        </TouchableOpacity>
+                    </View>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.hList}>
+                        {(filteredOffers.length > 0 ? filteredOffers : activeOffers).slice(0, 5).map((item) => (
+                            <TouchableOpacity 
+                                key={item._id || item.id} 
+                                style={[s.recCard, { marginRight: 16 }]}
+                                onPress={() => navigation.navigate('OfferDetails', { offerId: item._id || item.id })}
+                            >
+                                <Image source={{ uri: item.image || 'https://via.placeholder.com/200' }} style={s.recImg} />
+                                <View style={s.cardBadge}><Text style={s.cardBadgeTxt}>CURATED</Text></View>
+                                <View style={s.recInfo}>
+                                    <Text style={s.recTitle} numberOfLines={1}>{item.title}</Text>
+                                    <Text style={s.recSub}>{t(catKeys[item.category] || 'cat_all')} • {item.storeId?.storeName || 'Boutique'}</Text>
+                                    <Text style={s.recPrice}>₹{(item.originalPrice * (1 - item.discount / 100)).toLocaleString()} <Text style={s.oldPrice}>₹{item.originalPrice.toLocaleString()}</Text></Text>
+                                </View>
+                            </TouchableOpacity>
+                        ))}
+                    </ScrollView>
+
+                    {/* Categories Section */}
+                    <Text style={s.sectionTitleAlt}>{t('categories')}</Text>
+                    <View style={s.grid}>
+                        {(categories && categories.length > 0 ? categories : ['All', 'Fashion', 'Electronics', 'Beauty', 'Sports']).map((cat) => (
+                            <CategoryCard key={cat} title={cat} icon={catIcons[cat] || 'apps'} />
+                        ))}
+                    </View>
+
+                    {/* Recently Viewed */}
+                    <View style={s.sectionHeader}>
+                        <Text style={s.sectionTitle}>{t('recently_viewed')}</Text>
+                    </View>
+                    <View style={s.recentList}>
+                        {activeOffers.slice(0, 3).map((item) => (
+                            <TouchableOpacity 
+                                key={item._id || item.id} 
+                                style={s.recentCard}
+                                onPress={() => navigation.navigate('OfferDetails', { offerId: item._id || item.id })}
+                            >
+                                <Image source={{ uri: item.image || 'https://via.placeholder.com/80' }} style={s.recentImg} />
+                                <View style={s.recentInfo}>
+                                    <Text style={s.recentTitle}>{item.title}</Text>
+                                    <Text style={s.recentSub}>{item.storeId?.storeName || 'Store'} • Ends soon</Text>
+                                </View>
+                                <Ionicons name="chevron-forward" size={20} color="#D4AF37" />
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+
+                </ScrollView>
             </LinearGradient>
         </View>
     );
-};
+}
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    gradient: {
-        flex: 1,
-    },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingTop: 56,
-        paddingBottom: 12,
-    },
-    headerLogout: {
-        width: 44,
-        height: 44,
-        borderRadius: 12,
-        backgroundColor: 'rgba(255,107,107,0.15)',
-        alignItems: 'center',
-        justifyContent: 'center'
-    },
-    greeting: {
-        fontSize: 24,
-        fontWeight: '800',
-        color: '#FFFFFF',
-    },
-    subtitle: {
-        fontSize: 14,
-        color: '#A0A0B0',
-        marginTop: 2,
-    },
-    profileBtn: {
-        padding: 4,
-    },
-    searchContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: 'rgba(255, 255, 255, 0.08)',
-        borderRadius: 16,
-        paddingHorizontal: 16,
-        marginHorizontal: 20,
-        marginTop: 8,
-        height: 48,
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.06)',
-    },
-    searchInput: {
-        flex: 1,
-        fontSize: 14,
-        color: '#FFFFFF',
-        marginLeft: 10,
-    },
-    categoriesContainer: {
-        marginTop: 16,
-        maxHeight: 44,
-    },
-    categoriesContent: {
-        paddingHorizontal: 20,
-        gap: 8,
-    },
-    categoryChip: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 14,
-        paddingVertical: 8,
-        borderRadius: 20,
-        backgroundColor: 'rgba(255, 255, 255, 0.06)',
-        marginRight: 8,
-        gap: 6,
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.08)',
-    },
-    categoryChipActive: {
-        backgroundColor: '#FF6B6B',
-        borderColor: '#FF6B6B',
-    },
-    categoryText: {
-        color: '#A0A0B0',
-        fontSize: 13,
-        fontWeight: '600',
-    },
-    categoryTextActive: {
-        color: '#FFFFFF',
-    },
-    offersHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 20,
-        marginTop: 20,
-        marginBottom: 12,
-    },
-    offersCount: {
-        color: '#A0A0B0',
-        fontSize: 14,
-        fontWeight: '600',
-    },
-    filterBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-    },
-    filterBadgeText: {
-        color: '#FF6B6B',
-        fontSize: 13,
-        fontWeight: '600',
-    },
-    offersGrid: {
-        paddingHorizontal: 12,
-        paddingBottom: 100,
-    },
-    columnWrapper: {
-        justifyContent: 'space-evenly',
-        marginBottom: 14,
-    },
-    offerCard: {
-        width: CARD_WIDTH,
-        backgroundColor: 'rgba(255, 255, 255, 0.08)',
-        borderRadius: 18,
-        overflow: 'hidden',
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.06)',
-    },
-    cardHeaderWrapper: {
-        height: 150,
-        position: 'relative',
-        backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    },
-    cardImage: {
-        width: '100%',
-        height: '100%',
-        resizeMode: 'contain',
-    },
-    cardHeader: {
-        height: 150,
-        padding: 12,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    favoriteButton: {
-        position: 'absolute',
-        top: 8,
-        right: 8,
-        backgroundColor: 'rgba(0, 0, 0, 0.4)',
-        width: 34,
-        height: 34,
-        borderRadius: 17,
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.1)',
-    },
-    discountBadge: {
-        position: 'absolute',
-        top: 8,
-        left: 8,
-        backgroundColor: 'rgba(0, 0, 0, 0.3)',
-        borderRadius: 10,
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        flexDirection: 'row',
-        alignItems: 'baseline',
-        gap: 2,
-    },
-    discountText: {
-        color: '#FFFFFF',
-        fontSize: 18,
-        fontWeight: '800',
-    },
-    offText: {
-        color: '#FFFFFF',
-        fontSize: 10,
-        fontWeight: '600',
-    },
-    onlineBadge: {
-        position: 'absolute',
-        top: 12,
-        right: 12,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 3,
-        backgroundColor: 'rgba(0, 0, 0, 0.3)',
-        borderRadius: 8,
-        paddingHorizontal: 6,
-        paddingVertical: 3,
-    },
-    onlineBadgeText: {
-        color: '#FFFFFF',
-        fontSize: 9,
-        fontWeight: '600',
-    },
-    cardIcon: {
-        position: 'absolute',
-        bottom: 8,
-        right: 8,
-    },
-    cardBody: {
-        padding: 12,
-    },
-    offerTitle: {
-        color: '#FFFFFF',
-        fontSize: 14,
-        fontWeight: '700',
-        lineHeight: 18,
-        marginBottom: 4,
-    },
-    storeName: {
-        color: '#A0A0B0',
-        fontSize: 12,
-    },
-    storeMiniRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 8,
-    },
-    miniStoreLogo: {
-        width: 16,
-        height: 16,
-        borderRadius: 4,
-        marginRight: 6,
-    },
-    priceRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        marginBottom: 6,
-    },
-    discountedPrice: {
-        color: '#4ECDC4',
-        fontSize: 16,
-        fontWeight: '800',
-    },
-    originalPrice: {
-        color: '#6E6E7E',
-        fontSize: 12,
-        textDecorationLine: 'line-through',
-    },
-    expiryRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-    },
-    expiryText: {
-        color: '#8E8E93',
-        fontSize: 11,
-    },
-    emptyContainer: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingTop: 60,
-    },
-    emptyText: {
-        color: '#FFFFFF',
-        fontSize: 18,
-        fontWeight: '700',
-        marginTop: 16,
-    },
-    emptySubtext: {
-        color: '#8E8E93',
-        fontSize: 14,
-        marginTop: 6,
-    },
+const s = StyleSheet.create({
+    container: { flex: 1 },
+    gradient: { flex: 1 },
+    scroll: { paddingBottom: 100 },
+    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingTop: 60, marginBottom: 15 },
+    logoMini: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    logoTxt: { color: '#D4AF37', fontSize: 18, fontWeight: '800' },
+    headerActions: { flexDirection: 'row', gap: 15 },
+    headerBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.05)', alignItems: 'center', justifyContent: 'center' },
+    searchWrap: { paddingHorizontal: 24, marginBottom: 20 },
+    searchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 20, paddingHorizontal: 16, height: 50, borderWidth: 1, borderColor: 'rgba(212,175,55,0.1)' },
+    searchInput: { flex: 1, color: '#fff', fontSize: 14 },
+    mapCard: { marginHorizontal: 24, marginTop: 10, height: 160, borderRadius: 24, overflow: 'hidden' },
+    mapBg: { flex: 1 },
+    mapOverlay: { flex: 1, padding: 20, justifyContent: 'flex-end', flexDirection: 'row', alignItems: 'center', gap: 15 },
+    mapIcon: { width: 50, height: 50, borderRadius: 15, backgroundColor: '#D4AF37', alignItems: 'center', justifyContent: 'center' },
+    mapTitle: { color: '#fff', fontSize: 18, fontWeight: '800' },
+    mapSub: { color: '#A0A0B0', fontSize: 12, marginTop: 2 },
+    sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, marginTop: 30, marginBottom: 15 },
+    sectionTitle: { color: '#fff', fontSize: 20, fontWeight: '800' },
+    sectionTitleAlt: { color: '#fff', fontSize: 20, fontWeight: '800', paddingHorizontal: 24, marginTop: 30, marginBottom: 15 },
+    viewAll: { color: '#D4AF37', fontWeight: '700', fontSize: 14 },
+    hList: { paddingHorizontal: 24 },
+    recCard: { width: width * 0.7, backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 24, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
+    recImg: { width: '100%', height: 180, resizeMode: 'cover' },
+    cardBadge: { position: 'absolute', top: 12, right: 12, backgroundColor: '#D4AF37', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+    cardBadgeTxt: { color: '#000', fontSize: 10, fontWeight: '900' },
+    recInfo: { padding: 16 },
+    recTitle: { color: '#fff', fontSize: 16, fontWeight: '800' },
+    recSub: { color: '#8E8E93', fontSize: 12, marginTop: 4 },
+    recPrice: { color: '#D4AF37', fontSize: 16, fontWeight: '800', marginTop: 10 },
+    oldPrice: { color: '#555', fontSize: 12, textDecorationLine: 'line-through', fontWeight: '600' },
+    grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, paddingHorizontal: 24 },
+    catBtn: { width: (width - 60) / 2, height: 120, backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 24, alignItems: 'center', justifyContent: 'center', gap: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
+    catBtnActive: { backgroundColor: 'rgba(212,175,55,0.2)', borderColor: '#D4AF37' },
+    catIconBox: { width: 44, height: 44, borderRadius: 12, backgroundColor: 'rgba(212,175,55,0.1)', alignItems: 'center', justifyContent: 'center' },
+    catLabel: { color: '#8E8E93', fontSize: 15, fontWeight: '700' },
+    catLabelActive: { color: '#fff' },
+    recentList: { paddingHorizontal: 24, gap: 12 },
+    recentCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 24, padding: 15, gap: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
+    recentImg: { width: 60, height: 60, borderRadius: 15, backgroundColor: '#000' },
+    recentInfo: { flex: 1 },
+    recentTitle: { color: '#fff', fontSize: 15, fontWeight: '700' },
+    recentSub: { color: '#8E8E93', fontSize: 12, marginTop: 4 },
 });

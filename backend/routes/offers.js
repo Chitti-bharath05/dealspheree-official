@@ -4,6 +4,7 @@ const Offer = require('../models/Offer');
 const Store = require('../models/Store');
 const { protect, authorize } = require('../middleware/authMiddleware');
 const validateRequest = require('../middleware/validation');
+const { sendPushNotificationToAll } = require('../utils/notificationService');
 
 // Get all offers (Public)
 router.get('/', async (req, res) => {
@@ -47,7 +48,7 @@ router.get('/:id', async (req, res) => {
 // Create new offer (Protected: Store Owner, Admin)
 router.post('/', protect, authorize('store_owner', 'admin'), validateRequest('addOffer'), async (req, res) => {
     try {
-        const { title, description, discount, originalPrice, storeId, expiryDate, category, isOnline, image } = req.body;
+        const { title, description, discount, originalPrice, storeId, expiryDate, category, isOnline, platformLink, image } = req.body;
         
         const newOffer = await Offer.create({
             title,
@@ -58,8 +59,22 @@ router.post('/', protect, authorize('store_owner', 'admin'), validateRequest('ad
             expiryDate,
             category,
             isOnline: !!isOnline,
+            platformLink: platformLink || null,
             image: image || null
         });
+
+        // Send push notification to all customers
+        try {
+            const store = await Store.findById(storeId);
+            const storeName = store ? store.storeName : 'A store';
+            await sendPushNotificationToAll(
+                `🔥 New ${discount}% Off Deal!`,
+                `${title} at ${storeName}. Don't miss out!`,
+                { offerId: newOffer._id.toString(), type: 'new_offer' }
+            );
+        } catch (notifError) {
+            console.error('Push notification error (non-blocking):', notifError);
+        }
 
         res.status(201).json({ success: true, offer: newOffer });
     } catch (error) {

@@ -10,6 +10,7 @@ const offerSchema = new mongoose.Schema({
     category: { type: String, required: true },
     originalPrice: { type: Number, required: true },
     isOnline: { type: Boolean, default: false },
+    platformLink: { type: String, default: null },
     views: { type: Number, default: 0 }
 }, { timestamps: true });
 

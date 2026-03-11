@@ -5,21 +5,25 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { View, Text, StyleSheet } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import HomeScreen from '../screens/HomeScreen';
 import OfferDetailsScreen from '../screens/OfferDetailsScreen';
-import CartScreen from '../screens/CartScreen';
-import StoreOwnerDashboardScreen from '../screens/StoreOwnerDashboardScreen';
-import AdminDashboardScreen from '../screens/AdminDashboardScreen';
-import ProfileScreen from '../screens/ProfileScreen';
 import FavoritesScreen from '../screens/FavoritesScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import ResetPasswordScreen from '../screens/ResetPasswordScreen';
-import OrderHistoryScreen from '../screens/OrderHistoryScreen';
-import PaymentSimulatorScreen from '../screens/PaymentSimulatorScreen';
-import { useCart } from '../context/CartContext';
+import AdminDashboardScreen from '../screens/AdminDashboardScreen';
+import StoreOwnerDashboardScreen from '../screens/StoreOwnerDashboardScreen';
+import ProfileScreen from '../screens/ProfileScreen';
+import SettingsScreen from '../screens/SettingsScreen';
+import ProfileInfoScreen from '../screens/ProfileInfoScreen';
+import ChangePasswordScreen from '../screens/ChangePasswordScreen';
+import LegalScreen from '../screens/LegalScreen';
+import HelpSupportScreen from '../screens/HelpSupportScreen';
+import MapScreen from '../screens/MapScreen';
+import OffersScreen from '../screens/OffersScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -31,6 +35,8 @@ const CustomerHomeStack = () => (
     <Stack.Navigator screenOptions={screenOptions}>
         <Stack.Screen name="HomeMain" component={HomeScreen} />
         <Stack.Screen name="OfferDetails" component={OfferDetailsScreen} />
+        <Stack.Screen name="Favorites" component={FavoritesScreen} />
+        <Stack.Screen name="Deals" component={OffersScreen} />
     </Stack.Navigator>
 );
 
@@ -38,41 +44,41 @@ const CustomerHomeStack = () => (
 const ProfileStack = () => (
     <Stack.Navigator screenOptions={screenOptions}>
         <Stack.Screen name="ProfileMain" component={ProfileScreen} />
-        <Stack.Screen name="OrderHistory" component={OrderHistoryScreen} />
+        <Stack.Screen name="Settings" component={SettingsScreen} />
+        <Stack.Screen name="ProfileInfo" component={ProfileInfoScreen} />
+        <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
+        <Stack.Screen name="Legal" component={LegalScreen} />
+        <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
+        <Stack.Screen name="Deals" component={OffersScreen} />
     </Stack.Navigator>
 );
 
 // Customer Tabs
 const CustomerTabs = () => {
-    const { getItemCount } = useCart();
-    const count = getItemCount();
+    const { t } = useLanguage();
     return (
         <Tab.Navigator
             screenOptions={({ route }) => ({
                 headerShown: false,
                 tabBarStyle: styles.tabBar,
-                tabBarActiveTintColor: '#FF6B6B',
-                tabBarInactiveTintColor: '#6E6E7E',
+                tabBarActiveTintColor: '#FFD700', // Luxury Gold
+                tabBarInactiveTintColor: '#8E8E93',
                 tabBarLabelStyle: styles.tabLabel,
-                tabBarIcon: ({ color, size }) => {
-                    const icons = { Home: 'home', Favorites: 'heart', Cart: 'cart', Profile: 'person' };
-                    return (
-                        <View>
-                            <Ionicons name={icons[route.name] || 'home'} size={22} color={color} />
-                            {route.name === 'Cart' && count > 0 && (
-                                <View style={styles.cartBadge}>
-                                    <Text style={styles.cartBadgeText}>{count}</Text>
-                                </View>
-                            )}
-                        </View>
-                    );
+                tabBarIcon: ({ color, size, focused }) => {
+                    const icons = { 
+                        Home: focused ? 'home' : 'home-outline', 
+                        Deals: focused ? 'pricetag' : 'pricetag-outline', 
+                        Map: focused ? 'map' : 'map-outline', 
+                        Profile: focused ? 'person' : 'person-outline' 
+                    };
+                    return <Ionicons name={icons[route.name] || 'home'} size={22} color={color} />;
                 },
             })}
         >
-            <Tab.Screen name="Home" component={CustomerHomeStack} />
-            <Tab.Screen name="Favorites" component={FavoritesScreen} />
-            <Tab.Screen name="Cart" component={CartScreen} />
-            <Tab.Screen name="Profile" component={ProfileStack} />
+            <Tab.Screen name="Home" component={CustomerHomeStack} options={{ tabBarLabel: t('home') }} />
+            <Tab.Screen name="Deals" component={OffersScreen} options={{ tabBarLabel: t('deals') }} />
+            <Tab.Screen name="Map" component={MapScreen} options={{ tabBarLabel: t('map') }} />
+            <Tab.Screen name="Profile" component={ProfileStack} options={{ tabBarLabel: t('profile') }} />
         </Tab.Navigator>
     );
 };
@@ -155,7 +161,6 @@ const AppNavigator = () => {
         <NavigationContainer>
             <Stack.Navigator screenOptions={screenOptions} key={user ? 'app-root' : 'auth-root'}>
                 {getMainScreens()}
-                <Stack.Screen name="PaymentSimulator" component={PaymentSimulatorScreen} />
             </Stack.Navigator>
         </NavigationContainer>
     );
@@ -163,24 +168,16 @@ const AppNavigator = () => {
 
 const styles = StyleSheet.create({
     tabBar: {
-        backgroundColor: '#0f0c29',
-        borderTopColor: 'rgba(255,255,255,0.08)',
+        backgroundColor: '#1a150d', // Dark Coffee
+        borderTopColor: 'rgba(212, 175, 55, 0.2)', // Subtle Gold border
         borderTopWidth: 1,
-        height: 65,
-        paddingBottom: 8,
-        paddingTop: 6,
+        height: 70,
+        paddingBottom: 10,
+        paddingTop: 8,
     },
-    tabLabel: { fontSize: 11, fontWeight: '600' },
-    cartBadge: {
-        position: 'absolute', top: -5, right: -10,
-        backgroundColor: '#FF6B6B', borderRadius: 9,
-        minWidth: 18, height: 18,
-        alignItems: 'center', justifyContent: 'center',
-        paddingHorizontal: 4,
-    },
-    cartBadgeText: { color: '#fff', fontSize: 10, fontWeight: '800' },
-    loading: { flex: 1, backgroundColor: '#0f0c29', alignItems: 'center', justifyContent: 'center' },
-    loadingText: { color: '#fff', fontSize: 16 },
+    tabLabel: { fontSize: 10, fontWeight: '700', marginTop: 2 },
+    loading: { flex: 1, backgroundColor: '#1a150d', alignItems: 'center', justifyContent: 'center' },
+    loadingText: { color: '#D4AF37', fontSize: 16 },
 });
 
 export default AppNavigator;

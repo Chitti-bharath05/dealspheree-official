@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
     View,
     Text,
@@ -7,127 +7,103 @@ import {
     StyleSheet,
     Dimensions,
     Image,
+    TextInput,
     Platform
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
+import { useLanguage } from '../context/LanguageContext';
 
 const { width } = Dimensions.get('window');
-const CARD_WIDTH = width * 0.44;
 
 export default function FavoritesScreen({ navigation }) {
     const { favorites, toggleFavorite } = useAuth();
-    const { offers, getStoreById } = useData();
+    const { offers } = useData();
+    const { t } = useLanguage();
+    const [activeTab, setActiveTab] = useState('Deals');
+    const [searchQuery, setSearchQuery] = useState('');
 
     const favoriteOffers = useMemo(() => {
-        return offers.filter(o => favorites.includes(o._id || o.id));
-    }, [offers, favorites]);
+        let filtered = offers.filter(o => favorites.includes(o._id || o.id));
+        if (searchQuery.trim()) {
+            filtered = filtered.filter(o => o.title.toLowerCase().includes(searchQuery.toLowerCase()));
+        }
+        return filtered;
+    }, [offers, favorites, searchQuery]);
 
-    const getOfferColor = (index) => {
-        const colors = [
-            ['#FF6B6B', '#FF8E53'],
-            ['#4ECDC4', '#44B39D'],
-            ['#A18CD1', '#FBC2EB'],
-            ['#667EEA', '#764BA2'],
-            ['#F093FB', '#F5576C'],
-            ['#4FACFE', '#00F2FE'],
-        ];
-        return colors[index % colors.length];
-    };
-
-    const renderOfferCard = ({ item, index }) => {
-        const store = item.storeId; // storeId is populated object from backend
-        const originalPrice = item.originalPrice || 0;
-        const discount = item.discount || 0;
-        const discountedPrice = Math.round(originalPrice * (1 - discount / 100));
-        const gradientColors = getOfferColor(index);
-
+    const renderOfferCard = ({ item }) => {
+        const store = item.storeId;
+        const daysLeft = Math.ceil((new Date(item.expiryDate) - new Date()) / (1000 * 60 * 60 * 24));
+        
         return (
-            <TouchableOpacity
-                style={styles.offerCard}
+            <TouchableOpacity 
+                style={s.card} 
                 onPress={() => navigation.navigate('OfferDetails', { offerId: item._id || item.id })}
-                activeOpacity={0.85}
             >
-                <View style={styles.cardHeaderWrapper}>
-                    {item.image ? (
-                        <Image source={{ uri: item.image }} style={styles.cardImage} />
-                    ) : (
-                        <LinearGradient
-                            colors={gradientColors}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
-                            style={styles.cardHeader}
-                        >
-                            <Ionicons
-                                name={item.category === 'Fashion' ? 'shirt' : item.category === 'Electronics' ? 'phone-portrait' : 'pricetag'}
-                                size={40}
-                                color="rgba(255,255,255,0.3)"
-                                style={styles.cardIcon}
-                            />
-                        </LinearGradient>
-                    )}
-
-                    <TouchableOpacity 
-                        style={styles.favoriteButton}
-                        onPress={() => toggleFavorite(item._id || item.id)}
-                    >
-                        <Ionicons name="heart" size={20} color="#FF6B6B" />
-                    </TouchableOpacity>
-
-                    <View style={styles.discountBadge}>
-                        <Text style={styles.discountText}>{item.discount}%</Text>
-                        <Text style={styles.offText}>OFF</Text>
-                    </View>
+                <Image source={{ uri: item.image }} style={s.cardImg} />
+                <View style={s.cardInfo}>
+                    <Text style={s.cardTitle} numberOfLines={1}>{item.title}</Text>
+                    <Text style={s.cardStore}>{store?.storeName || 'Sizzling Valoris Central'}</Text>
+                    <Text style={s.cardExp}>{t('expires_in_days').replace('{days}', daysLeft)}</Text>
                 </View>
-
-                <View style={styles.cardBody}>
-                    <Text style={styles.offerTitle} numberOfLines={2}>{item.title}</Text>
-                    <View style={styles.storeMiniRow}>
-                        {store?.logoUrl ? (
-                            <Image source={{ uri: store.logoUrl }} style={styles.miniStoreLogo} />
-                        ) : (
-                            <Ionicons name="storefront" size={12} color="#8E8E93" style={{ marginRight: 4 }} />
-                        )}
-                        <Text style={styles.storeName} numberOfLines={1}>{store?.storeName || 'Store'}</Text>
-                    </View>
-                    <View style={styles.priceRow}>
-                        <Text style={styles.discountedPrice}>₹{(discountedPrice || 0).toLocaleString()}</Text>
-                        <Text style={styles.originalPrice}>₹{(item?.originalPrice || 0).toLocaleString()}</Text>
-                    </View>
-                </View>
+                <TouchableOpacity onPress={() => toggleFavorite(item._id || item.id)} style={s.heartBtn}>
+                    <Ionicons name="heart" size={22} color="#D4AF37" />
+                </TouchableOpacity>
             </TouchableOpacity>
         );
     };
 
     return (
-        <View style={styles.container}>
-            <LinearGradient colors={['#0f0c29', '#302b63', '#24243e']} style={styles.gradient}>
-                <View style={styles.header}>
-                    <Text style={styles.headerTitle}>My Favorites</Text>
-                    <Text style={styles.headerSub}>{favoriteOffers.length} Saved Offers</Text>
+        <View style={s.container}>
+            <LinearGradient colors={['#1a150d', '#000']} style={s.gradient}>
+                <View style={s.header}>
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
+                        <Ionicons name="arrow-back" size={24} color="#fff" />
+                    </TouchableOpacity>
+                    <Text style={s.headerTitle}>{t('my_favorites')}</Text>
+                    <TouchableOpacity>
+                        <Text style={s.clearAll}>{t('clear_all')}</Text>
+                    </TouchableOpacity>
+                </View>
+
+                {/* Search Bar */}
+                <View style={s.searchWrap}>
+                    <View style={s.searchBox}>
+                        <Ionicons name="search" size={20} color="#D4AF37" style={{ marginRight: 12 }} />
+                        <TextInput 
+                            placeholder={t('search_favorites')} 
+                            placeholderTextColor="#555" 
+                            style={s.searchInput} 
+                            value={searchQuery}
+                            onChangeText={setSearchQuery}
+                        />
+                    </View>
+                </View>
+
+                {/* Tabs */}
+                <View style={s.tabRow}>
+                    <TouchableOpacity onPress={() => setActiveTab('Deals')} style={[s.tab, activeTab === 'Deals' && s.tabAct]}>
+                        <Text style={[s.tabTxt, activeTab === 'Deals' && s.tabTxtAct]}>{t('deals')} ({favoriteOffers.length})</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => setActiveTab('Stores')} style={[s.tab, activeTab === 'Stores' && s.tabAct]}>
+                        <Text style={[s.tabTxt, activeTab === 'Stores' && s.tabTxtAct]}>{t('my_stores')} (0)</Text>
+                    </TouchableOpacity>
                 </View>
 
                 <FlatList
-                    data={favoriteOffers}
+                    data={activeTab === 'Deals' ? favoriteOffers : []}
                     renderItem={renderOfferCard}
-                    keyExtractor={(item) => item._id || item.id}
-                    numColumns={2}
-                    contentContainerStyle={styles.listContent}
-                    columnWrapperStyle={styles.columnWrapper}
-                    showsVerticalScrollIndicator={Platform.OS !== 'web'}
+                    keyExtractor={item => item._id || item.id}
+                    contentContainerStyle={s.list}
+                    showsVerticalScrollIndicator={false}
                     ListEmptyComponent={
-                        <View style={styles.emptyContainer}>
-                            <Ionicons name="heart-dislike-outline" size={60} color="#4A4A5A" />
-                            <Text style={styles.emptyText}>No favorites yet</Text>
-                            <Text style={styles.emptySubtext}>Tap the heart on any offer to save it here!</Text>
-                            <TouchableOpacity 
-                                style={styles.browseBtn}
-                                onPress={() => navigation.navigate('Home')}
-                            >
-                                <Text style={styles.browseBtnText}>Browse Offers</Text>
-                            </TouchableOpacity>
+                        <View style={s.empty}>
+                            <View style={s.emptyIcWrap}>
+                                <Ionicons name="heart-dislike-outline" size={60} color="#D4AF37" />
+                            </View>
+                            <Text style={s.emptyTxt}>{activeTab === 'Deals' ? t('no_saved_deals') : t('no_saved_stores')}</Text>
                         </View>
                     }
                 />
@@ -136,48 +112,31 @@ export default function FavoritesScreen({ navigation }) {
     );
 }
 
-const styles = StyleSheet.create({
+const s = StyleSheet.create({
     container: { flex: 1 },
     gradient: { flex: 1 },
-    header: { paddingHorizontal: 20, paddingTop: 56, paddingBottom: 20 },
-    headerTitle: { fontSize: 28, fontWeight: '800', color: '#fff' },
-    headerSub: { fontSize: 14, color: '#A0A0B0', marginTop: 4 },
-    listContent: { paddingHorizontal: 12, paddingBottom: 100 },
-    columnWrapper: { justifyContent: 'space-evenly', marginBottom: 14 },
-    offerCard: {
-        width: CARD_WIDTH,
-        backgroundColor: 'rgba(255, 255, 255, 0.08)',
-        borderRadius: 18,
-        overflow: 'hidden',
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.06)',
-    },
-    cardHeaderWrapper: { height: 100, position: 'relative' },
-    cardImage: { width: '100%', height: '100%', resizeMode: 'cover' },
-    cardHeader: { height: 100, padding: 12, justifyContent: 'center', alignItems: 'center' },
-    favoriteButton: {
-        position: 'absolute', top: 8, right: 8, backgroundColor: 'rgba(0, 0, 0, 0.4)',
-        width: 34, height: 34, borderRadius: 17, justifyContent: 'center', alignItems: 'center',
-        borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.1)',
-    },
-    discountBadge: {
-        position: 'absolute', top: 8, left: 8, backgroundColor: 'rgba(0, 0, 0, 0.3)',
-        borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4, flexDirection: 'row', alignItems: 'baseline', gap: 2,
-    },
-    discountText: { color: '#FFFFFF', fontSize: 18, fontWeight: '800' },
-    offText: { color: '#FFFFFF', fontSize: 10, fontWeight: '600' },
-    cardIcon: { position: 'absolute', bottom: 8, right: 8 },
-    cardBody: { padding: 12 },
-    offerTitle: { color: '#FFFFFF', fontSize: 14, fontWeight: '700', lineHeight: 18, marginBottom: 4 },
-    storeName: { color: '#A0A0B0', fontSize: 12 },
-    storeMiniRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
-    miniStoreLogo: { width: 14, height: 14, borderRadius: 3, marginRight: 4 },
-    priceRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
-    discountedPrice: { color: '#4ECDC4', fontSize: 16, fontWeight: '800' },
-    originalPrice: { color: '#6E6E7E', fontSize: 12, textDecorationLine: 'line-through' },
-    emptyContainer: { alignItems: 'center', justifyContent: 'center', paddingTop: 100, paddingHorizontal: 40 },
-    emptyText: { color: '#FFFFFF', fontSize: 20, fontWeight: '700', marginTop: 16 },
-    emptySubtext: { color: '#A0A0B0', fontSize: 14, marginTop: 8, textAlign: 'center', lineHeight: 20 },
-    browseBtn: { marginTop: 24, backgroundColor: '#FF6B6B', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 },
-    browseBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingTop: 60, paddingBottom: 20 },
+    backBtn: { width: 44, height: 44, borderRadius: 15, backgroundColor: 'rgba(255,255,255,0.05)', alignItems: 'center', justifyContent: 'center' },
+    headerTitle: { color: '#fff', fontSize: 22, fontWeight: '800' },
+    clearAll: { color: '#D4AF37', fontWeight: '700', fontSize: 14 },
+    searchWrap: { paddingHorizontal: 24, marginBottom: 20 },
+    searchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 20, paddingHorizontal: 16, height: 56, borderWidth: 1, borderColor: 'rgba(212,175,55,0.2)' },
+    searchInput: { flex: 1, color: '#fff', fontSize: 16 },
+    tabRow: { flexDirection: 'row', paddingHorizontal: 24, gap: 24, marginBottom: 20 },
+    tab: { paddingBottom: 10, borderBottomWidth: 2, borderBottomColor: 'transparent' },
+    tabAct: { borderBottomColor: '#D4AF37' },
+    tabTxt: { color: '#555', fontSize: 16, fontWeight: '700' },
+    tabTxtAct: { color: '#D4AF37' },
+    list: { paddingHorizontal: 24, paddingBottom: 100 },
+    card: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 24, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
+    cardImg: { width: 84, height: 84, borderRadius: 18 },
+    cardInfo: { flex: 1, marginLeft: 16 },
+    cardTitle: { color: '#fff', fontSize: 17, fontWeight: '700' },
+    cardStore: { color: '#D4AF37', fontSize: 13, marginTop: 4, fontWeight: '600' },
+    cardExp: { color: '#8E8E93', fontSize: 12, marginTop: 6, fontWeight: '500' },
+    heartBtn: { padding: 8 },
+    empty: { alignItems: 'center', marginTop: 120 },
+    emptyIcWrap: { width: 120, height: 120, borderRadius: 60, backgroundColor: 'rgba(212,175,55,0.05)', alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
+    emptyTxt: { color: '#8E8E93', fontSize: 18, fontWeight: '600', textAlign: 'center' },
 });
+

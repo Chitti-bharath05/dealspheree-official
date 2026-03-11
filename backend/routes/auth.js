@@ -45,6 +45,8 @@ router.post('/login', validateRequest('login'), async (req, res) => {
                     name: user.name,
                     email: user.email,
                     role: user.role,
+                    mobileNumber: user.mobileNumber,
+                    city: user.city,
                     token: accessToken,
                     refreshToken: refreshToken
                 }
@@ -94,6 +96,8 @@ router.post('/register', validateRequest('register'), async (req, res) => {
                 name: newUser.name,
                 email: newUser.email,
                 role: newUser.role,
+                mobileNumber: newUser.mobileNumber,
+                city: newUser.city,
                 token: finalAccessToken,
                 refreshToken: refreshToken
             }
@@ -313,6 +317,82 @@ router.put('/resetpassword', async (req, res) => {
         await user.save();
 
         res.status(200).json({ success: true, message: 'Password reset successful' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// Save Push Token (Protected)
+router.post('/push-token', protect, async (req, res) => {
+    try {
+        const { pushToken } = req.body;
+        if (!pushToken) {
+            return res.status(400).json({ success: false, message: 'Push token required' });
+        }
+
+        await User.findByIdAndUpdate(req.user._id, { pushToken });
+        res.json({ success: true, message: 'Push token saved' });
+    } catch (error) {
+        console.error('Error saving push token:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// Update Profile (Protected)
+router.put('/profile', protect, async (req, res) => {
+    try {
+        const { name, phone, city } = req.body;
+        const user = await User.findById(req.user._id);
+
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        if (name !== undefined) user.name = name;
+        if (phone !== undefined) {
+             // If phone is empty, we must handle it to avoid E11000 sparse index issues
+             if (phone.trim() === '') {
+                 user.mobileNumber = undefined;
+             } else {
+                 user.mobileNumber = phone;
+             }
+        }
+        if (city !== undefined) user.city = city;
+
+        await user.save();
+        res.json({ success: true, user });
+    } catch (error) {
+        console.error('Profile Update Error:', error);
+        if (error.code === 11000 && error.keyPattern && error.keyPattern.mobileNumber) {
+            return res.status(400).json({ success: false, message: 'This mobile number is already in use by another account.' });
+        }
+        res.status(500).json({ success: false, message: 'Failed to update profile. ' + error.message });
+    }
+});
+
+// Change Password (Protected)
+router.put('/change-password', protect, async (req, res) => {
+    try {
+        const { currentPassword, newPassword } = req.body;
+        const user = await User.findById(req.user._id);
+
+        if (!(await user.matchPassword(currentPassword))) {
+            return res.status(401).json({ success: false, message: 'Invalid current password' });
+        }
+
+        user.password = newPassword;
+        await user.save();
+        res.json({ success: true, message: 'Password updated' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// Delete Account (Protected)
+router.delete('/account', protect, async (req, res) => {
+    try {
+        await User.findByIdAndDelete(req.user._id);
+        res.json({ success: true, message: 'Account deleted' });
     } catch (error) {
         res.status(500).json({ success: false, message: 'Server error' });
     }

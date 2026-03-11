@@ -30,40 +30,19 @@ export const DataProvider = ({ children }) => {
     });
 
     const {
-        data: categories = [],
+        data: categoriesData = [],
         isLoading: isLoadingCategories
     } = useQuery({
         queryKey: ['categories'],
         queryFn: () => apiClient.get('/categories'),
     });
 
-    const {
-        data: ordersData = [],
-        isLoading: isLoadingOrders,
-        refetch: refetchOrders
-    } = useQuery({
-        queryKey: ['orders', user?._id || user?.id],
-        queryFn: async () => {
-            if (!user) return [];
-            try {
-                const userId = user._id || user.id;
-                // Fetch user orders. Note: backend route is /api/orders/user/:userId
-                const res = await apiClient.get(`/orders/user/${userId}`);
-                return res; 
-            } catch (err) {
-                console.error('Error fetching orders:', err);
-                return [];
-            }
-        },
-        enabled: !!user,
-    });
-
-    const orders = ordersData || [];
+    const categories = categoriesData || [];
 
     // ---- Store operations ----
-    const registerStore = async (storeName, ownerId, location, address, category, logoUrl, bannerUrl, hasDeliveryPartner) => {
+    const registerStore = async (storeData) => {
         try {
-            await apiClient.post('/stores', { storeName, ownerId, location, address, category, logoUrl, bannerUrl, hasDeliveryPartner });
+            await apiClient.post('/stores', storeData);
             refetchStores();
         } catch (e) {
             console.error('Error registering store:', e);
@@ -172,38 +151,7 @@ export const DataProvider = ({ children }) => {
         return offers.find((o) => (o._id || o.id) === offerId);
     };
 
-    // ---- Order operations ----
-    const placeOrder = async (...args) => {
-        try {
-            let payload;
-            if (args.length === 1 && typeof args[0] === 'object') {
-                payload = args[0];
-            } else {
-                payload = { userId: args[0], items: args[1], totalAmount: args[2] };
-            }
-            
-            const res = await apiClient.post('/orders', payload);
-            await refetchOrders();
-            return res.order;
-        } catch (e) {
-            console.error('Error placing order:', e);
-            throw e;
-        }
-    };
-
-    const getStoreAnalytics = async (storeId) => {
-        try {
-            const res = await apiClient.get(`/orders/store/${storeId}`);
-            return res;
-        } catch (e) {
-            console.error('Error fetching store analytics:', e);
-            throw e;
-        }
-    };
-
-    const getOrdersByUser = (userId) => {
-        return orders.filter((o) => (o.userId?._id || o.userId) === userId);
-    };
+    // Orders removed
 
     return (
         <DataContext.Provider
@@ -211,8 +159,7 @@ export const DataProvider = ({ children }) => {
                 stores,
                 offers,
                 categories,
-                orders,
-                isLoading: isLoadingStores || isLoadingOffers || isLoadingCategories || isLoadingOrders,
+                isLoading: isLoadingStores || isLoadingOffers || isLoadingCategories,
                 registerStore,
                 updateStore,
                 approveStore,
@@ -227,9 +174,6 @@ export const DataProvider = ({ children }) => {
                 getOffersByStore,
                 getActiveOffers,
                 getOfferById,
-                placeOrder,
-                getOrdersByUser,
-                getStoreAnalytics,
                 getAdminStats: async () => {
                    const res = await apiClient.get('/admin/stats');
                    return res.stats;

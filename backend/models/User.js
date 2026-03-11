@@ -11,7 +11,9 @@ const userSchema = new mongoose.Schema({
     favorites: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Offer' }],
     resetPasswordToken: { type: String }, // For email link (keeping if needed, but will use OTP mostly)
     resetPasswordOTP: { type: String },
-    resetPasswordOTPExpire: { type: Date }
+    resetPasswordOTPExpire: { type: Date },
+    pushToken: { type: String },
+    city: { type: String, default: '' }
 }, { timestamps: true });
 
 // Hash password before saving to the database

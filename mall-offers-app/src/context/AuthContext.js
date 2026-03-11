@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import apiClient from '../services/apiClient';
+import { registerForPushNotifications, savePushTokenToBackend } from '../services/notificationService';
 
 const AuthContext = createContext();
 
@@ -26,9 +27,22 @@ export const AuthProvider = ({ children }) => {
                 if (parsedUser.role === 'customer') {
                     fetchFavorites();
                 }
+                // Register push notifications for returning users
+                setupPushNotifications();
             }
         } catch (e) {
             console.log('Error loading user:', e);
+        }
+    };
+
+    const setupPushNotifications = async () => {
+        try {
+            const token = await registerForPushNotifications();
+            if (token) {
+                await savePushTokenToBackend(token);
+            }
+        } catch (e) {
+            console.log('Push notification setup error:', e);
         }
     };
 
@@ -77,6 +91,7 @@ export const AuthProvider = ({ children }) => {
             if (response.success) {
                 setUser(response.user);
                 await AsyncStorage.setItem('userInfo', JSON.stringify(response.user));
+                setupPushNotifications();
                 return { success: true, user: response.user };
             }
             return { success: false, message: response.message || 'Login failed' };
@@ -91,6 +106,7 @@ export const AuthProvider = ({ children }) => {
             if (response.success) {
                 setUser(response.user);
                 await AsyncStorage.setItem('userInfo', JSON.stringify(response.user));
+                setupPushNotifications();
                 return { success: true, user: response.user };
             }
             return { success: false, message: response.message || 'Registration failed' };
@@ -117,6 +133,22 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    const updateProfile = async (updatedData) => {
+        try {
+            const updatedUser = { ...user, ...updatedData };
+            setUser(updatedUser);
+            await AsyncStorage.setItem('userInfo', JSON.stringify(updatedUser));
+            return true;
+        } catch (e) {
+            console.error('Error updating profile:', e);
+            return false;
+        }
+    };
+
+    const updateProfileImage = async (imageUri) => {
+        return updateProfile({ profileImage: imageUri });
+    };
+
     return (
         <AuthContext.Provider
             value={{
@@ -130,6 +162,9 @@ export const AuthProvider = ({ children }) => {
                 fetchUsers,
                 fetchFavorites,
                 toggleFavorite,
+                updateProfile,
+                updateProfileImage,
+                setUser, // Exporting for direct state updates if needed
                 deleteUser: (id) => setUsers(prev => prev.filter(u => (u._id || u.id) !== id)),
             }}
         >

@@ -1,533 +1,312 @@
-import React, { useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, TextInput, Alert, ScrollView, Modal, Platform, Image } from 'react-native';
+import React, { useState, useMemo } from 'react';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, TextInput, Alert, ScrollView, Modal, Platform, Image, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import apiClient from '../services/apiClient';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
+import { useLanguage } from '../context/LanguageContext';
 
 const StoreOwnerDashboardScreen = () => {
     const { user, logout } = useAuth();
-    const { getStoresByOwner, getOffersByStore, addOffer, updateOffer, updateStore, deleteOffer, registerStore, categories, isLoading } = useData();
-    const [activeTab, setActiveTab] = useState('offers');
-    const [showAddOffer, setShowAddOffer] = useState(false);
-    const [showAddStore, setShowAddStore] = useState(false);
-    const [editingOffer, setEditingOffer] = useState(null);
+    const { stores, offers, getStoresByOwner, getOffersByStore, addOffer, updateOffer, updateStore, deleteOffer, registerStore, categories, isLoading } = useData();
+    const { t } = useLanguage();
+    const [activeTab, setActiveTab] = useState('stores');
+    
+    // State management for refactored forms
+    const [storeName, setStoreName] = useState('');
+    const [location, setLocation] = useState('');
+    const [category, setCategory] = useState(categories[0] || 'Fashion');
     const [offerTitle, setOfferTitle] = useState('');
     const [offerDesc, setOfferDesc] = useState('');
     const [offerDiscount, setOfferDiscount] = useState('');
-    const [offerPrice, setOfferPrice] = useState('');
+    const [offerOriginalPrice, setOfferOriginalPrice] = useState('');
     const [offerExpiry, setOfferExpiry] = useState('');
-    const [offerCategory, setOfferCategory] = useState('Fashion');
-    const [offerIsOnline, setOfferIsOnline] = useState(false);
-    const [storeName, setStoreName] = useState('');
-    const [storeLocation, setStoreLocation] = useState('');
-    const [storeAddress, setStoreAddress] = useState('');
-    const [storeCategory, setStoreCategory] = useState('Fashion');
-    const [storeHasDelivery, setStoreHasDelivery] = useState(false);
-    const [storeLogo, setStoreLogo] = useState(null);
-    const [storeBanner, setStoreBanner] = useState(null);
-    const [offerImage, setOfferImage] = useState(null);
-    const [isUploading, setIsUploading] = useState(false);
-    const [isUploadingStoreAsset, setIsUploadingStoreAsset] = useState(false);
-    const [editingStore, setEditingStore] = useState(null);
     const [selectedStoreId, setSelectedStoreId] = useState('');
-    const [analytics, setAnalytics] = useState([]);
-    const { getStoreAnalytics } = useData();
+    const [offerImage, setOfferImage] = useState(null);
+    const [showAddOffer, setShowAddOffer] = useState(false);
+    const [showAddStore, setShowAddStore] = useState(false);
+    const [editingOffer, setEditingOffer] = useState(null);
+    const [editingStore, setEditingStore] = useState(null);
 
-    const myStores = getStoresByOwner(user._id || user.id) || [];
-    const approvedStores = myStores.filter(s => s && s.approved);
+    const myStores = useMemo(() => getStoresByOwner(user?._id || user?.id) || [], [stores, user]);
+    const myOffers = useMemo(() => {
+        return myStores.flatMap(store => {
+            const storeId = store._id || store.id;
+            return (getOffersByStore(storeId) || []).map(o => ({ ...o, storeName: store.storeName }));
+        });
+    }, [offers, myStores]);
 
-    React.useEffect(() => {
-        const fetchAnalytics = async () => {
-            if (approvedStores.length > 0) {
-                try {
-                    const results = await Promise.all(approvedStores.map(s => getStoreAnalytics(s._id || s.id)));
-                    setAnalytics(results.flat());
-                } catch (err) {
-                    console.error('Analytics fetch error:', err);
-                }
-            }
-        };
-        fetchAnalytics();
-    }, [approvedStores.length]);
-
-    if (isLoading || !user) {
-        return (
-            <View style={[s.container, { justifyContent: 'center', alignItems: 'center' }]}>
-                <LinearGradient colors={['#0f0c29', '#302b63', '#24243e']} style={StyleSheet.absoluteFill} />
-                <Text style={{ color: '#fff', fontSize: 18 }}>Loading Dashboard...</Text>
-            </View>
-        );
-    }
-
-    const allMyOffers = myStores.flatMap(store => {
-        const storeId = store._id || store.id;
-        return (getOffersByStore(storeId) || []).map(o => ({ ...o, storeName: store.storeName }));
-    });
-
-    const resetForm = () => { 
-        setOfferTitle(''); setOfferDesc(''); setOfferDiscount(''); setOfferPrice(''); 
-        setOfferExpiry(''); setOfferCategory('Fashion'); setOfferIsOnline(false); 
-        setEditingOffer(null); setOfferImage(null);
-        if (approvedStores.length > 0) setSelectedStoreId(approvedStores[0]._id || approvedStores[0].id);
-    };
-
-    const pickImage = async () => {
+    const handlePickImage = async () => {
         const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
             allowsEditing: true,
             aspect: [16, 9],
             quality: 0.7,
         });
-
-        if (!result.canceled) {
-            uploadImage(result.assets[0]);
-        }
+        if (!result.canceled) setOfferImage(result.assets[0].uri);
     };
 
-    const uploadImage = async (asset) => {
-        setIsUploading(true);
-        try {
-            const formData = new FormData();
-            const uri = asset.uri;
-            const name = asset.fileName || uri.split('/').pop();
-            const type = asset.mimeType || `image/${name.split('.').pop()}`;
-
-            if (Platform.OS === 'web') {
-                // On web, we need to fetch the local URI and convert it to a Blob
-                const response = await fetch(uri);
-                const blob = await response.blob();
-                formData.append('image', blob, name);
-            } else {
-                formData.append('image', {
-                    uri: uri.replace('file://', ''),
-                    name: name,
-                    type: type,
-                });
-            }
-
-            const response = await apiClient.post('/upload', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' },
-            });
-
-            if (response.success) {
-                setOfferImage(response.imageUrl);
-            } else {
-                throw new Error(response.message || 'Upload failed');
-            }
-        } catch (error) {
-            console.error('Upload error details:', error);
-            const msg = error.response?.data?.message || error.message || 'Image upload failed';
-            Alert.alert('Upload Error', msg);
-        } finally {
-            setIsUploading(false);
-        }
+    const resetForms = () => {
+        setStoreName(''); setLocation(''); setCategory(categories[0] || 'Fashion');
+        setOfferTitle(''); setOfferDesc(''); setOfferDiscount(''); setOfferOriginalPrice(''); setOfferExpiry('');
+        setOfferImage(null); setEditingOffer(null); setEditingStore(null);
     };
 
-    const uploadStoreAsset = async (asset, type) => {
-        setIsUploadingStoreAsset(true);
-        try {
-            const formData = new FormData();
-            const uri = asset.uri;
-            const name = asset.fileName || uri.split('/').pop();
-
-            if (Platform.OS === 'web') {
-                const response = await fetch(uri);
-                const blob = await response.blob();
-                formData.append('image', blob, name);
-            } else {
-                formData.append('image', {
-                    uri: uri.replace('file://', ''),
-                    name: name,
-                    type: asset.mimeType || `image/${name.split('.').pop()}`,
-                });
-            }
-
-            const response = await apiClient.post('/upload', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' },
-            });
-
-            if (response.success) {
-                if (type === 'logo') setStoreLogo(response.imageUrl);
-                else setStoreBanner(response.imageUrl);
-            }
-        } catch (error) {
-            Alert.alert('Upload Error', 'Asset upload failed');
-        } finally {
-            setIsUploadingStoreAsset(false);
-        }
-    };
-
-    const handleAddOffer = async () => {
-        if (!offerTitle.trim() || offerDiscount === '' || offerPrice === '') { 
-            Alert.alert('Error', 'Please fill in Title, Discount, and Price'); 
-            return; 
-        }
-        
-        if (approvedStores.length === 0) { 
-            Alert.alert('Error', 'You need an approved store to add offers'); 
-            return; 
-        }
-
-        const discountNum = parseInt(offerDiscount);
-        const priceNum = parseInt(offerPrice);
-
-        if (isNaN(discountNum) || isNaN(priceNum)) {
-            Alert.alert('Error', 'Discount and Price must be valid numbers');
-            return;
-        }
-
-        const data = { 
-            title: offerTitle.trim(), 
-            description: offerDesc.trim(), 
-            discount: discountNum, 
-            originalPrice: priceNum, 
-            storeId: selectedStoreId || (approvedStores[0] ? (approvedStores[0]._id || approvedStores[0].id) : null), 
-            expiryDate: offerExpiry || '2026-12-31', 
-            category: offerCategory, 
-            isOnline: !!offerIsOnline, 
-            image: offerImage 
-        };
-
-        try {
-            if (editingOffer) { 
-                await updateOffer(editingOffer._id || editingOffer.id, data); 
-                Alert.alert('Success', 'Offer updated successfully!'); 
-            }
-            else { 
-                await addOffer(data); 
-                Alert.alert('Success', 'Offer added successfully!'); 
-            }
-            resetForm(); 
-            setShowAddOffer(false);
-        } catch (e) {
-            console.error('Save offer error:', e);
-            const errorMsg = e.response?.data?.errors?.join('\n') || e.response?.data?.message || e.message || 'Failed to save offer';
-            Alert.alert('Error', errorMsg);
-        }
-    };
-
-    const handleEditOffer = (offer) => {
-        setOfferTitle(offer.title); setOfferDesc(offer.description); setOfferDiscount(String(offer.discount));
-        setOfferPrice(String(offer.originalPrice)); setOfferExpiry(offer.expiryDate ? new Date(offer.expiryDate).toISOString().split('T')[0] : ''); setOfferCategory(offer.category);
-        setOfferIsOnline(offer.isOnline); setEditingOffer(offer); setOfferImage(offer.image); 
-        
-        const sId = offer.storeId?._id || offer.storeId?.id || offer.storeId;
-        setSelectedStoreId(typeof sId === 'string' ? sId : ''); 
-        setShowAddOffer(true);
-    };
-
-    const handleDeleteOffer = async (id) => {
-        const doDelete = async () => {
-            try {
-                await deleteOffer(id);
-                Alert.alert('Deleted', 'Offer removed');
-            } catch (e) {
-                Alert.alert('Error', 'Failed to delete offer');
-            }
-        };
-
-        if (Platform.OS === 'web') {
-            if (window.confirm('Are you sure you want to delete this offer?')) {
-                await doDelete();
-            }
-        } else {
-            Alert.alert('Delete?', 'Are you sure?', [{ text: 'Cancel' }, { text: 'Delete', style: 'destructive', onPress: doDelete }]);
-        }
-    };
-
-    const handleAddStore = async () => {
-        if (!storeName.trim() || !storeLocation.trim()) { Alert.alert('Error', 'Fill all fields'); return; }
+    const handleSaveStore = async () => {
+        if (!storeName || !location) return Alert.alert('Error', 'Missing required fields');
+        const storeData = { storeName, location, category, ownerId: user.id || user._id };
         try {
             if (editingStore) {
-                await updateStore(editingStore._id || editingStore.id, {
-                    storeName: storeName.trim(),
-                    location: storeLocation.trim(),
-                    address: storeAddress.trim(),
-                    category: storeCategory,
-                    logoUrl: storeLogo,
-                    bannerUrl: storeBanner,
-                    hasDeliveryPartner: storeHasDelivery
-                });
-                Alert.alert('Success', 'Store updated successfully');
+                await updateStore(editingStore._id || editingStore.id, storeData);
             } else {
-                await registerStore(storeName.trim(), user._id || user.id, storeLocation.trim(), storeAddress.trim(), storeCategory, storeLogo, storeBanner, storeHasDelivery);
-                Alert.alert('Success', 'Store submitted for approval');
+                await registerStore(storeData);
             }
-            setStoreName(''); setStoreLocation(''); setStoreAddress(''); setStoreLogo(null); setStoreBanner(null); setStoreHasDelivery(false); setEditingStore(null); setShowAddStore(false);
-        } catch (e) {
-            Alert.alert('Error', 'Failed to save store');
-        }
+            setShowAddStore(false);
+            resetForms();
+        } catch (e) { Alert.alert('Error', 'Failed to save store'); }
     };
 
-    const handleEditStore = (store) => {
-        setStoreName(store.storeName);
-        setStoreLocation(store.location);
-        setStoreAddress(store.address || '');
-        setStoreCategory(store.category);
-        setStoreLogo(store.logoUrl);
-        setStoreBanner(store.bannerUrl);
-        setStoreHasDelivery(!!store.hasDeliveryPartner);
-        setEditingStore(store);
-        setShowAddStore(true);
+    const handleSaveOffer = async () => {
+        if (!offerTitle || !offerDiscount || !offerOriginalPrice || !selectedStoreId || !offerExpiry) {
+            return Alert.alert('Error', 'Missing required fields');
+        }
+        
+        const selectedStore = myStores.find(s => (s._id || s.id) === selectedStoreId);
+        const offerCategory = selectedStore ? selectedStore.category : (categories[0] || 'Fashion');
+        
+        const calculatedExpiry = new Date();
+        calculatedExpiry.setDate(calculatedExpiry.getDate() + parseInt(offerExpiry));
+        
+        const offerData = { 
+            title: offerTitle, 
+            description: offerDesc, 
+            discount: parseInt(offerDiscount), 
+            originalPrice: parseInt(offerOriginalPrice),
+            expiryDate: calculatedExpiry.toISOString(), 
+            category: offerCategory,
+            storeId: selectedStoreId, 
+            image: offerImage 
+        };
+        try {
+            if (editingOffer) {
+                await updateOffer(editingOffer._id || editingOffer.id, offerData);
+            } else {
+                await addOffer(offerData);
+            }
+            setShowAddOffer(false);
+            resetForms();
+        } catch (e) { Alert.alert('Error', 'Failed to save offer'); }
     };
+
+    if (isLoading || !user) {
+        return (
+            <View style={[s.container, { justifyContent: 'center', alignItems: 'center' }]}>
+                <LinearGradient colors={['#1a150d', '#000']} style={StyleSheet.absoluteFill} />
+                <ActivityIndicator color="#D4AF37" size="large" />
+            </View>
+        );
+    }
 
     return (
         <View style={s.container}>
-            <LinearGradient colors={['#0f0c29', '#302b63', '#24243e']} style={s.gradient}>
+            <LinearGradient colors={['#1a150d', '#000']} style={s.gradient}>
                 <View style={s.header}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                         <View>
-                            <Text style={s.headerTitle}>Store Dashboard</Text>
-                            <Text style={s.headerSub}>Manage your stores & offers</Text>
+                            <Text style={s.headerTitle}>{t('store_dash')}</Text>
+                            <Text style={s.headerSub}>{t('manage_stores_offers')}</Text>
                         </View>
-                        <TouchableOpacity
-                            style={s.headerLogout}
-                            onPress={() => {
-                                const doLogout = () => logout();
-                                if (Platform.OS === 'web') {
-                                    try {
-                                        if (window.confirm('Sign out?')) doLogout();
-                                    } catch (e) {
-                                        doLogout();
-                                    }
-                                } else {
-                                    Alert.alert('Sign Out', 'Are you sure?', [
-                                        { text: 'Cancel', style: 'cancel' },
-                                        { text: 'Sign Out', style: 'destructive', onPress: doLogout }
-                                    ]);
-                                }
-                            }}
-                        >
-                            <Ionicons name="log-out-outline" size={24} color="#FF6B6B" />
+                        <TouchableOpacity style={s.headerLogout} onPress={logout}>
+                            <Ionicons name="log-out-outline" size={24} color="#D4AF37" />
                         </TouchableOpacity>
                     </View>
                 </View>
-                <View style={s.statsRow}>
-                    {[
-                        { v: myStores.length, l: 'Stores', c: '#FF8E53' },
-                        { v: allMyOffers.length, l: 'Offers', c: '#A18CD1' },
-                        { v: analytics.length, l: 'Orders', c: '#4ECDC4' },
-                        { v: `₹${analytics.reduce((s, o) => s + o.storeRevenue, 0).toLocaleString()}`, l: 'Revenue', c: '#FF6B6B' }
-                    ].map((st, i) => (
-                        <View key={i} style={s.statCard}>
-                            <Text style={[s.statVal, { color: st.c }]}>{st.v}</Text>
-                            <Text style={s.statLbl}>{st.l}</Text>
-                        </View>
-                    ))}
-                </View>
+
+                {/* Tabs */}
                 <View style={s.tabRow}>
-                    {['offers', 'stores'].map(t => (
-                        <TouchableOpacity key={t} style={[s.tab, activeTab === t && s.tabAct]} onPress={() => setActiveTab(t)}>
-                            <Text style={[s.tabTxt, activeTab === t && s.tabTxtAct]}>{t === 'offers' ? 'Offers' : 'My Stores'}</Text>
-                        </TouchableOpacity>
-                    ))}
+                    <TouchableOpacity onPress={() => setActiveTab('stores')} style={[s.tab, activeTab === 'stores' && s.tabAct]}>
+                        <Ionicons name="storefront-outline" size={18} color={activeTab === 'stores' ? '#000' : '#D4AF37'} />
+                        <Text style={[s.tabTxt, activeTab === 'stores' && s.tabTxtAct]}>{t('my_stores')}</Text>
+                        <View style={s.badge}><Text style={s.badgeTxt}>{myStores.length}</Text></View>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => setActiveTab('offers')} style={[s.tab, activeTab === 'offers' && s.tabAct]}>
+                        <Ionicons name="pricetags-outline" size={18} color={activeTab === 'offers' ? '#000' : '#D4AF37'} />
+                        <Text style={[s.tabTxt, activeTab === 'offers' && s.tabTxtAct]}>{t('offers')}</Text>
+                        <View style={s.badge}><Text style={s.badgeTxt}>{myOffers.length}</Text></View>
+                    </TouchableOpacity>
                 </View>
-                <TouchableOpacity style={s.addBtn} onPress={() => activeTab === 'offers' ? (resetForm(), setShowAddOffer(true)) : setShowAddStore(true)}>
-                    <LinearGradient colors={activeTab === 'offers' ? ['#FF6B6B', '#FF8E53'] : ['#4ECDC4', '#44B39D']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.addBtnG}>
-                        <Ionicons name="add-circle-outline" size={20} color="#fff" />
-                        <Text style={s.addBtnTxt}>{activeTab === 'offers' ? 'Add New Offer' : 'Register Store'}</Text>
-                    </LinearGradient>
-                </TouchableOpacity>
-                {activeTab === 'offers' ? (
-                    <FlatList data={allMyOffers} keyExtractor={i => i._id || i.id} contentContainerStyle={s.list} showsVerticalScrollIndicator={Platform.OS !== 'web'}
+
+                {activeTab === 'stores' ? (
+                    <FlatList
+                        data={myStores}
+                        keyExtractor={i => i._id || i.id}
+                        contentContainerStyle={s.list}
                         renderItem={({ item }) => (
                             <View style={s.card}>
-                                <View style={s.cardTop}>
-                                    <View style={{ flex: 1 }}><Text style={s.cardTitle} numberOfLines={1}>{item.title}</Text><Text style={s.cardSub}>{item.storeName}</Text></View>
-                                    <View style={s.discBadge}><Text style={s.discTxt}>{item.discount}% OFF</Text></View>
-                                </View>
-                                <View style={s.cardBot}>
-                                    <Text style={s.expTxt}>Expires: {new Date(item.expiryDate).toLocaleDateString()}</Text>
-                                    <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginRight: 8 }}>
-                                            <Ionicons name="eye-outline" size={16} color="#8E8E93" />
-                                            <Text style={{ color: '#8E8E93', fontSize: 13, fontWeight: '600' }}>{item.views || 0}</Text>
-                                        </View>
-                                        <TouchableOpacity style={s.editB} onPress={() => handleEditOffer(item)}><Ionicons name="create-outline" size={18} color="#4ECDC4" /></TouchableOpacity>
-                                        <TouchableOpacity style={s.delB} onPress={() => handleDeleteOffer(item._id || item.id)}><Ionicons name="trash-outline" size={18} color="#FF6B6B" /></TouchableOpacity>
+                                <View style={s.cardHeader}>
+                                    <View style={s.storeIc}><Ionicons name="business" size={24} color="#D4AF37" /></View>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={s.cardTitle}>{item.storeName}</Text>
+                                        <Text style={s.cardSub}>{item.location} • {item.category}</Text>
                                     </View>
+                                    <View style={[s.statusBadge, { backgroundColor: item.approved ? 'rgba(78,205,196,0.1)' : 'rgba(212,175,55,0.1)' }]}>
+                                        <Text style={[s.statusTxt, { color: item.approved ? '#4ECDC4' : '#D4AF37' }]}>{item.approved ? 'Approved' : 'Pending'}</Text>
+                                    </View>
+                                </View>
+                                <View style={s.actionRow}>
+                                    <TouchableOpacity style={s.editBtn} onPress={() => {
+                                        setEditingStore(item); setStoreName(item.storeName); setLocation(item.location); setCategory(item.category); setShowAddStore(true);
+                                    }}>
+                                        <Ionicons name="create-outline" size={18} color="#D4AF37" /><Text style={s.editBtnTxt}>{t('edit')}</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={s.delBtn} onPress={() => Alert.alert('Delete Store', 'This feature is coming soon')}>
+                                        <Ionicons name="trash-outline" size={18} color="#FF6B6B" />
+                                    </TouchableOpacity>
                                 </View>
                             </View>
                         )}
-                        ListEmptyComponent={<View style={s.empty}><Ionicons name="pricetags-outline" size={48} color="#4A4A5A" /><Text style={s.emptyTxt}>No offers yet</Text></View>}
+                        ListEmptyComponent={<View style={s.empty}><Ionicons name="storefront-outline" size={60} color="#333" /><Text style={s.emptyTxt}>No stores yet</Text></View>}
                     />
                 ) : (
-                    <FlatList data={myStores} keyExtractor={i => i._id || i.id} contentContainerStyle={s.list} showsVerticalScrollIndicator={Platform.OS !== 'web'}
+                    <FlatList
+                        data={myOffers}
+                        keyExtractor={i => i._id || i.id}
+                        contentContainerStyle={s.list}
                         renderItem={({ item }) => (
                             <View style={s.card}>
-                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                                        {item.logoUrl ? (
-                                            <Image source={{ uri: item.logoUrl }} style={s.storeLogoPreview} />
-                                        ) : (
-                                            <View style={s.storeIc}><Ionicons name="storefront" size={20} color="#FF8E53" /></View>
-                                        )}
-                                        <View>
-                                            <Text style={s.cardTitle}>{item.storeName}</Text>
-                                            <Text style={s.cardSub}>{item.location}</Text>
-                                        </View>
+                                <View style={s.cardHeader}>
+                                    <View style={s.storeIc}><Ionicons name="pricetag" size={24} color="#D4AF37" /></View>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={s.cardTitle} numberOfLines={1}>{item.title}</Text>
+                                        <Text style={s.cardSub}>{item.discount}% OFF • {item.storeName}</Text>
                                     </View>
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                                        <View style={[s.statusB, { backgroundColor: item.approved ? 'rgba(78,205,196,0.15)' : 'rgba(255,142,83,0.15)' }]}>
-                                            <Text style={{ color: item.approved ? '#4ECDC4' : '#FF8E53', fontSize: 12, fontWeight: '700' }}>{item.approved ? 'Approved' : 'Pending'}</Text>
-                                        </View>
-                                        <TouchableOpacity onPress={() => handleEditStore(item)}>
-                                            <Ionicons name="create-outline" size={20} color="#4ECDC4" />
-                                        </TouchableOpacity>
-                                    </View>
+                                </View>
+                                <View style={s.actionRow}>
+                                    <TouchableOpacity style={s.editBtn} onPress={() => {
+                                        setEditingOffer(item); setOfferTitle(item.title); setOfferDesc(item.description); setOfferDiscount(item.discount.toString()); setOfferOriginalPrice((item.originalPrice || 0).toString()); 
+                                        
+                                        // Approximate days from now to expiry for the form
+                                        const daysLeft = item.expiryDate ? Math.max(1, Math.ceil((new Date(item.expiryDate) - new Date()) / (1000 * 60 * 60 * 24))) : 7;
+                                        setOfferExpiry(daysLeft.toString()); 
+                                        setSelectedStoreId(item.storeId); setOfferImage(item.image); setShowAddOffer(true);
+                                    }}>
+                                        <Ionicons name="create-outline" size={18} color="#D4AF37" /><Text style={s.editBtnTxt}>{t('edit_offer')}</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={s.delBtn} onPress={() => deleteOffer(item._id || item.id)}>
+                                        <Ionicons name="trash-outline" size={18} color="#FF6B6B" />
+                                    </TouchableOpacity>
                                 </View>
                             </View>
                         )}
-                        ListEmptyComponent={<View style={s.empty}><Ionicons name="storefront-outline" size={48} color="#4A4A5A" /><Text style={s.emptyTxt}>No stores</Text></View>}
+                        ListEmptyComponent={<View style={s.empty}><Ionicons name="gift-outline" size={60} color="#333" /><Text style={s.emptyTxt}>No active offers</Text></View>}
                     />
                 )}
-                {/* Add Offer Modal */}
-                <Modal visible={showAddOffer} animationType="slide" transparent>
-                    <View style={s.modalOv}><View style={s.modalC}><LinearGradient colors={['#1a1a2e', '#16213e']} style={s.modalG}>
-                        <ScrollView 
-                            showsVerticalScrollIndicator={true} 
-                            persistentScrollbar={true}
-                            contentContainerStyle={{ paddingBottom: 60 }}
-                        >
-                            <View style={s.modalH}><Text style={s.modalT}>{editingOffer ? 'Edit Offer' : 'Add Offer'}</Text><TouchableOpacity onPress={() => setShowAddOffer(false)}><Ionicons name="close-circle" size={28} color="#8E8E93" /></TouchableOpacity></View>
-                            <TextInput style={s.mInput} placeholder="Title *" placeholderTextColor="#8E8E93" value={offerTitle} onChangeText={setOfferTitle} />
-                            <TextInput style={[s.mInput, { minHeight: 80, textAlignVertical: 'top' }]} placeholder="Description" placeholderTextColor="#8E8E93" value={offerDesc} onChangeText={setOfferDesc} multiline />
-                            <View style={{ flexDirection: 'row', gap: 10 }}>
-                                <TextInput style={[s.mInput, { flex: 1 }]} placeholder="Discount %" placeholderTextColor="#8E8E93" value={offerDiscount} onChangeText={setOfferDiscount} keyboardType="numeric" />
-                                <TextInput style={[s.mInput, { flex: 1 }]} placeholder="Price ₹" placeholderTextColor="#8E8E93" value={offerPrice} onChangeText={setOfferPrice} keyboardType="numeric" />
+
+                {/* FAB */}
+                <TouchableOpacity style={s.fab} onPress={() => activeTab === 'stores' ? setShowAddStore(true) : setShowAddOffer(true)}>
+                    <Ionicons name="add" size={32} color="#000" />
+                </TouchableOpacity>
+
+                {/* Store Modal */}
+                <Modal visible={showAddStore} animationType="slide" transparent>
+                    <View style={s.modalOverlay}>
+                        <View style={s.modalContent}>
+                            <View style={s.modalHeader}>
+                                <Text style={s.modalTitle}>{editingStore ? t('edit') : t('register_store')}</Text>
+                                <TouchableOpacity onPress={() => { setShowAddStore(false); resetForms(); }}>
+                                    <Ionicons name="close" size={24} color="#fff" />
+                                </TouchableOpacity>
                             </View>
-                             <TextInput style={s.mInput} placeholder="Expiry (YYYY-MM-DD)" placeholderTextColor="#8E8E93" value={offerExpiry} onChangeText={setOfferExpiry} />
-                            
-                            {approvedStores.length > 1 && (
-                                <>
-                                    <Text style={s.mLabel}>Select Store</Text>
-                                    <ScrollView horizontal showsHorizontalScrollIndicator={false}><View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
-                                        {approvedStores.map(st => (
-                                            <TouchableOpacity 
-                                                key={st._id || st.id} 
-                                                style={[s.chip, selectedStoreId === (st._id || st.id) && s.chipA]} 
-                                                onPress={() => setSelectedStoreId(st._id || st.id)}
-                                            >
-                                                <Text style={[s.chipT, selectedStoreId === (st._id || st.id) && s.chipTA]}>{st.storeName}</Text>
+                            <ScrollView>
+                                <View style={s.inputGrp}>
+                                    <Text style={s.label}>Store Name</Text>
+                                    <TextInput style={s.input} value={storeName} onChangeText={setStoreName} placeholder="e.g. Gucci Boutique" placeholderTextColor="#555" />
+                                </View>
+                                <View style={s.inputGrp}>
+                                    <Text style={s.label}>Location</Text>
+                                    <TextInput style={s.input} value={location} onChangeText={setLocation} placeholder="e.g. Ground Floor, Block A" placeholderTextColor="#555" />
+                                </View>
+                                <View style={s.inputGrp}>
+                                    <Text style={s.label}>Category</Text>
+                                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
+                                        {categories.filter(c => c !== 'All').map(c => (
+                                            <TouchableOpacity key={c} onPress={() => setCategory(c)} style={[s.catChip, category === c && s.catChipAct]}>
+                                                <Text style={[s.catChipTxt, category === c && s.catChipTxtAct]}>{c}</Text>
                                             </TouchableOpacity>
                                         ))}
-                                    </View></ScrollView>
-                                </>
-                            )}
-
-                            <Text style={s.mLabel}>Category</Text>
-                            <ScrollView horizontal showsHorizontalScrollIndicator={false}><View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
-                                {categories.filter(c => c !== 'All').map(c => <TouchableOpacity key={c} style={[s.chip, offerCategory === c && s.chipA]} onPress={() => setOfferCategory(c)}><Text style={[s.chipT, offerCategory === c && s.chipTA]}>{c}</Text></TouchableOpacity>)}
-                            </View></ScrollView>
-                            <TouchableOpacity style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: 10 }} onPress={() => setOfferIsOnline(!offerIsOnline)}>
-                                <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600' }}>Available Online</Text>
-                                <Ionicons name={offerIsOnline ? 'toggle' : 'toggle-outline'} size={36} color={offerIsOnline ? '#4ECDC4' : '#8E8E93'} />
-                            </TouchableOpacity>
-
-                            <Text style={s.mLabel}>Offer Image</Text>
-                            <TouchableOpacity 
-                                style={[s.uploadContainer, offerImage && s.uploadContainerActive]} 
-                                onPress={pickImage} 
-                                disabled={isUploading}
-                            >
-                                {isUploading ? (
-                                    <View style={s.uploadPlaceholder}>
-                                        <Text style={s.uploadText}>Uploading to cloud...</Text>
-                                    </View>
-                                ) : offerImage ? (
-                                    <View style={s.previewContainer}>
-                                        <Ionicons name="checkmark-circle" size={32} color="#4ECDC4" />
-                                        <Text style={s.previewText}>Photo Uploaded!</Text>
-                                        <Text style={s.changeText}>Tap to change photo</Text>
-                                    </View>
-                                ) : (
-                                    <View style={s.uploadPlaceholder}>
-                                        <LinearGradient 
-                                            colors={['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.02)']} 
-                                            style={s.uploadBtnInner}
-                                        >
-                                            <Ionicons name="cloud-upload-outline" size={32} color="#FF8E53" />
-                                            <Text style={s.uploadBtnText}>Upload Offer Photo</Text>
-                                            <Text style={s.uploadBtnSub}>Best size: 16:9 aspect ratio</Text>
-                                        </LinearGradient>
-                                    </View>
-                                )}
-                            </TouchableOpacity>
-                            <TouchableOpacity 
-                                style={[s.mSubmit, { marginBottom: 40 }]} 
-                                onPress={handleAddOffer}
-                            >
-                                <LinearGradient colors={['#FF6B6B', '#FF8E53']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.mSubmitG}>
-                                    <Text style={s.mSubmitT}>{editingOffer ? 'Update Offer' : 'Add New Offer'}</Text>
-                                </LinearGradient>
-                            </TouchableOpacity>
-                        </ScrollView>
-                    </LinearGradient></View></View>
+                                    </ScrollView>
+                                </View>
+                                <TouchableOpacity style={s.submitBtn} onPress={handleSaveStore}>
+                                    <Text style={s.submitBtnTxt}>{editingStore ? 'Update Store' : 'Add Store'}</Text>
+                                </TouchableOpacity>
+                            </ScrollView>
+                        </View>
+                    </View>
                 </Modal>
-                {/* Add/Edit Store Modal */}
-                <Modal visible={showAddStore} animationType="slide" transparent>
-                    <View style={s.modalOv}><View style={s.modalC}><LinearGradient colors={['#1a1a2e', '#16213e']} style={s.modalG}>
-                        <ScrollView showsVerticalScrollIndicator={true} persistentScrollbar={true}>
-                            <View style={s.modalH}>
-                                <Text style={s.modalT}>{editingStore ? 'Edit Store' : 'Register Store'}</Text>
-                                <TouchableOpacity onPress={() => { setShowAddStore(false); setEditingStore(null); }}><Ionicons name="close-circle" size={28} color="#8E8E93" /></TouchableOpacity>
+
+                {/* Offer Modal */}
+                <Modal visible={showAddOffer} animationType="slide" transparent>
+                    <View style={s.modalOverlay}>
+                        <View style={s.modalContent}>
+                            <View style={s.modalHeader}>
+                                <Text style={s.modalTitle}>{editingOffer ? t('edit_offer') : t('add_new_offer')}</Text>
+                                <TouchableOpacity onPress={() => { setShowAddOffer(false); resetForms(); }}>
+                                    <Ionicons name="close" size={24} color="#fff" />
+                                </TouchableOpacity>
                             </View>
-                            <TextInput style={s.mInput} placeholder="Store Name *" placeholderTextColor="#8E8E93" value={storeName} onChangeText={setStoreName} />
-                            <TextInput style={s.mInput} placeholder="Area/Location *" placeholderTextColor="#8E8E93" value={storeLocation} onChangeText={setStoreLocation} />
-                            <TextInput style={[s.mInput, { height: 80 }]} placeholder="Detailed Address (Optional)" placeholderTextColor="#8E8E93" value={storeAddress} onChangeText={setStoreAddress} multiline />
-                            
-                            <TouchableOpacity 
-                                style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }} 
-                                onPress={() => setStoreHasDelivery(!storeHasDelivery)}
-                            >
-                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                    <Ionicons name="bicycle" size={20} color="#FF6B6B" />
-                                    <View>
-                                        <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600' }}>Delivery Partner</Text>
-                                        <Text style={{ color: '#8E8E93', fontSize: 12 }}>Does this store offer delivery?</Text>
+                            <ScrollView>
+                                <TouchableOpacity style={s.imgPicker} onPress={handlePickImage}>
+                                    {offerImage ? <Image source={{ uri: offerImage }} style={s.pickedImg} /> : (
+                                        <View style={{ alignItems: 'center' }}>
+                                            <Ionicons name="image-outline" size={40} color="#D4AF37" />
+                                            <Text style={s.imgPickerTxt}>Upload Offer Image</Text>
+                                        </View>
+                                    )}
+                                </TouchableOpacity>
+
+                                <View style={s.inputGrp}>
+                                    <Text style={s.label}>Store</Text>
+                                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
+                                        {myStores.map(st => (
+                                            <TouchableOpacity key={st._id || st.id} onPress={() => setSelectedStoreId(st._id || st.id)} style={[s.catChip, selectedStoreId === (st._id || st.id) && s.catChipAct]}>
+                                                <Text style={[s.catChipTxt, selectedStoreId === (st._id || st.id) && s.catChipTxtAct]}>{st.storeName}</Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </ScrollView>
+                                </View>
+
+                                <View style={s.inputGrp}>
+                                    <Text style={s.label}>Offer Title</Text>
+                                    <TextInput style={s.input} value={offerTitle} onChangeText={setOfferTitle} placeholder="e.g. 50% End of Season Sale" placeholderTextColor="#555" />
+                                </View>
+                                
+                                <View style={{ flexDirection: 'row', gap: 10 }}>
+                                    <View style={[s.inputGrp, { flex: 1.2 }]}>
+                                        <Text style={s.label}>Orig. Price (₹)</Text>
+                                        <TextInput style={s.input} value={offerOriginalPrice} onChangeText={setOfferOriginalPrice} keyboardType="numeric" placeholder="e.g. 5000" placeholderTextColor="#555" />
+                                    </View>
+                                    <View style={[s.inputGrp, { flex: 1 }]}>
+                                        <Text style={s.label}>Discount %</Text>
+                                        <TextInput style={s.input} value={offerDiscount} onChangeText={setOfferDiscount} keyboardType="numeric" placeholder="e.g. 50" placeholderTextColor="#555" />
+                                    </View>
+                                    <View style={[s.inputGrp, { flex: 1.2 }]}>
+                                        <Text style={s.label}>Expires (Days)</Text>
+                                        <TextInput style={s.input} value={offerExpiry} onChangeText={setOfferExpiry} keyboardType="numeric" placeholder="e.g. 7" placeholderTextColor="#555" />
                                     </View>
                                 </View>
-                                <Ionicons name={storeHasDelivery ? 'toggle' : 'toggle-outline'} size={36} color={storeHasDelivery ? '#4ECDC4' : '#8E8E93'} />
-                            </TouchableOpacity>
 
-                            <Text style={s.mLabel}>Category</Text>
-                            <ScrollView horizontal showsHorizontalScrollIndicator={false}><View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
-                                {categories.filter(c => c !== 'All').map(c => <TouchableOpacity key={c} style={[s.chip, storeCategory === c && s.chipA]} onPress={() => setStoreCategory(c)}><Text style={[s.chipT, storeCategory === c && s.chipTA]}>{c}</Text></TouchableOpacity>)}
-                            </View></ScrollView>
+                                <View style={s.inputGrp}>
+                                    <Text style={s.label}>Description</Text>
+                                    <TextInput style={[s.input, { height: 100, textAlignVertical: 'top', paddingTop: 15 }]} value={offerDesc} onChangeText={setOfferDesc} multiline placeholder="Tell customers about this exclusive offer..." placeholderTextColor="#555" />
+                                </View>
 
-                            <Text style={s.mLabel}>Store Branding</Text>
-                            <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
-                                <TouchableOpacity 
-                                    style={[s.brandingUpload, { flex: 1 }, storeLogo && { borderColor: '#4ECDC4' }]} 
-                                    onPress={async () => {
-                                        const res = await ImagePicker.launchImageLibraryAsync({ aspect: [1, 1], allowsEditing: true, quality: 0.6 });
-                                        if (!res.canceled) uploadStoreAsset(res.assets[0], 'logo');
-                                    }}
-                                >
-                                    {storeLogo ? <Image source={{ uri: storeLogo }} style={s.brandingFill} /> : <View style={s.brandingEmpty}><Ionicons name="image-outline" size={24} color="#8E8E93" /><Text style={s.brandingTxt}>Logo</Text></View>}
+                                <TouchableOpacity style={s.submitBtn} onPress={handleSaveOffer}>
+                                    <Text style={s.submitBtnTxt}>{editingOffer ? 'Update Offer' : 'Launch Offer'}</Text>
                                 </TouchableOpacity>
-                                
-                                <TouchableOpacity 
-                                    style={[s.brandingUpload, { flex: 2 }, storeBanner && { borderColor: '#4ECDC4' }]}
-                                    onPress={async () => {
-                                        const res = await ImagePicker.launchImageLibraryAsync({ aspect: [16, 9], allowsEditing: true, quality: 0.7 });
-                                        if (!res.canceled) uploadStoreAsset(res.assets[0], 'banner');
-                                    }}
-                                >
-                                    {storeBanner ? <Image source={{ uri: storeBanner }} style={s.brandingFill} /> : <View style={s.brandingEmpty}><Ionicons name="images-outline" size={24} color="#8E8E93" /><Text style={s.brandingTxt}>Banner</Text></View>}
-                                </TouchableOpacity>
-                            </View>
-
-                            <TouchableOpacity style={s.mSubmit} onPress={handleAddStore}>
-                                <LinearGradient colors={['#4ECDC4', '#44B39D']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.mSubmitG}>
-                                    <Text style={s.mSubmitT}>{editingStore ? 'Save Changes' : 'Submit for Approval'}</Text>
-                                </LinearGradient>
-                            </TouchableOpacity>
-                        </ScrollView>
-                    </LinearGradient></View></View>
+                            </ScrollView>
+                        </View>
+                    </View>
                 </Modal>
             </LinearGradient>
         </View>
@@ -535,58 +314,50 @@ const StoreOwnerDashboardScreen = () => {
 };
 
 const s = StyleSheet.create({
-    container: { flex: 1 }, gradient: { flex: 1 },
-    header: { paddingHorizontal: 20, paddingTop: 56, paddingBottom: 12 },
-    headerTitle: { color: '#fff', fontSize: 26, fontWeight: '800' }, headerSub: { color: '#A0A0B0', fontSize: 14, marginTop: 2 },
-    headerLogout: { width: 44, height: 44, borderRadius: 12, backgroundColor: 'rgba(255,107,107,0.15)', alignItems: 'center', justifyContent: 'center' },
-    statsRow: { flexDirection: 'row', paddingHorizontal: 20, gap: 10, marginTop: 12 },
-    statCard: { flex: 1, backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 16, padding: 16, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' },
-    statVal: { color: '#FF8E53', fontSize: 24, fontWeight: '900' }, statLbl: { color: '#8E8E93', fontSize: 12, marginTop: 4 },
-    tabRow: { flexDirection: 'row', marginHorizontal: 20, marginTop: 20, backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 14, padding: 4 },
-    tab: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 12 }, tabAct: { backgroundColor: '#FF6B6B' },
-    tabTxt: { color: '#8E8E93', fontSize: 14, fontWeight: '600' }, tabTxtAct: { color: '#fff' },
-    addBtn: { marginHorizontal: 20, marginTop: 16, borderRadius: 14, overflow: 'hidden' },
-    addBtnG: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 13, borderRadius: 14 },
-    addBtnTxt: { color: '#fff', fontSize: 15, fontWeight: '700' },
-    list: { padding: 20, paddingBottom: 100 },
-    card: { backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' },
-    cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-    cardTitle: { color: '#fff', fontSize: 15, fontWeight: '700' }, cardSub: { color: '#A0A0B0', fontSize: 12, marginTop: 2 },
-    discBadge: { backgroundColor: 'rgba(255,107,107,0.15)', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
-    discTxt: { color: '#FF6B6B', fontSize: 12, fontWeight: '700' },
-    cardBot: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    expTxt: { color: '#8E8E93', fontSize: 12 },
-    editB: { width: 34, height: 34, borderRadius: 10, backgroundColor: 'rgba(78,205,196,0.15)', alignItems: 'center', justifyContent: 'center' },
-    delB: { width: 34, height: 34, borderRadius: 10, backgroundColor: 'rgba(255,107,107,0.15)', alignItems: 'center', justifyContent: 'center' },
-    storeIc: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(255,142,83,0.15)', alignItems: 'center', justifyContent: 'center' },
-    statusB: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
-    empty: { alignItems: 'center', paddingTop: 40 }, emptyTxt: { color: '#8E8E93', fontSize: 16, marginTop: 12 },
-    modalOv: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'center', padding: 20 },
-    modalC: { width: '100%', maxWidth: 500, alignSelf: 'center', height: '90%', borderRadius: 28, overflow: 'hidden' },
-    modalG: { flex: 1, padding: 24 },
-    modalH: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-    modalT: { color: '#fff', fontSize: 22, fontWeight: '800' },
-    mInput: { backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14, color: '#fff', fontSize: 15, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' },
-    mLabel: { color: '#fff', fontSize: 14, fontWeight: '600', marginBottom: 8, marginTop: 4 },
-    chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
-    chipA: { backgroundColor: '#FF6B6B', borderColor: '#FF6B6B' }, chipT: { color: '#8E8E93', fontSize: 13, fontWeight: '600' }, chipTA: { color: '#fff' },
-    mSubmit: { borderRadius: 14, overflow: 'hidden', marginTop: 10 },
-    mSubmitG: { paddingVertical: 15, alignItems: 'center', borderRadius: 14 }, mSubmitT: { color: '#fff', fontSize: 16, fontWeight: '700' },
-    uploadContainer: { borderRadius: 18, height: 130, borderStyle: 'dashed', borderWidth: 2, borderColor: 'rgba(255,255,255,0.15)', overflow: 'hidden', marginBottom: 20 },
-    uploadContainerActive: { borderColor: '#4ECDC4', backgroundColor: 'rgba(78,205,196,0.05)' },
-    uploadBtnInner: { flex: 1, width: '100%', justifyContent: 'center', alignItems: 'center' },
-    uploadBtnText: { color: '#fff', fontSize: 16, fontWeight: '700', marginTop: 8 },
-    uploadBtnSub: { color: '#8E8E93', fontSize: 12, marginTop: 4 },
-    uploadPlaceholder: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    uploadText: { color: '#FF8E53', fontSize: 14, fontWeight: '600' },
-    previewContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    previewText: { color: '#4ECDC4', fontSize: 16, fontWeight: '800', marginTop: 8 },
-    changeText: { color: '#8E8E93', fontSize: 13, marginTop: 4 },
-    storeLogoPreview: { width: 40, height: 40, borderRadius: 10, backgroundColor: '#000' },
-    brandingUpload: { height: 80, borderRadius: 14, borderWidth: 1, borderStyle: 'dashed', borderColor: 'rgba(255,255,255,0.15)', overflow: 'hidden' },
-    brandingFill: { width: '100%', height: '100%', resizeMode: 'cover' },
-    brandingEmpty: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    brandingTxt: { color: '#8E8E93', fontSize: 11, marginTop: 4, fontWeight: '600' },
+    container: { flex: 1 },
+    gradient: { flex: 1 },
+    header: { paddingHorizontal: 24, paddingTop: 60, paddingBottom: 20 },
+    headerTitle: { color: '#fff', fontSize: 28, fontWeight: '800' },
+    headerSub: { color: '#D4AF37', fontSize: 14, marginTop: 4, fontWeight: '600' },
+    headerLogout: { width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(212,175,55,0.1)', alignItems: 'center', justifyContent: 'center' },
+    tabRow: { flexDirection: 'row', paddingHorizontal: 24, gap: 12, marginBottom: 20 },
+    tab: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: 'rgba(212,175,55,0.1)' },
+    tabAct: { backgroundColor: '#D4AF37', borderColor: '#D4AF37' },
+    tabTxt: { color: '#8E8E93', fontSize: 13, fontWeight: '700' },
+    tabTxtAct: { color: '#000' },
+    badge: { backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 10, minWidth: 20, paddingHorizontal: 6, height: 20, alignItems: 'center', justifyContent: 'center' },
+    badgeTxt: { color: '#D4AF37', fontSize: 11, fontWeight: '800' },
+    list: { paddingHorizontal: 24, paddingBottom: 100 },
+    card: { backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 24, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
+    cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 20 },
+    cardTitle: { color: '#fff', fontSize: 17, fontWeight: '700' },
+    cardSub: { color: '#8E8E93', fontSize: 13, marginTop: 4 },
+    storeIc: { width: 50, height: 50, borderRadius: 15, backgroundColor: 'rgba(212,175,55,0.1)', alignItems: 'center', justifyContent: 'center' },
+    statusBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10 },
+    statusTxt: { fontSize: 11, fontWeight: '800', textTransform: 'uppercase' },
+    actionRow: { flexDirection: 'row', gap: 12 },
+    editBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: 'rgba(212,175,55,0.05)', paddingVertical: 12, borderRadius: 15, borderWidth: 1, borderColor: 'rgba(212,175,55,0.2)' },
+    editBtnTxt: { color: '#D4AF37', fontSize: 14, fontWeight: '700' },
+    delBtn: { width: 50, height: 50, borderRadius: 15, backgroundColor: 'rgba(255,107,107,0.05)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,107,107,0.2)' },
+    fab: { position: 'absolute', right: 24, bottom: 40, width: 64, height: 64, borderRadius: 32, backgroundColor: '#D4AF37', alignItems: 'center', justifyContent: 'center', elevation: 8, shadowColor: '#D4AF37', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.3, shadowRadius: 20 },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', justifyContent: 'flex-end' },
+    modalContent: { backgroundColor: '#111', borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 24, maxHeight: '90%' },
+    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 30 },
+    modalTitle: { color: '#fff', fontSize: 24, fontWeight: '800' },
+    inputGrp: { marginBottom: 20 },
+    label: { color: '#D4AF37', fontSize: 14, fontWeight: '700', marginBottom: 10 },
+    input: { backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 18, paddingHorizontal: 20, height: 56, color: '#fff', fontSize: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
+    catChip: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.05)', marginRight: 10, borderWidth: 1, borderColor: 'transparent' },
+    catChipAct: { backgroundColor: '#D4AF37', borderColor: '#D4AF37' },
+    catChipTxt: { color: '#8E8E93', fontWeight: '700' },
+    catChipTxtAct: { color: '#000' },
+    imgPicker: { width: '100%', height: 180, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.04)', borderStyle: 'dashed', borderWidth: 2, borderColor: 'rgba(212,175,55,0.3)', alignItems: 'center', justifyContent: 'center', marginBottom: 20, overflow: 'hidden' },
+    pickedImg: { width: '100%', height: '100%', resizeMode: 'cover' },
+    imgPickerTxt: { color: '#555', marginTop: 10, fontWeight: '600' },
+    submitBtn: { backgroundColor: '#D4AF37', height: 60, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginTop: 20, marginBottom: 40 },
+    submitBtnTxt: { color: '#000', fontSize: 18, fontWeight: '800' },
+    empty: { alignItems: 'center', marginTop: 100 },
+    emptyTxt: { color: '#333', fontSize: 18, fontWeight: '700', marginTop: 15 },
 });
 
 export default StoreOwnerDashboardScreen;

@@ -10,10 +10,13 @@ import {
     Alert,
     ScrollView,
     ActivityIndicator,
+    Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
+
+import { useLanguage } from '../context/LanguageContext';
 
 const RegisterScreen = ({ navigation }) => {
     const [name, setName] = useState('');
@@ -25,6 +28,7 @@ const RegisterScreen = ({ navigation }) => {
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const { register } = useAuth();
+    const { t } = useLanguage();
 
     const handleRegister = async () => {
         if (!name.trim() || !email.trim() || !password.trim()) {
@@ -59,7 +63,7 @@ const RegisterScreen = ({ navigation }) => {
             <Ionicons
                 name={icon}
                 size={22}
-                color={role === value ? '#FF6B6B' : '#8E8E93'}
+                color={role === value ? '#D4AF37' : '#8E8E93'}
             />
             <Text
                 style={[styles.roleButtonText, role === value && styles.roleButtonTextActive]}
@@ -72,7 +76,7 @@ const RegisterScreen = ({ navigation }) => {
     return (
         <View style={styles.container}>
             <LinearGradient
-                colors={['#0f0c29', '#302b63', '#24243e']}
+                colors={['#1a150d', '#000000']}
                 style={styles.gradient}
             >
                 <ScrollView
@@ -91,9 +95,9 @@ const RegisterScreen = ({ navigation }) => {
                         </TouchableOpacity>
 
                         <View style={styles.headerContainer}>
-                            <Text style={styles.headerTitle}>Create Account</Text>
+                            <Text style={styles.headerTitle}>{t('create_acc')}</Text>
                             <Text style={styles.headerSubtitle}>
-                                Join us and discover amazing deals
+                                {t('luxury_shopping_sub')}
                             </Text>
                         </View>
 
@@ -107,22 +111,22 @@ const RegisterScreen = ({ navigation }) => {
                             </View>
 
                             <View style={styles.inputContainer}>
-                                <Ionicons name="person-outline" size={20} color="#8E8E93" style={styles.inputIcon} />
+                                <Ionicons name="person-outline" size={20} color="#D4AF37" style={styles.inputIcon} />
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="Full Name"
-                                    placeholderTextColor="#8E8E93"
+                                    placeholder={t('full_name')}
+                                    placeholderTextColor="#555"
                                     value={name}
                                     onChangeText={setName}
                                 />
                             </View>
 
                             <View style={styles.inputContainer}>
-                                <Ionicons name="mail-outline" size={20} color="#8E8E93" style={styles.inputIcon} />
+                                <Ionicons name="mail-outline" size={20} color="#D4AF37" style={styles.inputIcon} />
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="Email Address"
-                                    placeholderTextColor="#8E8E93"
+                                    placeholder={t('email_addr')}
+                                    placeholderTextColor="#555"
                                     value={email}
                                     onChangeText={setEmail}
                                     keyboardType="email-address"
@@ -131,11 +135,11 @@ const RegisterScreen = ({ navigation }) => {
                             </View>
 
                             <View style={styles.inputContainer}>
-                                <Ionicons name="call-outline" size={20} color="#8E8E93" style={styles.inputIcon} />
+                                <Ionicons name="call-outline" size={20} color="#D4AF37" style={styles.inputIcon} />
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="Mobile Number"
-                                    placeholderTextColor="#8E8E93"
+                                    placeholder={t('phone_num')}
+                                    placeholderTextColor="#555"
                                     value={mobileNumber}
                                     onChangeText={setMobileNumber}
                                     keyboardType="phone-pad"
@@ -143,11 +147,11 @@ const RegisterScreen = ({ navigation }) => {
                             </View>
 
                             <View style={styles.inputContainer}>
-                                <Ionicons name="lock-closed-outline" size={20} color="#8E8E93" style={styles.inputIcon} />
+                                <Ionicons name="lock-closed-outline" size={20} color="#D4AF37" style={styles.inputIcon} />
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="Password"
-                                    placeholderTextColor="#8E8E93"
+                                    placeholder={t('password')}
+                                    placeholderTextColor="#555"
                                     value={password}
                                     onChangeText={setPassword}
                                     secureTextEntry={!showPassword}
@@ -162,11 +166,11 @@ const RegisterScreen = ({ navigation }) => {
                             </View>
 
                             <View style={styles.inputContainer}>
-                                <Ionicons name="shield-checkmark-outline" size={20} color="#8E8E93" style={styles.inputIcon} />
+                                <Ionicons name="shield-checkmark-outline" size={20} color="#D4AF37" style={styles.inputIcon} />
                                 <TextInput
                                     style={styles.input}
                                     placeholder="Confirm Password"
-                                    placeholderTextColor="#8E8E93"
+                                    placeholderTextColor="#555"
                                     value={confirmPassword}
                                     onChangeText={setConfirmPassword}
                                     secureTextEntry={!showPassword}
@@ -179,15 +183,15 @@ const RegisterScreen = ({ navigation }) => {
                                 disabled={loading}
                             >
                                 <LinearGradient
-                                    colors={['#FF6B6B', '#FF8E53']}
+                                    colors={['#FFD700', '#D4AF37']}
                                     start={{ x: 0, y: 0 }}
                                     end={{ x: 1, y: 0 }}
                                     style={styles.registerGradient}
                                 >
                                     {loading ? (
-                                        <ActivityIndicator color="#fff" />
+                                        <ActivityIndicator color="#000" />
                                     ) : (
-                                        <Text style={styles.registerBtnText}>Create Account</Text>
+                                        <Text style={styles.registerBtnText}>{t('create_acc_btn')}</Text>
                                     )}
                                 </LinearGradient>
                             </TouchableOpacity>
@@ -197,8 +201,8 @@ const RegisterScreen = ({ navigation }) => {
                                 onPress={() => navigation.goBack()}
                             >
                                 <Text style={styles.loginLinkText}>
-                                    Already have an account?{' '}
-                                    <Text style={styles.loginLinkBold}>Sign In</Text>
+                                    {t('already_have_acc')}{' '}
+                                    <Text style={styles.loginLinkBold}>{t('login_here')}</Text>
                                 </Text>
                             </TouchableOpacity>
                         </View>

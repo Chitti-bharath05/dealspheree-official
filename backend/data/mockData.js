@@ -54,7 +54,7 @@ let STORES = [
         ownerId: 'u4',
         location: 'Online Only',
         approved: false,
-        category: 'Food',
+        category: 'Footwear',
     },
 ];
 
@@ -161,10 +161,11 @@ let CATEGORIES = [
     'All',
     'Fashion',
     'Electronics',
-    'Food',
     'Beauty',
     'Sports',
-    'Home',
+    'Home & Living',
+    'Footwear',
+    'Watches & Accessories',
 ];
 
 let ORDERS = [];
