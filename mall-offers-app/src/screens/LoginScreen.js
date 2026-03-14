@@ -37,21 +37,35 @@ const LoginScreen = ({ navigation }) => {
     const { login, socialLogin } = useAuth();
     const { t } = useLanguage();
 
+    const isExpoGo = Constants.appOwnership === 'expo';
+    const isStandalone = !isExpoGo && Platform.OS !== 'web';
+    
+    // Create the Redirect URI variable so we can log it correctly
+    const finalRedirectUri = makeRedirectUri({
+        scheme: 'com.credora.malloffersapp',
+        path: 'oauthredirect',
+        useProxy: Platform.OS !== 'web' // Only use proxy for Mobile
+    });
+
     const [request, response, promptAsync] = Google.useAuthRequest({
+        // For Standalone APK & Expo Go: webClientId is used by the proxy.
+        // Explicitly setting clientId to the web ID ensures it's used as the fallback.
+        clientId: '1014294657035-l76t57bls0gj12a1kcti54g4t52sll2e.apps.googleusercontent.com',
         androidClientId: "1014294657035-bpt2uqh58jbfgc8r7pn4kjorjum36b1a.apps.googleusercontent.com",
         webClientId: "1014294657035-l76t57bls0gj12a1kcti54g4t52sll2e.apps.googleusercontent.com",
-        redirectUri: makeRedirectUri({
-            useProxy: true,
-        }),
+        redirectUri: finalRedirectUri
     });
 
     // Logging to help debug production APK issues
     React.useEffect(() => {
-        const envInfo = `Env: ${isExpoGo ? 'Expo Go' : (isStandalone ? 'Standalone APK' : 'Web')} | Scheme: com.credora.malloffersapp | Redirect: ${redirectUri}`;
+        const envInfo = `Env: ${isExpoGo ? 'Expo Go' : (isStandalone ? 'Standalone APK' : 'Web')} | Redirect: ${finalRedirectUri}`;
         console.log('[DEBUG] Google Auth Config:', envInfo);
         
         if (response) {
-            console.log('[DEBUG] Response Received:', response.type, response.error || '');
+            console.log('[DEBUG] Response Received Type:', response.type);
+            if (response.type === 'error') {
+                console.error('[DEBUG] OAuth Error Object:', response.params);
+            }
         }
     }, [response]);
 
