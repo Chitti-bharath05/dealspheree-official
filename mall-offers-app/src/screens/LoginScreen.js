@@ -21,6 +21,7 @@ import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { makeRedirectUri } from 'expo-auth-session';
+import Constants from 'expo-constants';
 
 import { useLanguage } from '../context/LanguageContext';
 
