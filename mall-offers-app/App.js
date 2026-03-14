@@ -15,6 +15,7 @@ import { makeRedirectUri } from 'expo-auth-session';
 import { StatusBar } from 'expo-status-bar';
 import { View, StyleSheet, Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
+import * as Updates from 'expo-updates';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -31,6 +32,22 @@ Notifications.setNotificationHandler({
 const queryClient = new QueryClient();
 
 export default function App() {
+  useEffect(() => {
+    async function onFetchUpdateAsync() {
+      if (__DEV__) return; // Skip in development
+      try {
+        const update = await Updates.checkForUpdateAsync();
+        if (update.isAvailable) {
+          await Updates.fetchUpdateAsync();
+          await Updates.reloadAsync();
+        }
+      } catch (error) {
+        console.error('Error fetching update:', error);
+      }
+    }
+    onFetchUpdateAsync();
+  }, []);
+
   return (
     <SafeAreaProvider>
       <ErrorBoundary>
