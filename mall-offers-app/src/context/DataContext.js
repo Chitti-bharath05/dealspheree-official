@@ -82,8 +82,9 @@ export const DataProvider = ({ children }) => {
     };
 
     const getStoresByOwner = (ownerId) => {
+        if (!Array.isArray(stores)) return [];
         return stores.filter((s) => {
-            const sOwnerId = s.ownerId?._id || s.ownerId;
+            const sOwnerId = s?.ownerId?._id || s?.ownerId;
             return sOwnerId === ownerId;
         });
     };
@@ -140,10 +141,12 @@ export const DataProvider = ({ children }) => {
 
     const getActiveOffers = () => {
         const now = new Date();
+        if (!Array.isArray(offers) || !Array.isArray(stores)) return [];
         return offers.filter((o) => {
-            const storeId = o.storeId?._id || o.storeId;
-            const store = stores.find((s) => (s._id || s.id) === storeId);
-            return store && store.approved && new Date(o.expiryDate) >= now;
+            const storeId = o?.storeId?._id || o?.storeId;
+            const store = stores.find((s) => (s?._id || s?.id) === storeId);
+            const isExpired = o?.expiryDate ? new Date(o.expiryDate) < now : true;
+            return store && store.approved && !isExpired;
         });
     };
 

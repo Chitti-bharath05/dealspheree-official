@@ -72,7 +72,8 @@ export default function OffersScreen({ route, navigation }) {
 
     const renderOfferCard = ({ item }) => {
         const isFavorite = favorites.includes(item._id || item.id);
-        const daysLeft = Math.ceil((new Date(item.expiryDate) - new Date()) / (1000 * 60 * 60 * 24));
+        const expiryDate = item.expiryDate ? new Date(item.expiryDate) : new Date();
+        const daysLeft = Math.max(0, Math.ceil((expiryDate - new Date()) / (1000 * 60 * 60 * 24)));
 
         return (
             <TouchableOpacity 

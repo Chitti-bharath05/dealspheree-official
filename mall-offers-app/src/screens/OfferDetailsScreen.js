@@ -59,7 +59,7 @@ const OfferDetailsScreen = ({ route, navigation }) => {
         );
     }
 
-    const discountedPrice = Math.round(offer.originalPrice * (1 - offer.discount / 100));
+    const discountedPrice = Math.round((offer?.originalPrice || 0) * (1 - (offer?.discount || 0) / 100));
 
     const openMapsNavigation = async () => {
         const address = [store?.houseNo, store?.street, store?.area, store?.city, store?.pincode].filter(Boolean).join(', ');
@@ -67,8 +67,30 @@ const OfferDetailsScreen = ({ route, navigation }) => {
             Alert.alert('Address Not Available', 'This store has not provided a location.');
             return;
         }
-        const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`;
-        Linking.openURL(googleMapsUrl).catch(() => Alert.alert('Error', 'Could not open maps.'));
+
+        const encodedAddress = encodeURIComponent(address);
+        
+        let url = '';
+        if (Platform.OS === 'android') {
+            url = `google.navigation:q=${encodedAddress}`;
+        } else if (Platform.OS === 'ios') {
+            url = `maps://app?daddr=${encodedAddress}`;
+        } else {
+            url = `https://www.google.com/maps/dir/?api=1&destination=${encodedAddress}`;
+        }
+
+        try {
+            const supported = await Linking.canOpenURL(url);
+            if (supported) {
+                await Linking.openURL(url);
+            } else {
+                // Fallback to web link if native app isn't found
+                const webUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodedAddress}`;
+                await Linking.openURL(webUrl);
+            }
+        } catch (error) {
+            Alert.alert('Error', 'Could not open maps. Please try again later.');
+        }
     };
 
     const submitRating = async () => {
@@ -131,7 +153,7 @@ const OfferDetailsScreen = ({ route, navigation }) => {
                     <View style={[s.contentWrapper, isWeb && { width: contentWidth, alignSelf: 'center' }]}>
                         {/* Hero Section */}
                         <View style={s.heroWrapper}>
-                            <Image source={{ uri: offer.image }} style={s.heroImage} />
+                            <Image source={{ uri: offer?.image || 'https://via.placeholder.com/400' }} style={s.heroImage} />
                             <LinearGradient colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.8)']} style={s.heroOverlay} />
                             
                             <View style={s.badgeRow}>

@@ -4,6 +4,9 @@
     "slug": "mall-offers-app",
     "scheme": "com.credora.malloffersapp",
     "version": "1.0.0",
+    "cli": {
+      "appVersionSource": "remote"
+    },
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",

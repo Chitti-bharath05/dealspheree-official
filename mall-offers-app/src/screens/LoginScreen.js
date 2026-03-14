@@ -41,6 +41,7 @@ const LoginScreen = ({ navigation }) => {
     
     const redirectUri = makeRedirectUri({
         scheme: 'com.credora.malloffersapp',
+        path: 'oauthredirect',
         useProxy: isExpoGo // Proxy only for Expo Go
     });
 
@@ -239,7 +240,7 @@ const LoginScreen = ({ navigation }) => {
                                     style={[s.socialBtn, { backgroundColor: '#4285F4', elevation: 10, zIndex: 100 }]} 
                                     onPress={async () => {
                                         if (request) {
-                                            promptAsync().catch(err => {
+                                            promptAsync({ prompt: 'select_account' }).catch(err => {
                                                 console.error('Google Auth Error:', err);
                                                 Alert.alert('Login Error', 'Failed to start Google Sign-In');
                                             });
