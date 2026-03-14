@@ -110,7 +110,6 @@ export default function HomeScreen({ navigation }) {
                                     <Ionicons name="diamond" size={20} color="#D4AF37" />
                                     <Text style={s.logoTxt}>Sizzling Valoris</Text>
                                 </View>
-                                <NavigationControls />
                             </View>
                             <View style={s.headerActions}>
                                 <TouchableOpacity style={s.headerBtn} onPress={() => navigation.navigate('Favorites')}>
