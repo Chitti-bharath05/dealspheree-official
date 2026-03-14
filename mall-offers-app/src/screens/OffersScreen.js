@@ -2,11 +2,13 @@ import React, { useState, useMemo, useEffect } from 'react';
 import {
     View,
     Text,
+    TextInput,
     FlatList,
     TouchableOpacity,
     StyleSheet,
     Dimensions,
     Image,
+    Platform,
     ActivityIndicator,
     useWindowDimensions
 } from 'react-native';
