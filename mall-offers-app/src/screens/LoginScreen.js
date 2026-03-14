@@ -53,11 +53,10 @@ const LoginScreen = ({ navigation }) => {
     });
 
     const [request, response, promptAsync] = Google.useAuthRequest({
-        // For Expo Go & Web: We must provide the Web Client ID
-        // For Standalone: Google prefers the Native Client ID (androidClientId)
-        clientId: (isExpoGo || Platform.OS === 'web')
-            ? '1014294657035-l76t57bls0gj12a1kcti54g4t52sll2e.apps.googleusercontent.com' 
-            : undefined,
+        // For Standalone APK & Web & Expo Go: We use the Web Client ID as the main 'clientId'.
+        // This is the most reliable way to use custom scheme redirects (com.credora.malloffersapp://)
+        // in a browser-based OAuth flow.
+        clientId: '1014294657035-l76t57bls0gj12a1kcti54g4t52sll2e.apps.googleusercontent.com',
         androidClientId: '1014294657035-bpt2uqh58jbfgc8r7pn4kjorjum36b1a.apps.googleusercontent.com',
         iosClientId: '1014294657035-2util2uuslfmiqq5o4dmgkctf3biv67t.apps.googleusercontent.com',
         webClientId: '1014294657035-l76t57bls0gj12a1kcti54g4t52sll2e.apps.googleusercontent.com',
