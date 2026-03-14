@@ -2,6 +2,7 @@
   "expo": {
     "name": "mall-offers-app",
     "slug": "mall-offers-app",
+    "scheme": "com.credora.malloffersapp",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -12,7 +13,8 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.credora.malloffersapp"
     },
     "android": {
       "adaptiveIcon": {

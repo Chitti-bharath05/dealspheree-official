@@ -5,7 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // For local development:
 // - Web: localhost works fine
 // - Physical Device (Expo Go): Use your computer's local IP address
-const BASE_URL = 'https://sizzling-valoris-mall-offers.onrender.com/api'; // Your computer's LAN IP
+const BASE_URL = 'http://localhost:5000/api'; // Your computer's LAN IP
 
 const apiClient = axios.create({
     baseURL: BASE_URL,

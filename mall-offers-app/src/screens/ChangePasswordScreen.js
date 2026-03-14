@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import apiClient from '../services/apiClient';
 import { useLanguage } from '../context/LanguageContext';
+import NavigationControls from '../components/NavigationControls';
 
 export default function ChangePasswordScreen({ navigation }) {
     const { t } = useLanguage();
@@ -49,9 +50,12 @@ export default function ChangePasswordScreen({ navigation }) {
         <View style={s.container}>
             <LinearGradient colors={['#1a150d', '#000']} style={s.gradient}>
                 <View style={s.header}>
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
-                        <Ionicons name="arrow-back" size={24} color="#fff" />
-                    </TouchableOpacity>
+                    <View style={s.headerLeft}>
+                        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
+                            <Ionicons name="arrow-back" size={24} color="#fff" />
+                        </TouchableOpacity>
+                        <NavigationControls />
+                    </View>
                     <Text style={s.headerTitle}>{t('acc_security')}</Text>
                     <View style={{ width: 44 }} />
                 </View>
@@ -112,6 +116,7 @@ const s = StyleSheet.create({
     container: { flex: 1 },
     gradient: { flex: 1 },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingTop: 60, paddingBottom: 20 },
+    headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     backBtn: { width: 44, height: 44, borderRadius: 15, backgroundColor: 'rgba(255,255,255,0.05)', alignItems: 'center', justifyContent: 'center' },
     headerTitle: { color: '#fff', fontSize: 22, fontWeight: '800' },
     scroll: { paddingHorizontal: 24, paddingBottom: 50 },

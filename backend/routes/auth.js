@@ -74,13 +74,19 @@ router.post('/register', validateRequest('register'), async (req, res) => {
 
         const accessToken = jwt.sign({ temp: 'auth' }, process.env.JWT_SECRET || 'supersecret_placeholder_key'); // Placeholder for creation
 
-        const newUser = await User.create({
+        const newUserData = {
             name,
             email: email.toLowerCase(),
             password,
-            mobileNumber,
             role
-        });
+        };
+
+        // Handle empty mobileNumber to avoid E11000 duplicate key error on sparse index
+        if (mobileNumber && mobileNumber.trim() !== '') {
+            newUserData.mobileNumber = mobileNumber.trim();
+        }
+
+        const newUser = await User.create(newUserData);
 
         const finalAccessToken = generateAccessToken(newUser._id);
         const refreshToken = generateRefreshToken(newUser._id);
@@ -389,13 +395,69 @@ router.put('/change-password', protect, async (req, res) => {
     }
 });
 
-// Delete Account (Protected)
-router.delete('/account', protect, async (req, res) => {
+// Social Login Route
+router.post('/social-login', async (req, res) => {
     try {
-        await User.findByIdAndDelete(req.user._id);
-        res.json({ success: true, message: 'Account deleted' });
+        const { provider, email, name, socialId, profileImage, role } = req.body;
+        console.log(`Social Login attempt: ${provider} - ${email} as ${role || 'existing role'}`);
+
+        let user = await User.findOne({ email: email.toLowerCase() });
+
+        if (!user) {
+            // If it's a new user and no role is provided, tell the frontend to ask for one
+            if (!role) {
+                return res.json({ 
+                    success: false, 
+                    requiresRole: true, 
+                    message: 'Role required for new registration' 
+                });
+            }
+
+            // Create new user with selected role
+            user = await User.create({
+                name,
+                email: email.toLowerCase(),
+                role: role, 
+                socialProvider: provider,
+                socialId: socialId,
+                profileImage: profileImage,
+                password: crypto.randomBytes(16).toString('hex') 
+            });
+            console.log(`New user created via ${provider}: ${email} (${user.role})`);
+        } else {
+            // Update existing user if they don't have social linked
+            if (!user.socialId) {
+                user.socialProvider = provider;
+                user.socialId = socialId;
+                if (!user.profileImage) user.profileImage = profileImage;
+                // We keep the existing role for known users
+                await user.save();
+            }
+        }
+
+        const accessToken = generateAccessToken(user._id);
+        const refreshToken = generateRefreshToken(user._id);
+
+        user.refreshToken = refreshToken;
+        await user.save();
+
+        res.json({
+            success: true,
+            user: {
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                mobileNumber: user.mobileNumber,
+                city: user.city,
+                profileImage: user.profileImage,
+                token: accessToken,
+                refreshToken: refreshToken
+            }
+        });
     } catch (error) {
-        res.status(500).json({ success: false, message: 'Server error' });
+        console.error('Social Login Error:', error);
+        res.status(500).json({ success: false, message: 'Server error: ' + error.message });
     }
 });
 

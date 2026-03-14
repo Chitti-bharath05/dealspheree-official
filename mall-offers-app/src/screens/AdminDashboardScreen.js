@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import { useLanguage } from '../context/LanguageContext';
+import NavigationControls from '../components/NavigationControls';
 
 const AdminDashboardScreen = () => {
     const { user, users, deleteUser, logout, isLoading: authLoading } = useAuth();
@@ -78,9 +79,12 @@ const AdminDashboardScreen = () => {
             <LinearGradient colors={['#1a150d', '#000']} style={s.gradient}>
                 <View style={s.header}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <View>
-                            <Text style={s.headerTitle}>{t('admin_panel')}</Text>
-                            <Text style={s.headerSub}>{t('manage_platform')}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                            <View>
+                                <Text style={s.headerTitle}>{t('admin_panel')}</Text>
+                                <Text style={s.headerSub}>{t('manage_platform')}</Text>
+                            </View>
+                            <NavigationControls />
                         </View>
                         <TouchableOpacity
                             style={s.headerLogout}

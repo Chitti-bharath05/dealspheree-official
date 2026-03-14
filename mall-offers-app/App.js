@@ -8,9 +8,15 @@ import { LanguageProvider } from './src/context/LanguageContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import { NavigationHistoryProvider } from './src/context/NavigationHistoryContext';
 import ErrorBoundary from './ErrorBoundary';
+import * as Google from 'expo-auth-session/providers/google';
+import * as WebBrowser from 'expo-web-browser';
+import * as AppleAuthentication from 'expo-apple-authentication';
+import { makeRedirectUri } from 'expo-auth-session';
 import { StatusBar } from 'expo-status-bar';
 import { View, StyleSheet, Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
+
+WebBrowser.maybeCompleteAuthSession();
 
 // Configure foreground notification behavior
 Notifications.setNotificationHandler({

@@ -6,6 +6,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../context/AuthContext';
 
 import { useLanguage } from '../context/LanguageContext';
+import NavigationControls from '../components/NavigationControls';
 
 const ProfileScreen = ({ navigation }) => {
     const { user, logout, updateProfileImage } = useAuth();
@@ -50,7 +51,10 @@ const ProfileScreen = ({ navigation }) => {
         <View style={s.container}>
             <LinearGradient colors={['#1a150d', '#000']} style={s.gradient}>
                 <View style={s.header}>
-                    <Text style={s.headerTitle}>{t('profile')}</Text>
+                    <View style={s.headerLeft}>
+                        <Text style={s.headerTitle}>{t('profile')}</Text>
+                        <NavigationControls />
+                    </View>
                     <TouchableOpacity style={s.headerBtn} onPress={() => navigation.navigate('Settings')}>
                         <Ionicons name="settings-sharp" size={22} color="#fff" />
                     </TouchableOpacity>
@@ -122,6 +126,7 @@ const s = StyleSheet.create({
     container: { flex: 1 },
     gradient: { flex: 1 },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingTop: 60, paddingBottom: 15 },
+    headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
     headerTitle: { color: '#fff', fontSize: 24, fontWeight: '800' },
     headerBtn: { width: 44, height: 44, borderRadius: 15, backgroundColor: 'rgba(255,255,255,0.05)', alignItems: 'center', justifyContent: 'center' },
     scroll: { paddingBottom: 120 },

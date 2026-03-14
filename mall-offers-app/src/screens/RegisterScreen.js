@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 
 import { useLanguage } from '../context/LanguageContext';
+import NavigationControls from '../components/NavigationControls';
 
 const RegisterScreen = ({ navigation }) => {
     const [name, setName] = useState('');
@@ -87,12 +88,15 @@ const RegisterScreen = ({ navigation }) => {
                         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                     >
                         {/* Header */}
-                        <TouchableOpacity
-                            style={styles.backButton}
-                            onPress={() => navigation.goBack()}
-                        >
-                            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-                        </TouchableOpacity>
+                        <View style={styles.header}>
+                            <TouchableOpacity
+                                style={styles.backButton}
+                                onPress={() => navigation.goBack()}
+                            >
+                                <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+                            </TouchableOpacity>
+                            <NavigationControls />
+                        </View>
 
                         <View style={styles.headerContainer}>
                             <Text style={styles.headerTitle}>{t('create_acc')}</Text>
@@ -226,6 +230,12 @@ const styles = StyleSheet.create({
         paddingTop: 60,
         paddingBottom: 40,
     },
+    header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        marginBottom: 20
+    },
     backButton: {
         width: 40,
         height: 40,
@@ -233,7 +243,6 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(255, 255, 255, 0.1)',
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: 20,
     },
     headerContainer: {
         marginBottom: 30,

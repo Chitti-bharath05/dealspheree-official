@@ -12,7 +12,8 @@ backend/.env
 mall-offers-app/.expo/
 
 # Build folders
-dist/
+# dist/ (Enabled for deployment)
+# dist/
 web-build/
 
 # Logs

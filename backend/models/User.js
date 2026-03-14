@@ -4,7 +4,10 @@ const bcrypt = require('bcryptjs');
 const userSchema = new mongoose.Schema({
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
-    password: { type: String, required: true },
+    password: { type: String }, // Optional for social login users
+    socialProvider: { type: String }, // 'google', 'apple'
+    socialId: { type: String },
+    profileImage: { type: String },
     mobileNumber: { type: String, unique: true, sparse: true },
     role: { type: String, enum: ['customer', 'store_owner', 'admin'], default: 'customer' },
     refreshToken: { type: String },

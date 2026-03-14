@@ -2,6 +2,12 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import apiClient from '../services/apiClient';
 import { registerForPushNotifications, savePushTokenToBackend } from '../services/notificationService';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
+import * as AppleAuthentication from 'expo-apple-authentication'; // Assuming this will be added if needed, or using a generic flow
+import { Platform } from 'react-native';
+
+WebBrowser.maybeCompleteAuthSession();
 
 const AuthContext = createContext();
 
@@ -120,6 +126,34 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    const socialLogin = async (provider, socialData) => {
+        try {
+            const response = await apiClient.post('/auth/social-login', { 
+                provider, 
+                email: socialData.email,
+                name: socialData.name,
+                socialId: socialData.id,
+                profileImage: socialData.picture || socialData.avatar,
+                role: socialData.role
+            });
+            
+            if (response.success) {
+                setUser(response.user);
+                await AsyncStorage.setItem('userInfo', JSON.stringify(response.user));
+                setupPushNotifications();
+                return { success: true, user: response.user };
+            }
+            return { 
+                success: false, 
+                requiresRole: response.requiresRole, 
+                message: response.message || 'Social login failed' 
+            };
+        } catch (error) {
+            console.error('Social login error:', error);
+            return { success: false, message: error.message || 'An error occurred during social login' };
+        }
+    };
+
     const logout = async () => {
         try {
             const stored = await AsyncStorage.getItem('userInfo');
@@ -171,6 +205,7 @@ export const AuthProvider = ({ children }) => {
                 login,
                 register,
                 logout,
+                socialLogin,
                 fetchUsers,
                 fetchFavorites,
                 toggleFavorite,

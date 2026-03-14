@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import { useLanguage } from '../context/LanguageContext';
+import NavigationControls from '../components/NavigationControls';
 
 const { width } = Dimensions.get('window');
 
@@ -59,9 +60,12 @@ export default function FavoritesScreen({ navigation }) {
         <View style={s.container}>
             <LinearGradient colors={['#1a150d', '#000']} style={s.gradient}>
                 <View style={s.header}>
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
-                        <Ionicons name="arrow-back" size={24} color="#fff" />
-                    </TouchableOpacity>
+                    <View style={s.headerLeft}>
+                        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
+                            <Ionicons name="arrow-back" size={24} color="#fff" />
+                        </TouchableOpacity>
+                        <NavigationControls />
+                    </View>
                     <Text style={s.headerTitle}>{t('my_favorites')}</Text>
                     <TouchableOpacity>
                         <Text style={s.clearAll}>{t('clear_all')}</Text>
@@ -117,6 +121,7 @@ const s = StyleSheet.create({
     gradient: { flex: 1 },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingTop: 60, paddingBottom: 20 },
     backBtn: { width: 44, height: 44, borderRadius: 15, backgroundColor: 'rgba(255,255,255,0.05)', alignItems: 'center', justifyContent: 'center' },
+    headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     headerTitle: { color: '#fff', fontSize: 22, fontWeight: '800' },
     clearAll: { color: '#D4AF37', fontWeight: '700', fontSize: 14 },
     searchWrap: { paddingHorizontal: 24, marginBottom: 20 },
