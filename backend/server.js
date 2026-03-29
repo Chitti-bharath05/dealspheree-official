@@ -62,7 +62,7 @@ app.get('/api/categories', (req, res) => {
     res.json(CATEGORIES);
 });
 
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+const server = app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server is running on port ${PORT} (Bound to 0.0.0.0)`);
     initExpiryJob(); // Start daily cron tasks
 });
