@@ -2,9 +2,8 @@ import axios from 'axios';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// In Production, replace 'YOUR_BACKEND_URL' with your Render/Railway address:
-// Example: 'https://dealsphere-api.onrender.com/api'
-const PROD_API_URL = 'https://YOUR_BACKEND_URL/api'; 
+// Production API URL from Render:
+const PROD_API_URL = 'https://dealspheree-official.onrender.com/api'; 
 const DEV_API_URL = Platform.OS === 'web' ? 'http://localhost:5000/api' : 'http://192.168.1.xxx:5000/api';
 
 const BASE_URL = __DEV__ ? DEV_API_URL : PROD_API_URL;
@@ -14,7 +13,7 @@ const apiClient = axios.create({
     headers: {
         'Content-Type': 'application/json',
     },
-    timeout: 30000, // Increased to 30s for Render free-tier cold starts
+    timeout: 60000, // Increased to 60s for Render free-tier cold starts
 });
 
 apiClient.interceptors.request.use(
