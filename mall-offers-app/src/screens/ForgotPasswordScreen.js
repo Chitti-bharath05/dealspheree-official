@@ -44,10 +44,13 @@ const ForgotPasswordScreen = ({ navigation }) => {
                 setTimeout(() => {
                     navigation.navigate('ResetPassword', { email: email.trim().toLowerCase() });
                 }, 1500);
+            } else {
+                showError(response.message || 'Failed to send OTP. User might not exist.');
             }
         } catch (error) {
             setLoading(false);
-            showError(error?.message || 'Failed to send OTP. Please try again.');
+            const errorMessage = error?.response?.data?.message || error?.message || 'Failed to send OTP. Please try again.';
+            showError(errorMessage);
         }
     };
 

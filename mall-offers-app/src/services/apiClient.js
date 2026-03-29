@@ -6,7 +6,29 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const PROD_API_URL = 'https://dealspheree-official.onrender.com/api'; 
 const DEV_API_URL = Platform.OS === 'web' ? 'http://localhost:5000/api' : 'http://192.168.1.xxx:5000/api';
 
-const BASE_URL = __DEV__ ? DEV_API_URL : PROD_API_URL;
+const getBaseUrl = () => {
+    // If we're on a browser, detect the hostname
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        const hostname = window.location.hostname;
+        console.log(`[apiClient] Current Hostname: ${hostname}`);
+        
+        // If the hostname is NOT localhost/127.0.0.1, it's a public domain deployment
+        if (hostname !== 'localhost' && hostname !== '127.0.0.1' && hostname !== '') {
+            console.log(`[apiClient] Public domain detected, using PROD_API_URL: ${PROD_API_URL}`);
+            return PROD_API_URL;
+        }
+        
+        // Even if __DEV__ is true, if we are on localhost but want to test production,
+        // we can check if a query param exists (optional, let's keep it simple for now)
+    }
+    
+    // Fallback to __DEV__ logic
+    const url = __DEV__ ? DEV_API_URL : PROD_API_URL;
+    console.log(`[apiClient] Using URL based on __DEV__ (${__DEV__}): ${url}`);
+    return url;
+};
+
+const BASE_URL = getBaseUrl();
 
 const apiClient = axios.create({
     baseURL: BASE_URL,

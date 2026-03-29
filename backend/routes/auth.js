@@ -240,20 +240,22 @@ router.post('/forgotpassword', async (req, res) => {
         const message = `You are receiving this email because you (or someone else) has requested the reset of a password. Please use the following 6-digit code to reset your password:\n\n${otp}\n\nIf you did not request this, please ignore this email.`;
 
         try {
+            console.log(`Attempting to send OTP email to: ${user.email}`);
             await sendEmail({
                 email: user.email,
                 subject: 'Password Reset OTP',
                 message,
             });
+            console.log(`OTP email sent successfully to: ${user.email}`);
 
             res.status(200).json({ success: true, message: 'Email sent' });
         } catch (err) {
-            console.error(err);
+            console.error(`Failed to send OTP email to ${user.email}:`, err);
             user.resetPasswordOTP = undefined;
             user.resetPasswordOTPExpire = undefined;
             await user.save();
 
-            return res.status(500).json({ success: false, message: 'Email could not be sent' });
+            return res.status(500).json({ success: false, message: 'Email could not be sent: ' + err.message });
         }
     } catch (error) {
         res.status(500).json({ success: false, message: 'Server error' });
