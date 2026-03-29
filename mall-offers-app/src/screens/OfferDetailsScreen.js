@@ -386,7 +386,9 @@ const OfferDetailsScreen = ({ route, navigation }) => {
                                     <View style={s.goldBar} />
                                     <Text style={s.sectionTitle}>{t('about_offer')}</Text>
                                 </View>
-                                <Text style={s.descTxt}>{offer.description || 'Experience unmatched luxury with this exclusive deal.'}</Text>
+                                <View style={s.descCard}>
+                                    <Text style={s.descTxt}>{offer.description || 'Experience unmatched luxury with this exclusive deal.'}</Text>
+                                </View>
                             </View>
 
                             {/* Rating Section */}
@@ -514,24 +516,25 @@ const s = StyleSheet.create({
     discountTitle: { color: '#fff', fontSize: 32, fontWeight: '950', lineHeight: 40 },
     storeSub: { color: '#F5C518', fontSize: 18, fontWeight: '700', marginTop: 10 },
     statsRow: { flexDirection: 'row', gap: 15, paddingHorizontal: 24, paddingHorizontal: Platform.OS === 'web' ? 0 : 24, marginTop: Platform.OS === 'web' ? 0 : 24 },
-    statCard: { flex: 1, minHeight: 90, backgroundColor: '#121212', borderRadius: 12, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', paddingVertical: 10 },
-    statLabel: { color: '#F5C518', fontSize: 11, fontWeight: '850', marginBottom: 8, letterSpacing: 1 },
-    statValue: { color: '#fff', fontSize: 24, fontWeight: '950' },
+    statCard: { flex: 1, minHeight: 100, backgroundColor: '#1A1A1A', borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', paddingVertical: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 5 },
+    statLabel: { color: '#F5C518', fontSize: 12, fontWeight: '850', marginBottom: 6, letterSpacing: 1.2, textTransform: 'uppercase' },
+    statValue: { color: '#fff', fontSize: 26, fontWeight: '950' },
     miniRate: { flexDirection: 'row', alignItems: 'center' },
     content: { paddingHorizontal: Platform.OS === 'web' ? 0 : 24, marginTop: 32 },
     sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
     goldBar: { width: 4, height: 26, backgroundColor: '#F5C518', borderRadius: 2 },
-    sectionTitle: { color: '#fff', fontSize: 22, fontWeight: '900' },
-    descTxt: { color: '#A0A0B0', fontSize: 16, lineHeight: 26 },
-    ratingCard: { backgroundColor: '#121212', borderRadius: 12, padding: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', alignItems: 'center' },
-    ratingHint: { color: '#fff', fontSize: 15, fontWeight: '600', marginBottom: 20, textAlign: 'center' },
+    sectionTitle: { color: '#fff', fontSize: 24, fontWeight: '900', letterSpacing: 0.5 },
+    descCard: { backgroundColor: '#1A1A1A', borderRadius: 16, padding: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 6, elevation: 3 },
+    descTxt: { color: '#FFFFFF', fontSize: 16, lineHeight: 26, fontWeight: '500' },
+    ratingCard: { backgroundColor: '#1A1A1A', borderRadius: 16, padding: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 6, elevation: 3 },
+    ratingHint: { color: '#fff', fontSize: 16, fontWeight: '700', marginBottom: 20, textAlign: 'center' },
     starsRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
     ratingInput: { width: '100%', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 8, padding: 16, color: '#fff', fontSize: 15, minHeight: 80, textAlignVertical: 'top', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
     rateBtn: { width: '100%', backgroundColor: '#F5C518', borderRadius: 8, paddingVertical: 14, alignItems: 'center', marginTop: 20 },
     rateBtnTxt: { color: '#000', fontWeight: '900', fontSize: 16 },
-    statusCards: { paddingHorizontal: Platform.OS === 'web' ? 0 : 24, marginTop: 32, gap: 12 },
-    statusCard: { flexDirection: 'row', alignItems: 'center', gap: 18, backgroundColor: '#121212', padding: 20, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
-    statusIcon: { width: 52, height: 52, borderRadius: 8, backgroundColor: 'rgba(245,197,24,0.1)', alignItems: 'center', justifyContent: 'center' },
+    statusCards: { paddingHorizontal: Platform.OS === 'web' ? 0 : 24, marginTop: 32, gap: 16 },
+    statusCard: { flexDirection: 'row', alignItems: 'center', gap: 18, backgroundColor: '#1A1A1A', padding: 22, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 6, elevation: 3 },
+    statusIcon: { width: 56, height: 56, borderRadius: 12, backgroundColor: 'rgba(245,197,24,0.1)', alignItems: 'center', justifyContent: 'center' },
     statusTitle: { color: '#fff', fontSize: 17, fontWeight: '800' },
     statusSub: { color: '#8E8E93', fontSize: 14, marginTop: 4 },
     bottomRow: { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', gap: 15, paddingHorizontal: 24, paddingBottom: 40, paddingTop: 20, backgroundColor: 'rgba(0,0,0,0.95)', maxWidth: 1200, alignSelf: 'center', width: '100%', borderTopWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },

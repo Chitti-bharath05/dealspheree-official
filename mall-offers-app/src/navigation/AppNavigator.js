@@ -119,8 +119,81 @@ const AppNavigator = () => {
         }
     };
 
+    const linking = {
+        prefixes: ['https://dealspheree.in', 'dealspheree://'],
+        config: {
+            screens: {
+                Auth: {
+                    screens: {
+                        Login: 'login',
+                        Register: 'register',
+                        ForgotPassword: 'forgot-password',
+                        ResetPassword: 'reset-password',
+                    },
+                },
+                CustomerStack: {
+                    path: '',
+                    screens: {
+                        Home: '',
+                        Map: 'map',
+                        OfferDetails: 'offer/:id',
+                        Favorites: 'favorites',
+                        Deals: 'deals',
+                        Profile: {
+                            path: 'profile',
+                            screens: {
+                                ProfileMain: '',
+                                Settings: 'settings',
+                                ProfileInfo: 'info',
+                                ChangePassword: 'change-password',
+                                Legal: 'legal',
+                                HelpSupport: 'support',
+                            }
+                        }
+                    },
+                },
+                StoreOwnerStack: {
+                    path: 'store',
+                    screens: {
+                        Dashboard: '',
+                        Map: 'map',
+                        Profile: {
+                            path: 'profile',
+                            screens: {
+                                ProfileMain: '',
+                                Settings: 'settings',
+                                ProfileInfo: 'info',
+                                ChangePassword: 'change-password',
+                                Legal: 'legal',
+                                HelpSupport: 'support',
+                            }
+                        }
+                    },
+                },
+                AdminStack: {
+                    path: 'admin',
+                    screens: {
+                        Dashboard: '',
+                        Map: 'map',
+                        Profile: {
+                            path: 'profile',
+                            screens: {
+                                ProfileMain: '',
+                                Settings: 'settings',
+                                ProfileInfo: 'info',
+                                ChangePassword: 'change-password',
+                                Legal: 'legal',
+                                HelpSupport: 'support',
+                            }
+                        }
+                    },
+                },
+            },
+        },
+    };
+
     return (
-        <NavigationContainer>
+        <NavigationContainer linking={linking}>
             <Stack.Navigator screenOptions={authScreenOptions} key={user ? 'app-root' : 'auth-root'}>
                 {getMainScreens()}
             </Stack.Navigator>

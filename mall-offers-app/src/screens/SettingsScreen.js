@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Switch, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Switch, Alert, Platform, Modal, TextInput, Pressable, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as LocalAuthentication from 'expo-local-authentication';
@@ -31,7 +31,10 @@ export default function SettingsScreen({ navigation }) {
     const { t, currentLanguage, changeLanguage } = useLanguage();
     const [notifications, setNotifications] = useState(true);
     const [biometrics, setBiometrics] = useState(false);
-    const [isVerifyingBio, setIsVerifyingBio] = useState(false);
+    const [showLangModal, setShowLangModal] = useState(false);
+    const [showPassModal, setShowPassModal] = useState(false);
+    const [password, setPassword] = useState('');
+    const [isVerifyingPass, setIsVerifyingPass] = useState(false);
 
     useEffect(() => {
         loadSettings();
@@ -68,7 +71,7 @@ export default function SettingsScreen({ navigation }) {
 
     const handleEnableBiometrics = async () => {
         if (Platform.OS === 'web') {
-            Alert.alert('Not Supported', 'Biometric login is currently only available on mobile devices.');
+            Alert.alert(t('not_supported') || 'Not Supported', 'Biometric login is currently only available on mobile devices.');
             return;
         }
 
@@ -77,57 +80,44 @@ export default function SettingsScreen({ navigation }) {
             const isEnrolled = await LocalAuthentication.isEnrolledAsync();
 
             if (!hasHardware || !isEnrolled) {
-                Alert.alert('Not Available', 'Your device does not support biometrics or no fingerprints/face are enrolled.');
+                Alert.alert(t('not_available') || 'Not Available', 'Your device does not support biometrics or no fingerprints/face are enrolled.');
                 return;
             }
 
             const result = await LocalAuthentication.authenticateAsync({
-                promptMessage: 'Verify your identity to enable biometric login',
-                fallbackLabel: 'Use Passcode',
+                promptMessage: t('bio_verify_msg') || 'Verify your identity to enable biometric login',
+                fallbackLabel: t('use_passcode') || 'Use Passcode',
             });
 
             if (result.success) {
-                // Now we need the password to store it securely.
-                // Since we don't have it in state, we'll ask for it.
-                if (Platform.OS === 'web') return; // redundant but safe
-                
-                Alert.prompt(
-                    "Secure Setup",
-                    "Please enter your current account password to enable biometric login on this device.",
-                    [
-                        { text: "Cancel", style: "cancel" },
-                        { 
-                            text: "Verify & Enable", 
-                            onPress: async (password) => {
-                                if (!password) return;
-                                // We could verify with backend, but for now we'll trust the user and store it.
-                                // If the password is wrong, the biometric login will just fail later.
-                                await saveSecureCredentials(user.email, password);
-                                setBiometrics(true);
-                                await AsyncStorage.setItem('settings_biometrics', 'true');
-                                Alert.alert("Success", "Biometric login is now active!");
-                            } 
-                        }
-                    ],
-                    "secure-text"
-                );
+                setShowPassModal(true);
             }
         } catch (e) {
-            Alert.alert('Error', 'Failed to initialize biometric hardware.');
+            Alert.alert(t('error') || 'Error', 'Failed to initialize biometric hardware.');
+        }
+    };
+
+    const handleConfirmPassword = async () => {
+        if (!password) return;
+        setIsVerifyingPass(true);
+        try {
+            // In a real app, you'd verify this password with the backend first
+            // For now, we follow the existing pattern of saving it.
+            await saveSecureCredentials(user.email, password);
+            setBiometrics(true);
+            await AsyncStorage.setItem('settings_biometrics', 'true');
+            setShowPassModal(false);
+            setPassword('');
+            Alert.alert(t('success') || "Success", t('bio_active_msg') || "Biometric login is now active!");
+        } catch (e) {
+            Alert.alert(t('error') || 'Error', 'Failed to save credentials.');
+        } finally {
+            setIsVerifyingPass(false);
         }
     };
 
     const handleLanguageChange = () => {
-        Alert.alert(
-            t('language'),
-            'Select your preferred language / अपनी पसंदीदा भाषा चुनें / మీ ప్రాధాన్య భాషను ఎంచుకోండి',
-            [
-                { text: 'English', onPress: () => changeLanguage('en') },
-                { text: 'हिन्दी (Hindi)', onPress: () => changeLanguage('hi') },
-                { text: 'తెలుగు (Telugu)', onPress: () => changeLanguage('te') },
-                { text: t('cancel'), style: 'cancel' }
-            ]
-        );
+        setShowLangModal(true);
     };
 
     const handleDeleteAccount = () => {
@@ -258,6 +248,97 @@ export default function SettingsScreen({ navigation }) {
                         <Text style={s.dangerBtnTxt}>{t('delete_acc')}</Text>
                     </TouchableOpacity>
                 </ScrollView>
+
+                {/* Language Selection Modal */}
+                <Modal
+                    visible={showLangModal}
+                    transparent={true}
+                    animationType="fade"
+                    onRequestClose={() => setShowLangModal(false)}
+                >
+                    <Pressable style={s.modalOverlay} onPress={() => setShowLangModal(false)}>
+                        <View style={s.modalContent}>
+                            <Text style={s.modalTitle}>{t('language')}</Text>
+                            <Text style={s.modalSub}>Select your preferred language / अपनी पसंदीदा भाषा चुनें / మీ ప్రాధాన్య భాషను ఎంచుకోండి</Text>
+                            
+                            <TouchableOpacity 
+                                style={[s.langOption, currentLanguage === 'en' && s.langOptionActive]} 
+                                onPress={() => { changeLanguage('en'); setShowLangModal(false); }}
+                            >
+                                <Text style={[s.langText, currentLanguage === 'en' && s.langTextActive]}>English</Text>
+                                {currentLanguage === 'en' && <Ionicons name="checkmark-circle" size={20} color="#D4AF37" />}
+                            </TouchableOpacity>
+
+                            <TouchableOpacity 
+                                style={[s.langOption, currentLanguage === 'hi' && s.langOptionActive]} 
+                                onPress={() => { changeLanguage('hi'); setShowLangModal(false); }}
+                            >
+                                <Text style={[s.langText, currentLanguage === 'hi' && s.langTextActive]}>हिन्दी (Hindi)</Text>
+                                {currentLanguage === 'hi' && <Ionicons name="checkmark-circle" size={20} color="#D4AF37" />}
+                            </TouchableOpacity>
+
+                            <TouchableOpacity 
+                                style={[s.langOption, currentLanguage === 'te' && s.langOptionActive]} 
+                                onPress={() => { changeLanguage('te'); setShowLangModal(false); }}
+                            >
+                                <Text style={[s.langText, currentLanguage === 'te' && s.langTextActive]}>తెలుగు (Telugu)</Text>
+                                {currentLanguage === 'te' && <Ionicons name="checkmark-circle" size={20} color="#D4AF37" />}
+                            </TouchableOpacity>
+
+                            <TouchableOpacity style={s.modalCancel} onPress={() => setShowLangModal(false)}>
+                                <Text style={s.modalCancelTxt}>{t('cancel')}</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </Pressable>
+                </Modal>
+
+                {/* Password Prompt Modal for Biometrics */}
+                <Modal
+                    visible={showPassModal}
+                    transparent={true}
+                    animationType="slide"
+                >
+                    <View style={s.modalOverlay}>
+                        <View style={s.modalContent}>
+                            <View style={s.modalHeader}>
+                                <Ionicons name="shield-checkmark" size={32} color="#D4AF37" />
+                                <Text style={s.modalTitle}>{t('secure_setup') || 'Secure Setup'}</Text>
+                            </View>
+                            <Text style={s.modalSub}>{t('bio_pass_msg') || 'Please enter your current account password to enable biometric login on this device.'}</Text>
+                            
+                            <TextInput
+                                style={s.input}
+                                placeholder={t('password')}
+                                placeholderTextColor="#666"
+                                secureTextEntry
+                                value={password}
+                                onChangeText={setPassword}
+                                autoFocus
+                            />
+
+                            <View style={s.modalBtns}>
+                                <TouchableOpacity 
+                                    style={[s.modalBtn, s.modalBtnSecondary]} 
+                                    onPress={() => { setShowPassModal(false); setPassword(''); }}
+                                >
+                                    <Text style={s.modalBtnTxtSecondary}>{t('cancel')}</Text>
+                                </TouchableOpacity>
+                                
+                                <TouchableOpacity 
+                                    style={[s.modalBtn, s.modalBtnPrimary, !password && { opacity: 0.5 }]} 
+                                    onPress={handleConfirmPassword}
+                                    disabled={!password || isVerifyingPass}
+                                >
+                                    {isVerifyingPass ? (
+                                        <ActivityIndicator color="#000" size="small" />
+                                    ) : (
+                                        <Text style={s.modalBtnTxtPrimary}>{t('verify_enable') || 'Verify & Enable'}</Text>
+                                    )}
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </View>
+                </Modal>
             </LinearGradient>
         </View>
     );
@@ -281,4 +362,22 @@ const s = StyleSheet.create({
     valTxt: { color: '#8E8E93', fontSize: 14, fontWeight: '600' },
     dangerBtn: { marginTop: 40, alignItems: 'center', paddingVertical: 20 },
     dangerBtnTxt: { color: '#FF6B6B', fontSize: 15, fontWeight: '800' },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+    modalContent: { backgroundColor: '#1C1C1E', borderRadius: 30, padding: 30, width: '100%', maxWidth: 400, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+    modalHeader: { alignItems: 'center', marginBottom: 20 },
+    modalTitle: { color: '#fff', fontSize: 22, fontWeight: '800', textAlign: 'center', marginBottom: 10 },
+    modalSub: { color: '#8E8E93', fontSize: 14, textAlign: 'center', marginBottom: 25, lineHeight: 20 },
+    langOption: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 18, paddingHorizontal: 20, borderRadius: 15, backgroundColor: 'rgba(255,255,255,0.03)', marginBottom: 10 },
+    langOptionActive: { backgroundColor: 'rgba(212,175,55,0.1)', borderWidth: 1, borderColor: 'rgba(212,175,55,0.3)' },
+    langText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+    langTextActive: { color: '#D4AF37' },
+    modalCancel: { marginTop: 15, paddingVertical: 15, alignItems: 'center' },
+    modalCancelTxt: { color: '#8E8E93', fontSize: 16, fontWeight: '600' },
+    input: { backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 15, padding: 18, color: '#fff', fontSize: 16, marginBottom: 25, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+    modalBtns: { flexDirection: 'row', gap: 12 },
+    modalBtn: { flex: 1, height: 55, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+    modalBtnPrimary: { backgroundColor: '#D4AF37' },
+    modalBtnSecondary: { backgroundColor: 'rgba(255,255,255,0.05)' },
+    modalBtnTxtPrimary: { color: '#000', fontSize: 16, fontWeight: '700' },
+    modalBtnTxtSecondary: { color: '#fff', fontSize: 16, fontWeight: '700' },
 });

@@ -127,7 +127,17 @@ export const appTranslations = {
         "total_views": "Total Views",
         "store_likes": "Store Likes",
         "store_favorites_label": "STORE FAVORITES",
-        "total_likes": "TOTAL LIKES"
+        "total_likes": "TOTAL LIKES",
+        "secure_setup": "Secure Setup",
+        "bio_pass_msg": "Please enter your current account password to enable biometric login on this device.",
+        "verify_enable": "Verify & Enable",
+        "not_supported": "Not Supported",
+        "not_available": "Not Available",
+        "bio_verify_msg": "Verify your identity to enable biometric login",
+        "use_passcode": "Use Passcode",
+        "error": "Error",
+        "success": "Success",
+        "bio_active_msg": "Biometric login is now active!"
     },
     "hi": {
         "home": "मुख्य",
@@ -257,7 +267,17 @@ export const appTranslations = {
         "total_views": "कुल व्यूज",
         "store_likes": "स्टोर लाइक्स",
         "store_favorites_label": "स्टोर पसंदीदा",
-        "total_likes": "कुल लाइक्स"
+        "total_likes": "कुल लाइक्स",
+        "secure_setup": "सुरक्षित सेटअप",
+        "bio_pass_msg": "इस डिवाइस पर बायोमेट्रिक लॉगिन सक्षम करने के लिए कृपया अपना वर्तमान खाता पासवर्ड दर्ज करें।",
+        "verify_enable": "सत्यापित करें और सक्षम करें",
+        "not_supported": "समर्थित नहीं है",
+        "not_available": "उपलब्ध नहीं है",
+        "bio_verify_msg": "बायोमेट्रिक लॉगिन सक्षम करने के लिए अपनी पहचान सत्यापित करें",
+        "use_passcode": "पासकोड का उपयोग करें",
+        "error": "त्रुटि",
+        "success": "सफलता",
+        "bio_active_msg": "बायोमेट्रिक लॉगिन अब सक्रिय है!"
     },
     "te": {
         "home": "హోమ్",
@@ -387,6 +407,16 @@ export const appTranslations = {
         "total_views": "మొత్తం వీక్షణలు",
         "store_likes": "స్టోర్ లైక్స్",
         "store_favorites_label": "స్టోర్ ఇష్టమైనవి",
-        "total_likes": "మొత్తం లైక్స్"
+        "total_likes": "మొత్తం లైక్స్",
+        "secure_setup": "సురక్షిత సెటప్",
+        "bio_pass_msg": "ఈ పరికరంలో బయోమెట్రిక్ లాగిన్‌ను ప్రారంభించడానికి దయచేసి మీ ప్రస్తుత ఖాతా పాస్‌వర్డ్‌ను నమోదు చేయండి.",
+        "verify_enable": "ధృవీకరించండి & ప్రారంభించండి",
+        "not_supported": "మద్దతు లేదు",
+        "not_available": "అందుబాటులో లేదు",
+        "bio_verify_msg": "బయోమెట్రిక్ లాగిన్‌ను ప్రారంభించడానికి మీ గుర్తింపును ధృవీకరించండి",
+        "use_passcode": "పాస్‌కోడ్‌ను ఉపయోగించండి",
+        "error": "లోపం",
+        "success": "విజయం",
+        "bio_active_msg": "బయోమెట్రిక్ లాగిన్ ఇప్పుడు సక్రియంగా ఉంది!"
     }
 };
