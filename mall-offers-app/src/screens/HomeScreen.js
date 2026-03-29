@@ -47,7 +47,7 @@ const { width } = Dimensions.get('window');
 
 export default function HomeScreen({ navigation }) {
     const { user } = useAuth();
-    const { offers, categories, isLoading, getActiveOffers } = useData();
+    const { offers, categories, isLoading, getActiveOffers, userLocation, locationError, refreshLocation } = useData();
     const { t } = useLanguage();
     const [selectedCategory, setSelectedCategory] = useState('All');
     const [searchQuery, setSearchQuery] = useState('');
@@ -228,16 +228,29 @@ export default function HomeScreen({ navigation }) {
                                     </View>
                                 </View>
                             </TouchableOpacity>
-                            ))
-                        ) : filteredOffers.length > 0 ? null : (
-                            <View style={[s.emptyState, { width: '100%' }]}>
-                                <Ionicons name="pricetags-outline" size={48} color="#333" />
-                                <Text style={s.emptyTxt}>Check back later for more deals!</Text>
-                            </View>
-                        )}
+                            )
+                        ) : null}
                     </View>
                 </View>
             </ScrollView>
+
+            {/* Strict Location Access Overlay (if location is missing) */}
+            {!userLocation && !isLoading && (
+                <View style={s.locationOverlay}>
+                    <View style={s.locationCard}>
+                        <Ionicons name="location" size={60} color="#F5C518" />
+                        <Text style={s.locationTitle}>Location Access Required</Text>
+                        <Text style={s.locationSub}>
+                            To maintain premium local exclusivity, Dealspheree only displays deals within a 50km radius. 
+                            {locationError ? `\n\nError: ${locationError}` : ""}
+                        </Text>
+                        <TouchableOpacity style={s.locationBtn} onPress={refreshLocation}>
+                            <Text style={s.locationBtnTxt}>Enable Location Access</Text>
+                        </TouchableOpacity>
+                        <Text style={s.vpnNote}>Note: Some VPNs may block location services. Please check your settings.</Text>
+                    </View>
+                </View>
+            )}
         </View>
     );
 }
@@ -312,5 +325,62 @@ const s = StyleSheet.create({
         marginTop: 15,
         textAlign: 'center'
     },
+    locationOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: '#000',
+        zIndex: 1000,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 40
+    },
+    locationCard: {
+        width: '100%',
+        maxWidth: 400,
+        backgroundColor: '#121212',
+        borderRadius: 24,
+        padding: 40,
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(245,197,24,0.2)',
+        shadowColor: '#F5C518',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.1,
+        shadowRadius: 20,
+        elevation: 10
+    },
+    locationTitle: {
+        color: '#fff',
+        fontSize: 24,
+        fontWeight: '900',
+        marginTop: 20,
+        textAlign: 'center'
+    },
+    locationSub: {
+        color: '#8E8E93',
+        fontSize: 16,
+        lineHeight: 24,
+        textAlign: 'center',
+        marginTop: 15
+    },
+    locationBtn: {
+        backgroundColor: '#F5C518',
+        paddingHorizontal: 30,
+        paddingVertical: 18,
+        borderRadius: 12,
+        marginTop: 30,
+        width: '100%',
+        alignItems: 'center'
+    },
+    locationBtnTxt: {
+        color: '#000',
+        fontSize: 16,
+        fontWeight: '900'
+    },
+    vpnNote: {
+        color: '#555',
+        fontSize: 12,
+        marginTop: 20,
+        textAlign: 'center'
+    }
 });
 

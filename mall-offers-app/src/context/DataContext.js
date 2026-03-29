@@ -9,6 +9,44 @@ export const useData = () => useContext(DataContext);
 
 export const DataProvider = ({ children }) => {
     const { user } = useAuth();
+    const [userLocation, setUserLocation] = useState(null);
+    const [locationError, setLocationError] = useState(null);
+
+    // --- Helper: Distance Calculation (Haversine Formula) ---
+    const calculateDistance = (lat1, lon1, lat2, lon2) => {
+        if (!lat1 || !lon1 || !lat2 || !lon2) return 999999;
+        const R = 6371; // km
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                  Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+    };
+
+    const fetchUserLocation = () => {
+        if (typeof window !== 'undefined' && 'geolocation' in navigator) {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+                    setLocationError(null);
+                },
+                (err) => {
+                    console.warn('Geolocation failed:', err);
+                    setLocationError(err.message);
+                },
+                { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+            );
+        } else {
+            setLocationError('Geolocation not supported');
+        }
+    };
+
+    useEffect(() => {
+        fetchUserLocation();
+    }, []);
+
     // --- Data Fetching with React Query ---
 
     const {
@@ -100,7 +138,13 @@ export const DataProvider = ({ children }) => {
     };
 
     const getApprovedStores = () => {
-        return stores.filter((s) => s.approved);
+        if (!userLocation) return []; // User's strict rule: hide if location unknown
+        return stores.filter((s) => {
+            if (!s.approved) return false;
+            if (!s.lat || !s.lng) return false; // Hide if store location unknown
+            const dist = calculateDistance(userLocation.lat, userLocation.lng, s.lat, s.lng);
+            return dist <= 50; 
+        });
     };
 
     const getPendingStores = () => {
@@ -174,11 +218,20 @@ export const DataProvider = ({ children }) => {
     const getActiveOffers = () => {
         const now = new Date();
         if (!Array.isArray(offers) || !Array.isArray(stores)) return [];
+        if (!userLocation) return []; // User's strict rule: hide if location unknown
+
         return offers.filter((o) => {
             const storeId = o?.storeId?._id || o?.storeId;
             const store = stores.find((s) => (s?._id || s?.id) === storeId);
+            if (!store || !store.approved) return false;
+            
+            // Proximity check: store must be within 50km
+            if (!store.lat || !store.lng) return false;
+            const dist = calculateDistance(userLocation.lat, userLocation.lng, store.lat, store.lng);
+            if (dist > 50) return false;
+
             const isExpired = o?.expiryDate ? new Date(o.expiryDate) < now : true;
-            return store && store.approved && !isExpired;
+            return !isExpired;
         });
     };
 
@@ -217,7 +270,10 @@ export const DataProvider = ({ children }) => {
                    return res.stats;
                 },
                 refetchStores,
-                refetchOffers
+                refetchOffers,
+                userLocation,
+                locationError,
+                refreshLocation: fetchUserLocation
             }}
         >
             {children}
