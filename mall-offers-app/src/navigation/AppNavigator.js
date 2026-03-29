@@ -136,7 +136,7 @@ const AppNavigator = () => {
                     screens: {
                         Home: '',
                         Map: 'map',
-                        OfferDetails: 'offer/:id',
+                        OfferDetails: 'offer/:offerId',
                         Favorites: 'favorites',
                         Deals: 'deals',
                         Profile: {
