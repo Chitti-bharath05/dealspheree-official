@@ -15,13 +15,19 @@ const storeSchema = new mongoose.Schema({
     logoUrl: { type: String, default: null },
     bannerUrl: { type: String, default: null },
     hasDeliveryPartner: { type: Boolean, default: false },
+    lat: { type: Number, default: null },
+    lng: { type: Number, default: null },
     ratings: [{
         user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
         score: { type: Number, required: true, min: 1, max: 5 },
         comment: { type: String, default: '' },
         createdAt: { type: Date, default: Date.now }
     }],
-    averageRating: { type: Number, default: 0 }
+    averageRating: { type: Number, default: 0 },
+    rating: { type: Number, default: 0 },
+    views: { type: Number, default: 0 },
+    likes: { type: Number, default: 0 },
+    likedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }]
 }, { timestamps: true });
 
 module.exports = mongoose.model('Store', storeSchema);

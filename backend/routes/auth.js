@@ -4,7 +4,7 @@ const User = require('../models/User');
 const Offer = require('../models/Offer');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
-const { protect } = require('../middleware/authMiddleware');
+const { protect, authorize } = require('../middleware/authMiddleware');
 const validateRequest = require('../middleware/validation');
 const sendEmail = require('../utils/emailService');
 const sendSMS = require('../utils/smsService');
@@ -47,6 +47,7 @@ router.post('/login', validateRequest('login'), async (req, res) => {
                     role: user.role,
                     mobileNumber: user.mobileNumber,
                     city: user.city,
+                    profileImage: user.profileImage || null,
                     token: accessToken,
                     refreshToken: refreshToken
                 }
@@ -156,6 +157,24 @@ router.get('/users', async (req, res) => {
         res.json(users);
     } catch (error) {
         res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// Delete User (Admin Only)
+router.delete('/users/:id', protect, authorize('admin'), async (req, res) => {
+    try {
+        const userId = req.params.id;
+        const user = await User.findById(userId);
+        
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+        
+        await User.findByIdAndDelete(userId);
+        res.json({ success: true, message: 'User deleted successfully' });
+    } catch (error) {
+        console.error('Delete user error:', error);
+        res.status(500).json({ success: false, message: 'Server error: ' + error.message });
     }
 });
 
@@ -458,6 +477,45 @@ router.post('/social-login', async (req, res) => {
     } catch (error) {
         console.error('Social Login Error:', error);
         res.status(500).json({ success: false, message: 'Server error: ' + error.message });
+    }
+});
+
+// Update profile (Protected: any logged in user)
+router.put('/profile', protect, async (req, res) => {
+    try {
+        const { profileImage, name, city, mobileNumber } = req.body;
+
+        const updateFields = {};
+        if (profileImage !== undefined) updateFields.profileImage = profileImage;
+        if (name !== undefined) updateFields.name = name;
+        if (city !== undefined) updateFields.city = city;
+        if (mobileNumber !== undefined) updateFields.mobileNumber = mobileNumber;
+
+        const updatedUser = await User.findByIdAndUpdate(
+            req.user._id,
+            { $set: updateFields },
+            { new: true, runValidators: false }
+        );
+
+        if (!updatedUser) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        res.json({
+            success: true,
+            user: {
+                id: updatedUser._id,
+                name: updatedUser.name,
+                email: updatedUser.email,
+                role: updatedUser.role,
+                mobileNumber: updatedUser.mobileNumber,
+                city: updatedUser.city,
+                profileImage: updatedUser.profileImage || null,
+            }
+        });
+    } catch (error) {
+        console.error('Update profile error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 });
 

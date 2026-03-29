@@ -23,24 +23,31 @@ const ResetPasswordScreen = ({ route, navigation }) => {
     const [confirmPassword, setConfirmPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [errorMsg, setErrorMsg] = useState('');
+    const [successMsg, setSuccessMsg] = useState('');
     const { t } = useLanguage();
+
+    const showError = (msg) => { setSuccessMsg(''); setErrorMsg(msg); };
+    const showSuccess = (msg) => { setErrorMsg(''); setSuccessMsg(msg); };
 
     const handleResetPassword = async () => {
         if (!otp.trim() || !newPassword.trim() || !confirmPassword.trim()) {
-            Alert.alert(t('error'), t('missing_fields'));
+            showError('Please fill in all fields.');
             return;
         }
 
         if (newPassword !== confirmPassword) {
-            Alert.alert(t('error'), t('passwords_not_match'));
+            showError('Passwords do not match.');
             return;
         }
 
         if (newPassword.length < 6) {
-            Alert.alert(t('error'), t('password_too_short'));
+            showError('Password must be at least 6 characters.');
             return;
         }
 
+        setErrorMsg('');
+        setSuccessMsg('');
         setLoading(true);
         try {
             const response = await apiClient.put('/auth/resetpassword', {
@@ -51,20 +58,14 @@ const ResetPasswordScreen = ({ route, navigation }) => {
             setLoading(false);
 
             if (response.success) {
-                const message = t('password_reset_success');
-                if (Platform.OS === 'web') {
-                    alert(message);
+                showSuccess('Password reset successful! Redirecting to login...');
+                setTimeout(() => {
                     navigation.navigate('Login');
-                } else {
-                    Alert.alert(t('success'), message, [
-                        { text: t('login_here'), onPress: () => navigation.navigate('Login') }
-                    ]);
-                }
+                }, 1500);
             }
         } catch (error) {
             setLoading(false);
-            const message = error.response?.data?.message || t('failed_reset_password');
-            Alert.alert(t('error'), message);
+            showError(error?.response?.data?.message || 'Failed to reset password. Please check your OTP and try again.');
         }
     };
 
@@ -89,6 +90,18 @@ const ResetPasswordScreen = ({ route, navigation }) => {
                         </View>
 
                         <View style={styles.formContainer}>
+                            {errorMsg ? (
+                                <View style={[styles.msgBanner, { borderColor: 'rgba(255,107,107,0.4)', backgroundColor: 'rgba(255,107,107,0.08)' }]}>
+                                    <Ionicons name="alert-circle" size={16} color="#FF6B6B" style={{ marginRight: 8 }} />
+                                    <Text style={[styles.msgText, { color: '#FF6B6B' }]}>{errorMsg}</Text>
+                                </View>
+                            ) : null}
+                            {successMsg ? (
+                                <View style={[styles.msgBanner, { borderColor: 'rgba(78,205,196,0.4)', backgroundColor: 'rgba(78,205,196,0.08)' }]}>
+                                    <Ionicons name="checkmark-circle" size={16} color="#4ECDC4" style={{ marginRight: 8 }} />
+                                    <Text style={[styles.msgText, { color: '#4ECDC4' }]}>{successMsg}</Text>
+                                </View>
+                            ) : null}
                             <View style={styles.inputContainer}>
                                 <Ionicons name="key-outline" size={20} color="#8E8E93" style={styles.inputIcon} />
                                 <TextInput
@@ -131,6 +144,13 @@ const ResetPasswordScreen = ({ route, navigation }) => {
                                     onChangeText={setConfirmPassword}
                                     secureTextEntry={!showPassword}
                                 />
+                                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                                    <Ionicons
+                                        name={showPassword ? 'eye-outline' : 'eye-off-outline'}
+                                        size={20}
+                                        color="#8E8E93"
+                                    />
+                                </TouchableOpacity>
                             </View>
 
                             <TouchableOpacity
@@ -163,6 +183,8 @@ const styles = StyleSheet.create({
     container: { flex: 1 },
     gradient: { flex: 1 },
     keyboardView: { flex: 1 },
+    msgBanner: { flexDirection: 'row', alignItems: 'center', borderRadius: 12, padding: 12, marginBottom: 16, borderWidth: 1 },
+    msgText: { fontSize: 13, fontWeight: '600', flex: 1 },
     scrollContent: {
         flexGrow: 1,
         justifyContent: 'center',

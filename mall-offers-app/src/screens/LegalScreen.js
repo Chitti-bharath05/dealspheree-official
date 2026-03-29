@@ -26,7 +26,7 @@ export default function LegalScreen({ route, navigation }) {
                         <Text style={s.legalTxt}>
                             {t('legal_updated')}{'\n\n'}
                             {t('legal_welcome').replace('{type}', title.toLowerCase())}{'\n\n'}
-                            {content || `[Section 1: Data Usage]\nWe value your privacy and only collect data necessary to provide you with exclusive mall offers...\n\n[Section 2: User Conduct]\nUsers are expected to use the platform respectfully and not engage in any fraudulent activity...\n\n[Section 3: Liability]\nSizzling Valoris is not responsible for the quality of goods purchased from third-party boutiques...`}
+                            {content || `[Section 1: Data Usage]\nWe value your privacy and only collect data necessary to provide you with exclusive mall offers...\n\n[Section 2: User Conduct]\nUsers are expected to use the platform respectfully and not engage in any fraudulent activity...\n\n[Section 3: Liability]\nDealspheree is not responsible for the quality of goods purchased from third-party boutiques...`}
                         </Text>
                     </View>
                 </ScrollView>

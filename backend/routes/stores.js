@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Store = require('../models/Store');
 const User = require('../models/User');
+const Offer = require('../models/Offer');
 const { protect, authorize } = require('../middleware/authMiddleware');
 const validateRequest = require('../middleware/validation');
 const { sendPushNotificationToAdmins } = require('../utils/notificationService');
@@ -44,7 +45,7 @@ router.get('/owner/:ownerId', async (req, res) => {
 // Create new store (Protected)
 router.post('/', protect, validateRequest('registerStore'), async (req, res) => {
     try {
-        const { storeName, ownerId, location, houseNo, street, area, pincode, city, address, category, logoUrl, bannerUrl, hasDeliveryPartner } = req.body;
+        const { storeName, ownerId, location, houseNo, street, area, pincode, city, address, category, logoUrl, bannerUrl, hasDeliveryPartner, lat, lng } = req.body;
         
         const newStore = await Store.create({
             storeName,
@@ -60,6 +61,8 @@ router.post('/', protect, validateRequest('registerStore'), async (req, res) => 
             logoUrl: logoUrl || null,
             bannerUrl: bannerUrl || null,
             hasDeliveryPartner: !!hasDeliveryPartner,
+            lat: lat || null,
+            lng: lng || null,
             approved: false 
         });
 
@@ -99,8 +102,19 @@ router.post('/', protect, validateRequest('registerStore'), async (req, res) => 
 // Approve store (Protected: Admin only)
 router.put('/:id/approve', protect, authorize('admin'), async (req, res) => {
     try {
-        const store = await Store.findByIdAndUpdate(req.params.id, { approved: true }, { new: true });
+        const store = await Store.findByIdAndUpdate(req.params.id, { approved: true }, { new: true }).populate('ownerId', 'email name');
         if (store) {
+            try {
+                if (store.ownerId && store.ownerId.email) {
+                    await sendEmail({
+                        email: store.ownerId.email,
+                        subject: 'Your Store is Approved!',
+                        message: `Congratulations! Your store "${store.storeName}" has been approved on DealSphere.\n\nYou can now log in and start adding exclusive offers for your customers.`
+                    });
+                }
+            } catch (emailErr) {
+                console.error('Email notification failed to send on approval:', emailErr);
+            }
             res.json({ success: true, store });
         } else {
             res.status(404).json({ success: false, message: 'Store not found' });
@@ -114,8 +128,19 @@ router.put('/:id/approve', protect, authorize('admin'), async (req, res) => {
 router.put('/:id/reject', protect, authorize('admin'), async (req, res) => {
     try {
         // Here rejection behaves as deletion for now, mimicking previous behavior
-        const deletedStore = await Store.findByIdAndDelete(req.params.id);
+        const deletedStore = await Store.findByIdAndDelete(req.params.id).populate('ownerId', 'email name');
         if (deletedStore) {
+            try {
+                if (deletedStore.ownerId && deletedStore.ownerId.email) {
+                    await sendEmail({
+                        email: deletedStore.ownerId.email,
+                        subject: 'Store Registration Update',
+                        message: `Hello, we regret to inform you that your store registration for "${deletedStore.storeName}" has been rejected.\n\nFor more information on listing rules, please contact DealSphere support.`
+                    });
+                }
+            } catch (emailErr) {
+                console.error('Email notification failed to send on rejection:', emailErr);
+            }
             res.json({ success: true, message: 'Store rejected' });
         } else {
             res.status(404).json({ success: false, message: 'Store not found' });
@@ -128,26 +153,76 @@ router.put('/:id/reject', protect, authorize('admin'), async (req, res) => {
 // Update store (Protected: Owner or Admin)
 router.put('/:id', protect, async (req, res) => {
     try {
-        const { storeName, location, houseNo, street, area, pincode, city, address, category, logoUrl, bannerUrl, hasDeliveryPartner } = req.body;
         const store = await Store.findById(req.params.id);
 
         if (!store) {
             return res.status(404).json({ success: false, message: 'Store not found' });
         }
 
-        // Check ownership (admins can also update)
-        if (store.ownerId.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+        // Handle both populated object and raw ObjectId for ownerId
+        const storeOwnerId = store.ownerId?._id
+            ? store.ownerId._id.toString()
+            : store.ownerId.toString();
+
+        if (storeOwnerId !== req.user._id.toString() && req.user.role !== 'admin') {
             return res.status(403).json({ success: false, message: 'Not authorized' });
         }
 
+        // Build update object with only fields that are actually provided
+        const { storeName, location, houseNo, street, area, pincode, city, address, category, logoUrl, bannerUrl, hasDeliveryPartner, lat, lng } = req.body;
+        const updateFields = {};
+        if (storeName !== undefined) updateFields.storeName = storeName;
+        if (location !== undefined) updateFields.location = location;
+        if (houseNo !== undefined) updateFields.houseNo = houseNo;
+        if (street !== undefined) updateFields.street = street;
+        if (area !== undefined) updateFields.area = area;
+        if (pincode !== undefined) updateFields.pincode = pincode;
+        if (city !== undefined) updateFields.city = city;
+        if (address !== undefined) updateFields.address = address;
+        if (category !== undefined) updateFields.category = category;
+        if (logoUrl !== undefined) updateFields.logoUrl = logoUrl;
+        if (bannerUrl !== undefined) updateFields.bannerUrl = bannerUrl;
+        if (hasDeliveryPartner !== undefined) updateFields.hasDeliveryPartner = hasDeliveryPartner;
+        if (lat !== undefined) updateFields.lat = lat;
+        if (lng !== undefined) updateFields.lng = lng;
+
         const updatedStore = await Store.findByIdAndUpdate(
             req.params.id,
-            { storeName, location, houseNo, street, area, pincode, city, address, category, logoUrl, bannerUrl, hasDeliveryPartner },
-            { new: true }
+            { $set: updateFields },
+            { new: true, runValidators: false }
         );
 
         res.json({ success: true, store: updatedStore });
     } catch (error) {
+        console.error('Update store error:', error);
+        res.status(500).json({ success: false, message: error.message || 'Server error' });
+    }
+});
+
+// Delete store and related offers (Protected: Owner or Admin)
+router.delete('/:id', protect, async (req, res) => {
+    try {
+        const store = await Store.findById(req.params.id);
+
+        if (!store) {
+            return res.status(404).json({ success: false, message: 'Store not found' });
+        }
+
+        const storeOwnerId = store.ownerId?._id 
+            ? store.ownerId._id.toString() 
+            : store.ownerId.toString();
+
+        if (storeOwnerId !== req.user._id.toString() && req.user.role !== 'admin') {
+            return res.status(403).json({ success: false, message: 'Not authorized to delete this store' });
+        }
+
+        // Delete the store and all matching offers cascading
+        await Store.findByIdAndDelete(req.params.id);
+        await Offer.deleteMany({ storeId: req.params.id });
+
+        res.json({ success: true, message: 'Store and related offers permanently deleted' });
+    } catch (error) {
+        console.error('Delete store error:', error);
         res.status(500).json({ success: false, message: 'Server error' });
     }
 });
@@ -167,6 +242,13 @@ router.post('/:id/rate', protect, async (req, res) => {
             return res.status(404).json({ success: false, message: 'Store not found' });
         }
 
+        const existingRating = store.ratings.find(
+            r => r.user && r.user.toString() === req.user._id.toString()
+        );
+        if (existingRating) {
+            return res.status(400).json({ success: false, message: "Rating already submitted, can't be modified" });
+        }
+
         // Add new rating
         const newRating = {
             user: req.user._id,
@@ -179,11 +261,54 @@ router.post('/:id/rate', protect, async (req, res) => {
         // Recalculate average rating
         const totalScore = store.ratings.reduce((acc, curr) => acc + curr.score, 0);
         store.averageRating = totalScore / store.ratings.length;
+        store.rating = store.averageRating;
 
         await store.save();
 
         res.json({ success: true, store });
     } catch (error) {
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// Increment store views (Public)
+router.post('/:id/view', async (req, res) => {
+    try {
+        const store = await Store.findByIdAndUpdate(
+            req.params.id,
+            { $inc: { views: 1 } },
+            { new: true }
+        );
+        if (!store) return res.status(404).json({ success: false, message: 'Store not found' });
+        res.json({ success: true, views: store.views });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// Toggle store like (Protected: Customer only)
+router.post('/:id/like', protect, async (req, res) => {
+    try {
+        const store = await Store.findById(req.params.id);
+        if (!store) return res.status(404).json({ success: false, message: 'Store not found' });
+
+        const userId = req.user._id.toString();
+        const isLiked = store.likedBy.some(id => id.toString() === userId);
+
+        if (isLiked) {
+            // Unlike: Remove from likedBy and decrement likes
+            store.likedBy = store.likedBy.filter(id => id.toString() !== userId);
+            store.likes = Math.max(0, store.likes - 1);
+        } else {
+            // Like: Add to likedBy and increment likes
+            store.likedBy.push(req.user._id);
+            store.likes += 1;
+        }
+
+        await store.save();
+        res.json({ success: true, likes: store.likes, isLiked: !isLiked });
+    } catch (error) {
+        console.error('Like error:', error);
         res.status(500).json({ success: false, message: 'Server error' });
     }
 });

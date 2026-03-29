@@ -20,7 +20,13 @@ const initExpiryJob = () => {
             const twoDaysLater = new Date(now);
             twoDaysLater.setDate(twoDaysLater.getDate() + 2);
 
-            // 1. Find offers expiring tomorrow (between 24h and 48h from now roughly)
+            // 1. Delete offers that have already expired
+            const expiredOffers = await Offer.deleteMany({
+                expiryDate: { $lt: now }
+            });
+            console.log(`Deleted ${expiredOffers.deletedCount} expired offers.`);
+
+            // 2. Find offers expiring tomorrow (between 24h and 48h from now roughly)
             // For simplicity, we check if expiryDate is within the next 24-48 hours
             const expiringSoon = await Offer.find({
                 expiryDate: { 

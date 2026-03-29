@@ -1,7 +1,16 @@
 const { Expo } = require('expo-server-sdk');
+const webpush = require('web-push');
 const User = require('../models/User');
 
 const expo = new Expo();
+
+if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+    webpush.setVapidDetails(
+        `mailto:${process.env.EMAIL_FROM || 'admin@dealsphere.com'}`,
+        process.env.VAPID_PUBLIC_KEY,
+        process.env.VAPID_PRIVATE_KEY
+    );
+}
 
 /**
  * Send push notifications to users based on their role.
@@ -12,10 +21,15 @@ const expo = new Expo();
  */
 const sendPushNotifications = async (title, body, role = null, data = {}) => {
     try {
-        const query = { pushToken: { $exists: true, $ne: null, $ne: '' } };
+        const query = { 
+            $or: [
+                { pushToken: { $exists: true, $ne: null, $ne: '' } },
+                { 'webPushSubscriptions.0': { $exists: true } }
+            ]
+        };
         if (role) query.role = role;
 
-        const users = await User.find(query).select('pushToken');
+        const users = await User.find(query).select('pushToken webPushSubscriptions');
 
         if (users.length === 0) {
             console.log(`No users with role ${role || 'any'} and push tokens found.`);
@@ -23,19 +37,42 @@ const sendPushNotifications = async (title, body, role = null, data = {}) => {
         }
 
         const messages = [];
+        const webPushPromises = [];
+
         for (const user of users) {
-            if (!Expo.isExpoPushToken(user.pushToken)) {
-                console.warn(`Invalid push token for user: ${user.pushToken}`);
-                continue;
+            // Expo Mobile Push
+            if (user.pushToken && Expo.isExpoPushToken(user.pushToken)) {
+                messages.push({
+                    to: user.pushToken,
+                    sound: 'default',
+                    title,
+                    body,
+                    data,
+                });
             }
 
-            messages.push({
-                to: user.pushToken,
-                sound: 'default',
-                title,
-                body,
-                data,
-            });
+            // Web Push (Browser)
+            if (user.webPushSubscriptions && user.webPushSubscriptions.length > 0) {
+                const payload = JSON.stringify({
+                    title,
+                    body,
+                    data
+                });
+                for (const sub of user.webPushSubscriptions) {
+                    webPushPromises.push(
+                        webpush.sendNotification(sub, payload).catch(err => {
+                            if (err.statusCode === 410 || err.statusCode === 404) {
+                                // Subscription expired or is invalid, should be removed
+                                console.log('Subscription expired, removing...');
+                                user.webPushSubscriptions = user.webPushSubscriptions.filter(s => s.endpoint !== sub.endpoint);
+                                user.save().catch(e => console.error('Failed to save user after removing dead sub:', e));
+                            } else {
+                                console.error('Web push error:', err);
+                            }
+                        })
+                    );
+                }
+            }
         }
 
         const chunks = expo.chunkPushNotifications(messages);
@@ -49,9 +86,12 @@ const sendPushNotifications = async (title, body, role = null, data = {}) => {
                 console.error('Error sending push notification chunk:', error);
             }
         }
+        
+        // Wait for all web pushes to try
+        await Promise.allSettled(webPushPromises);
 
-        console.log(`Push notifications sent: ${tickets.length} tickets to ${role || 'all users'}`);
-        return tickets;
+        console.log(`Push notifications sent: ${tickets.length} Expo tickets, ${webPushPromises.length} Web pushes to ${role || 'all users'}`);
+        return { expoTickets: tickets.length, webPushes: webPushPromises.length };
     } catch (error) {
         console.error('Error in sendPushNotifications:', error);
     }

@@ -2,7 +2,7 @@
   "expo": {
     "name": "mall-offers-app",
     "slug": "mall-offers-app",
-    "scheme": "com.credora.malloffersapp",
+    "scheme": "com.dealspheree.malloffers",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -10,42 +10,45 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#000000"
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.credora.malloffersapp",
+      "bundleIdentifier": "com.dealspheree.malloffers",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#000000",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "package": "com.credora.malloffersapp"
+      "package": "com.dealspheree.malloffers",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "extra": {
       "eas": {
-        "projectId": "70fbdac7-3871-4ce7-b61e-529ff571cb74"
+        "projectId": "65661e7f-29dd-462a-96c7-e761e94b4e2d"
       }
     },
     "runtimeVersion": {
       "policy": "appVersion"
     },
-    "updates": {
-      "url": "https://u.expo.dev/70fbdac7-3871-4ce7-b61e-529ff571cb74"
-    },
+    "updates": {},
     "plugins": [
       "expo-apple-authentication",
       "expo-notifications",
       "expo-updates"
-    ]
+    ],
+    "owner": "bharath200514"
   }
 }

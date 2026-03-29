@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Switch, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import * as LocalAuthentication from 'expo-local-authentication';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../context/AuthContext';
 import apiClient from '../services/apiClient';
@@ -26,13 +27,13 @@ const SettingItem = ({ icon, label, right, onPress }) => (
 import { useLanguage } from '../context/LanguageContext';
 
 export default function SettingsScreen({ navigation }) {
-    const { logout, user } = useAuth();
+    const { logout, user, saveSecureCredentials, clearSecureCredentials } = useAuth();
     const { t, currentLanguage, changeLanguage } = useLanguage();
     const [notifications, setNotifications] = useState(true);
     const [biometrics, setBiometrics] = useState(false);
+    const [isVerifyingBio, setIsVerifyingBio] = useState(false);
 
     useEffect(() => {
-        console.log('SettingsScreen Mounted');
         loadSettings();
     }, []);
 
@@ -48,12 +49,71 @@ export default function SettingsScreen({ navigation }) {
     };
 
     const toggleSwitch = async (key, value, setter) => {
-        console.log(`Toggling ${key} to ${value}`);
+        if (key === 'biometrics' && value === true) {
+            handleEnableBiometrics();
+            return;
+        }
+
+        if (key === 'biometrics' && value === false) {
+            await clearSecureCredentials();
+        }
+
         setter(value);
         try {
             await AsyncStorage.setItem(`settings_${key}`, JSON.stringify(value));
         } catch (e) {
             console.error('Failed to save setting', e);
+        }
+    };
+
+    const handleEnableBiometrics = async () => {
+        if (Platform.OS === 'web') {
+            Alert.alert('Not Supported', 'Biometric login is currently only available on mobile devices.');
+            return;
+        }
+
+        try {
+            const hasHardware = await LocalAuthentication.hasHardwareAsync();
+            const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+
+            if (!hasHardware || !isEnrolled) {
+                Alert.alert('Not Available', 'Your device does not support biometrics or no fingerprints/face are enrolled.');
+                return;
+            }
+
+            const result = await LocalAuthentication.authenticateAsync({
+                promptMessage: 'Verify your identity to enable biometric login',
+                fallbackLabel: 'Use Passcode',
+            });
+
+            if (result.success) {
+                // Now we need the password to store it securely.
+                // Since we don't have it in state, we'll ask for it.
+                if (Platform.OS === 'web') return; // redundant but safe
+                
+                Alert.prompt(
+                    "Secure Setup",
+                    "Please enter your current account password to enable biometric login on this device.",
+                    [
+                        { text: "Cancel", style: "cancel" },
+                        { 
+                            text: "Verify & Enable", 
+                            onPress: async (password) => {
+                                if (!password) return;
+                                // We could verify with backend, but for now we'll trust the user and store it.
+                                // If the password is wrong, the biometric login will just fail later.
+                                await saveSecureCredentials(user.email, password);
+                                setBiometrics(true);
+                                await AsyncStorage.setItem('settings_biometrics', 'true');
+                                Alert.alert("Success", "Biometric login is now active!");
+                            } 
+                        }
+                    ],
+                    "secure-text"
+                );
+            }
+        } catch (e) {
+            Alert.alert('Error', 'Failed to initialize biometric hardware.');
         }
     };
 

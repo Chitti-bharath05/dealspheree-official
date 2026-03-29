@@ -19,48 +19,35 @@ import { useLanguage } from '../context/LanguageContext';
 const ForgotPasswordScreen = ({ navigation }) => {
     const [email, setEmail] = useState('');
     const [loading, setLoading] = useState(false);
+    const [errorMsg, setErrorMsg] = useState('');
+    const [successMsg, setSuccessMsg] = useState('');
     const { t } = useLanguage();
+
+    const showError = (msg) => { setSuccessMsg(''); setErrorMsg(msg); };
+    const showSuccess = (msg) => { setErrorMsg(''); setSuccessMsg(msg); };
 
     const handleRequestReset = async () => {
         if (!email.trim() || !email.includes('@')) {
-            Alert.alert(t('error'), t('invalid_email'));
+            showError('Please enter a valid email address.');
             return;
         }
-
+        setErrorMsg('');
+        setSuccessMsg('');
         setLoading(true);
         try {
             const response = await apiClient.post('/auth/forgotpassword', { 
                 email: email.trim().toLowerCase() 
             });
             setLoading(false);
-            
             if (response.success) {
-                const message = t('otp_sent_to_email');
-
-                if (Platform.OS === 'web') {
-                    alert(message);
-                    navigation.navigate('ResetPassword', { 
-                        email: email.trim().toLowerCase() 
-                    });
-                } else {
-                    Alert.alert(
-                        t('success'),
-                        message,
-                        [
-                            { 
-                                text: t('enter_otp'), 
-                                onPress: () => navigation.navigate('ResetPassword', { 
-                                    email: email.trim().toLowerCase() 
-                                }) 
-                            }
-                        ]
-                    );
-                }
+                showSuccess('OTP sent! Check your email inbox.');
+                setTimeout(() => {
+                    navigation.navigate('ResetPassword', { email: email.trim().toLowerCase() });
+                }, 1500);
             }
         } catch (error) {
             setLoading(false);
-            const message = error.response?.data?.message || t('failed_send_otp');
-            Alert.alert(t('error'), message);
+            showError(error?.message || 'Failed to send OTP. Please try again.');
         }
     };
 
@@ -85,6 +72,18 @@ const ForgotPasswordScreen = ({ navigation }) => {
                         </View>
 
                         <View style={styles.formContainer}>
+                            {errorMsg ? (
+                                <View style={[styles.msgBanner, { borderColor: 'rgba(255,107,107,0.4)', backgroundColor: 'rgba(255,107,107,0.08)' }]}>
+                                    <Ionicons name="alert-circle" size={16} color="#FF6B6B" style={{ marginRight: 8 }} />
+                                    <Text style={[styles.msgText, { color: '#FF6B6B' }]}>{errorMsg}</Text>
+                                </View>
+                            ) : null}
+                            {successMsg ? (
+                                <View style={[styles.msgBanner, { borderColor: 'rgba(78,205,196,0.4)', backgroundColor: 'rgba(78,205,196,0.08)' }]}>
+                                    <Ionicons name="checkmark-circle" size={16} color="#4ECDC4" style={{ marginRight: 8 }} />
+                                    <Text style={[styles.msgText, { color: '#4ECDC4' }]}>{successMsg}</Text>
+                                </View>
+                            ) : null}
                             <View style={styles.inputContainer}>
                                 <Ionicons name="mail-outline" size={20} color="#8E8E93" style={styles.inputIcon} />
                                 <TextInput
@@ -135,6 +134,8 @@ const styles = StyleSheet.create({
     container: { flex: 1 },
     gradient: { flex: 1 },
     keyboardView: { flex: 1 },
+    msgBanner: { flexDirection: 'row', alignItems: 'center', borderRadius: 12, padding: 12, marginBottom: 16, borderWidth: 1 },
+    msgText: { fontSize: 13, fontWeight: '600', flex: 1 },
     scrollContent: {
         flexGrow: 1,
         justifyContent: 'center',

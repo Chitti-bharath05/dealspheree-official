@@ -25,7 +25,9 @@ const schemas = {
         pincode: Joi.string().allow('', null),
         city: Joi.string().allow('', null),
         category: Joi.string().required(),
-        hasDeliveryPartner: Joi.boolean().default(false)
+        hasDeliveryPartner: Joi.boolean().default(false),
+        lat: Joi.number().allow(null).optional(),
+        lng: Joi.number().allow(null).optional(),
     }),
 
     // Offers

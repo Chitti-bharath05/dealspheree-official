@@ -5,9 +5,56 @@ import { registerForPushNotifications, savePushTokenToBackend } from '../service
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
 import * as AppleAuthentication from 'expo-apple-authentication'; // Assuming this will be added if needed, or using a generic flow
+import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
 WebBrowser.maybeCompleteAuthSession();
+
+const urlBase64ToUint8Array = (base64String) => {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding)
+        .replace(/\-/g, '+')
+        .replace(/_/g, '/');
+
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+
+    for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+};
+
+const UI_SECURE_KEY = 'ds_login_creds';
+
+const saveSecureCredentials = async (email, password) => {
+    if (Platform.OS === 'web') return;
+    try {
+        await SecureStore.setItemAsync(UI_SECURE_KEY, JSON.stringify({ email, password }));
+    } catch (e) {
+        console.error('SecureStore Error:', e);
+    }
+};
+
+const getSecureCredentials = async () => {
+    if (Platform.OS === 'web') return null;
+    try {
+        const res = await SecureStore.getItemAsync(UI_SECURE_KEY);
+        return res ? JSON.parse(res) : null;
+    } catch (e) {
+        console.error('SecureStore Read Error:', e);
+        return null;
+    }
+};
+
+const clearSecureCredentials = async () => {
+    if (Platform.OS === 'web') return;
+    try {
+        await SecureStore.deleteItemAsync(UI_SECURE_KEY);
+    } catch (e) {
+        console.error('SecureStore Delete Error:', e);
+    }
+};
 
 const AuthContext = createContext();
 
@@ -22,6 +69,9 @@ export const AuthProvider = ({ children }) => {
     useEffect(() => {
         loadUser();
         fetchUsers();
+        // Safety net: never let the app stay loading forever
+        const timeout = setTimeout(() => setIsLoading(false), 8000);
+        return () => clearTimeout(timeout);
     }, []);
 
     const loadUser = async () => {
@@ -33,11 +83,12 @@ export const AuthProvider = ({ children }) => {
                 if (parsedUser.role === 'customer') {
                     fetchFavorites();
                 }
-                // Register push notifications for returning users
                 setupPushNotifications();
             }
         } catch (e) {
             console.log('Error loading user:', e);
+        } finally {
+            setIsLoading(false); // Unblock UI even if no user stored
         }
     };
 
@@ -45,12 +96,39 @@ export const AuthProvider = ({ children }) => {
         try {
             console.log("Starting push notification setup...");
             try {
-                const token = await registerForPushNotifications();
-                if (token) {
-                    await savePushTokenToBackend(token);
+                // Expo Mobile Push
+                if (Platform.OS !== 'web') {
+                    const token = await registerForPushNotifications();
+                    if (token) {
+                        await savePushTokenToBackend(token);
+                    }
                 }
             } catch (innerError) {
                 console.log('Inner push setup error safely caught:', innerError);
+            }
+
+            // Web Push for Browsers
+            if (Platform.OS === 'web' && 'serviceWorker' in navigator && 'PushManager' in window) {
+                try {
+                    const register = await navigator.serviceWorker.register('/sw.js');
+                    const vapidRes = await apiClient.get('/notifications/vapidPublicKey');
+                    if (vapidRes && vapidRes.publicKey) {
+                        const convertedVapidKey = urlBase64ToUint8Array(vapidRes.publicKey);
+                        
+                        let subscription = await register.pushManager.getSubscription();
+                        if (!subscription) {
+                            subscription = await register.pushManager.subscribe({
+                                userVisibleOnly: true,
+                                applicationServerKey: convertedVapidKey
+                            });
+                        }
+                        
+                        await apiClient.post('/notifications/subscribe', subscription);
+                        console.log('Web Push Subscription saved.');
+                    }
+                } catch (webPushError) {
+                    console.log('Web Push Setup Error (safely caught):', webPushError);
+                }
             }
         } catch (e) {
             console.log('Push notification setup error (safely caught):', e);
@@ -96,12 +174,31 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    const login = async (email, password) => {
+    const login = async (email, password, rememberMe = false) => {
         try {
             const response = await apiClient.post('/auth/login', { email, password });
             if (response.success) {
                 setUser(response.user);
-                await AsyncStorage.setItem('userInfo', JSON.stringify(response.user));
+                
+                // Persistence Logic
+                if (Platform.OS === 'web') {
+                    if (rememberMe) {
+                        await AsyncStorage.setItem('userInfo', JSON.stringify(response.user));
+                    } else {
+                        // For web, if not rememberMe, we might still store but normally we'd rely on session
+                        // In this app's current architecture, AsyncStorage is used for persistent login.
+                        await AsyncStorage.setItem('userInfo', JSON.stringify(response.user));
+                    }
+                } else {
+                    await AsyncStorage.setItem('userInfo', JSON.stringify(response.user));
+                    
+                    // If biometric setting is ON, save the password securely
+                    const biometricEnabled = await AsyncStorage.getItem('settings_biometrics');
+                    if (biometricEnabled === 'true') {
+                        await saveSecureCredentials(email, password);
+                    }
+                }
+
                 if (response.user.role === 'admin') fetchUsers();
                 setupPushNotifications();
                 return { success: true, user: response.user };
@@ -109,6 +206,22 @@ export const AuthProvider = ({ children }) => {
             return { success: false, message: response.message || 'Login failed' };
         } catch (error) {
             return { success: false, message: error.message || 'An error occurred during login' };
+        }
+    };
+
+    const loginWithBiometrics = async () => {
+        if (Platform.OS === 'web') return { success: false, message: 'Not supported on web' };
+        
+        try {
+            const creds = await getSecureCredentials();
+            if (!creds) {
+                return { success: false, message: 'No credentials stored for biometric login' };
+            }
+
+            // Just attempt a normal login with saved credentials
+            return await login(creds.email, creds.password);
+        } catch (e) {
+            return { success: false, message: 'Biometric login sequence failed' };
         }
     };
 
@@ -162,6 +275,11 @@ export const AuthProvider = ({ children }) => {
             
             // Clear local state FIRST, so the UI updates immediately
             await AsyncStorage.removeItem('userInfo');
+            
+            // Optionally clear biometric storage if we want a fresh start
+            // and the user hasn't opted to "Always allow biometrics" 
+            // but for convenience we'll keep them unless they toggle off in settings.
+            
             setUser(null);
 
             if (stored) {
@@ -194,7 +312,23 @@ export const AuthProvider = ({ children }) => {
     };
 
     const updateProfileImage = async (imageUri) => {
-        return updateProfile({ profileImage: imageUri });
+        try {
+            // Save to backend so it persists across logins
+            const response = await apiClient.put('/auth/profile', { profileImage: imageUri });
+            if (response.success) {
+                // Merge backend-confirmed data back into local state
+                const updatedUser = { ...user, profileImage: response.user.profileImage };
+                setUser(updatedUser);
+                await AsyncStorage.setItem('userInfo', JSON.stringify(updatedUser));
+                return true;
+            }
+            // Fallback: save locally even if backend failed
+            return updateProfile({ profileImage: imageUri });
+        } catch (e) {
+            console.error('Error updating profile image:', e);
+            // Fallback: still save locally so UX is not broken
+            return updateProfile({ profileImage: imageUri });
+        }
     };
 
     return (
@@ -214,7 +348,22 @@ export const AuthProvider = ({ children }) => {
                 updateProfile,
                 updateProfileImage,
                 setUser, // Exporting for direct state updates if needed
-                deleteUser: (id) => setUsers(prev => prev.filter(u => (u._id || u.id) !== id)),
+                deleteUser: async (id) => {
+                    try {
+                        const response = await apiClient.delete(`/auth/users/${id}`);
+                        if (response.success) {
+                            setUsers(prev => prev.filter(u => (u._id || u.id) !== id));
+                            return true;
+                        }
+                        return false;
+                    } catch (e) {
+                        console.error('Error deleting user:', e);
+                        return false;
+                    }
+                },
+                loginWithBiometrics,
+                saveSecureCredentials,
+                clearSecureCredentials,
             }}
         >
             {children}

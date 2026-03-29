@@ -10,7 +10,9 @@ const { sendPushNotificationToCustomers } = require('../utils/notificationServic
 router.get('/', async (req, res) => {
     try {
         const { category, search } = req.query;
-        let query = {};
+        let query = {
+            expiryDate: { $gte: new Date() } // Filter out expired offers
+        };
 
         if (category && category !== 'All') {
             query.category = category;
@@ -23,7 +25,7 @@ router.get('/', async (req, res) => {
             ];
         }
 
-        const offers = await Offer.find(query).populate('storeId', 'storeName location logoUrl bannerUrl');
+        const offers = await Offer.find(query).populate('storeId', 'storeName location logoUrl bannerUrl lat lng houseNo street area city pincode');
         res.json(offers);
     } catch (error) {
         console.error('API Error in GET /api/offers:', error);
@@ -34,7 +36,10 @@ router.get('/', async (req, res) => {
 // Get single offer (Public)
 router.get('/:id', async (req, res) => {
     try {
-        const offer = await Offer.findById(req.params.id).populate('storeId');
+        const offer = await Offer.findOne({ 
+            _id: req.params.id, 
+            expiryDate: { $gte: new Date() } 
+        }).populate('storeId');
         if (offer) {
             res.json(offer);
         } else {

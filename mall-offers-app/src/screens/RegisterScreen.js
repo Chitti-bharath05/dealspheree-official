@@ -27,31 +27,43 @@ const RegisterScreen = ({ navigation }) => {
     const [role, setRole] = useState('customer');
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [errorMsg, setErrorMsg] = useState('');
     const { register } = useAuth();
     const { t } = useLanguage();
 
+    const showError = (msg) => {
+        setErrorMsg(msg);
+        setTimeout(() => setErrorMsg(''), 5000);
+    };
+
     const handleRegister = async () => {
         if (!name.trim() || !email.trim() || !password.trim()) {
-            if (Platform.OS === 'web') alert('Please fill in all fields');
-            else Alert.alert('Error', 'Please fill in all fields');
+            showError('Please fill in all required fields.');
+            return;
+        }
+        if (!email.includes('@')) {
+            showError('Please enter a valid email address.');
             return;
         }
         if (password !== confirmPassword) {
-            if (Platform.OS === 'web') alert('Passwords do not match');
-            else Alert.alert('Error', 'Passwords do not match');
+            showError('Passwords do not match.');
             return;
         }
         if (password.length < 6) {
-            if (Platform.OS === 'web') alert('Password must be at least 6 characters');
-            else Alert.alert('Error', 'Password must be at least 6 characters');
+            showError('Password must be at least 6 characters.');
             return;
         }
+        setErrorMsg('');
         setLoading(true);
-        const result = await register(name.trim(), email.trim().toLowerCase(), password, role, mobileNumber.trim());
-        setLoading(false);
-        if (!result.success) {
-            if (Platform.OS === 'web') alert(`Registration Failed: ${result.message}`);
-            else Alert.alert('Registration Failed', result.message);
+        try {
+            const result = await register(name.trim(), email.trim().toLowerCase(), password, role, mobileNumber.trim());
+            if (!result.success) {
+                showError(result.message || 'Registration failed. Please try again.');
+            }
+        } catch (e) {
+            showError('Could not connect to server. Please try again.');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -105,6 +117,13 @@ const RegisterScreen = ({ navigation }) => {
 
                         {/* Form */}
                         <View style={styles.formContainer}>
+                            {/* Inline error banner */}
+                            {errorMsg ? (
+                                <View style={styles.errorBanner}>
+                                    <Ionicons name="alert-circle" size={16} color="#FF6B6B" style={{ marginRight: 8 }} />
+                                    <Text style={styles.errorBannerText}>{errorMsg}</Text>
+                                </View>
+                            ) : null}
                             {/* Role Selection */}
                             <Text style={styles.sectionLabel}>I am a</Text>
                             <View style={styles.roleContainer}>
@@ -177,6 +196,13 @@ const RegisterScreen = ({ navigation }) => {
                                     onChangeText={setConfirmPassword}
                                     secureTextEntry={!showPassword}
                                 />
+                                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                                    <Ionicons
+                                        name={showPassword ? 'eye-outline' : 'eye-off-outline'}
+                                        size={20}
+                                        color="#8E8E93"
+                                    />
+                                </TouchableOpacity>
                             </View>
 
                             <TouchableOpacity
@@ -216,6 +242,8 @@ const RegisterScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
+    errorBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,107,107,0.12)', borderRadius: 12, padding: 12, marginBottom: 16, borderWidth: 1, borderColor: 'rgba(255,107,107,0.4)' },
+    errorBannerText: { color: '#FF6B6B', fontSize: 13, fontWeight: '600', flex: 1 },
     container: {
         flex: 1,
     },

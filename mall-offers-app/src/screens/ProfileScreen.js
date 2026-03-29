@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Dimensions, Alert, ScrollView, Platform, Image } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../context/AuthContext';
@@ -8,7 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 
 const ProfileScreen = ({ navigation }) => {
-    const { user, logout, updateProfileImage } = useAuth();
+    const { user, logout, updateProfileImage, favorites } = useAuth();
     const { t } = useLanguage();
 
     const pickImage = async () => {
@@ -30,9 +29,26 @@ const ProfileScreen = ({ navigation }) => {
         }
     };
 
+    const deletePhoto = () => {
+        if (Platform.OS === 'web') {
+            if (window.confirm('Remove your profile photo?')) {
+                updateProfileImage(null);
+            }
+        } else {
+            Alert.alert('Remove Photo', 'Are you sure you want to remove your profile photo?', [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Remove', style: 'destructive', onPress: () => updateProfileImage(null) }
+            ]);
+        }
+    };
+
     const menuItems = [
-        { icon: 'receipt-outline', label: t('my_orders') || 'My Orders', badge: '0' },
-        { icon: 'heart-outline', label: t('deals'), badge: '12', onPress: () => navigation.navigate('Deals') },
+        { 
+            icon: 'heart-outline', 
+            label: t('deals') || 'My Deals', 
+            badge: favorites?.length?.toString() || '0', 
+            onPress: () => navigation.navigate('Favorites') 
+        },
         { icon: 'notifications-outline', label: t('push_notif') },
         { 
             icon: 'settings-outline', 
@@ -48,28 +64,34 @@ const ProfileScreen = ({ navigation }) => {
 
     return (
         <View style={s.container}>
-            <LinearGradient colors={['#1a150d', '#000']} style={s.gradient}>
-                <View style={s.header}>
-                    <View style={s.headerLeft}>
-                        <Text style={s.headerTitle}>{t('profile')}</Text>
-                    </View>
-                    <TouchableOpacity style={s.headerBtn} onPress={() => navigation.navigate('Settings')}>
-                        <Ionicons name="settings-sharp" size={22} color="#fff" />
-                    </TouchableOpacity>
-                </View>
+            {/* Global Header is provided by AppNavigator */}
+            <View style={{ height: Platform.OS === 'web' ? 70 : 0 }} />
 
-                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
-                    <View style={s.profileCard}>
-                        <View style={s.avatarWrapper}>
-                            <TouchableOpacity onPress={pickImage} activeOpacity={0.8}>
-                                <Image 
-                                    style={s.avatar} 
-                                    source={{ uri: user?.profileImage || 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&h=200&fit=crop' }} 
-                                />
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
+                <View style={s.profileCard}>
+                        <View style={s.avatarSection}>
+                            <TouchableOpacity onPress={pickImage} activeOpacity={0.8} style={s.avatarWrapper}>
+                                {user?.profileImage ? (
+                                    <Image 
+                                        style={s.avatar} 
+                                        source={{ uri: user.profileImage }} 
+                                    />
+                                ) : (
+                                    <View style={s.avatarDefault}>
+                                        <Ionicons name="person" size={52} color="#F5C518" />
+                                    </View>
+                                )}
                                 <View style={s.editIcon}>
                                     <Ionicons name="camera" size={16} color="#000" />
                                 </View>
                             </TouchableOpacity>
+                            {user?.profileImage && (
+                                <TouchableOpacity style={s.deletePhotoBtn} onPress={deletePhoto}>
+                                    <Ionicons name="trash-outline" size={13} color="#FF6B6B" />
+                                    <Text style={s.deletePhotoTxt}>Delete Photo</Text>
+                                </TouchableOpacity>
+                            )}
                         </View>
                         <Text style={s.userName}>{user?.name}</Text>
                         <Text style={s.userEmail}>{user?.email}</Text>
@@ -84,7 +106,7 @@ const ProfileScreen = ({ navigation }) => {
                             <TouchableOpacity key={i} style={s.menuItem} onPress={item.onPress}>
                                 <View style={s.menuLeft}>
                                     <View style={s.menuIconBox}>
-                                        <Ionicons name={item.icon} size={20} color="#D4AF37" />
+                                        <Ionicons name={item.icon} size={20} color="#F5C518" />
                                     </View>
                                     <Text style={s.menuLabel}>{item.label}</Text>
                                 </View>
@@ -115,34 +137,41 @@ const ProfileScreen = ({ navigation }) => {
                         <Text style={s.logoutText}>{t('sign_out')}</Text>
                     </TouchableOpacity>
                 </ScrollView>
-            </LinearGradient>
         </View>
     );
 };
 
 const s = StyleSheet.create({
-    container: { flex: 1 },
-    gradient: { flex: 1 },
+    container: { flex: 1, backgroundColor: '#0D0D0D' },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingTop: 60, paddingBottom: 15 },
     headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
     headerTitle: { color: '#fff', fontSize: 24, fontWeight: '800' },
     headerBtn: { width: 44, height: 44, borderRadius: 15, backgroundColor: 'rgba(255,255,255,0.05)', alignItems: 'center', justifyContent: 'center' },
-    scroll: { paddingBottom: 120 },
+    scroll: { 
+        paddingBottom: 120,
+        ...Platform.select({
+            web: { width: '100%', maxWidth: 1000, alignSelf: 'center' }
+        })
+    },
     profileCard: { alignItems: 'center', marginTop: 20 },
-    avatarWrapper: { position: 'relative', marginBottom: 20 },
-    avatar: { width: 110, height: 110, borderRadius: 55, borderWidth: 3, borderColor: '#D4AF37' },
-    editIcon: { position: 'absolute', bottom: 0, right: 0, width: 32, height: 32, borderRadius: 16, backgroundColor: '#D4AF37', alignItems: 'center', justifyContent: 'center', borderWeight: 2, borderColor: '#000' },
+    avatarSection: { alignItems: 'center', marginBottom: 20 },
+    avatarWrapper: { position: 'relative' },
+    avatar: { width: 110, height: 110, borderRadius: 55, borderWidth: 3, borderColor: '#F5C518' },
+    avatarDefault: { width: 110, height: 110, borderRadius: 55, borderWidth: 3, borderColor: '#F5C518', backgroundColor: 'rgba(245,197,24,0.1)', alignItems: 'center', justifyContent: 'center' },
+    editIcon: { position: 'absolute', bottom: 0, right: 0, width: 32, height: 32, borderRadius: 16, backgroundColor: '#F5C518', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#000' },
+    deletePhotoBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 10, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,107,107,0.3)', backgroundColor: 'rgba(255,107,107,0.08)' },
+    deletePhotoTxt: { color: '#FF6B6B', fontSize: 12, fontWeight: '700' },
     userName: { color: '#fff', fontSize: 24, fontWeight: '800' },
     userEmail: { color: '#8E8E93', fontSize: 14, marginTop: 4 },
     roleBadge: { backgroundColor: 'rgba(255,255,255,0.05)', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 10, marginTop: 12 },
     roleTxt: { color: '#8E8E93', fontSize: 10, fontWeight: '900', letterSpacing: 1 },
     menuSection: { paddingHorizontal: 24, marginTop: 40, gap: 12 },
-    menuItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'rgba(255,255,255,0.03)', padding: 16, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
+    menuItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#1A1A1A', padding: 16, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' },
     menuLeft: { flexDirection: 'row', alignItems: 'center', gap: 15 },
-    menuIconBox: { width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(212,175,55,0.1)', alignItems: 'center', justifyContent: 'center' },
+    menuIconBox: { width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(245,197,24,0.1)', alignItems: 'center', justifyContent: 'center' },
     menuLabel: { color: '#fff', fontSize: 16, fontWeight: '700' },
     menuRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-    badge: { backgroundColor: '#FFD700', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
+    badge: { backgroundColor: '#F5C518', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
     badgeTxt: { color: '#000', fontSize: 11, fontWeight: '900' },
     logoutBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, marginHorizontal: 24, marginTop: 40, height: 60, borderRadius: 24, borderWidth: 1.5, borderColor: 'rgba(255,107,107,0.3)' },
     logoutText: { color: '#FF6B6B', fontSize: 15, fontWeight: '800' },

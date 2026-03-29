@@ -45,7 +45,7 @@ export default function FavoritesScreen({ navigation }) {
                 <Image source={{ uri: item.image }} style={s.cardImg} />
                 <View style={s.cardInfo}>
                     <Text style={s.cardTitle} numberOfLines={1}>{item.title}</Text>
-                    <Text style={s.cardStore}>{store?.storeName || 'Sizzling Valoris Central'}</Text>
+                    <Text style={s.cardStore}>{store?.storeName || 'Dealspheree Central'}</Text>
                     <Text style={s.cardExp}>{t('expires_in_days').replace('{days}', daysLeft)}</Text>
                 </View>
                 <TouchableOpacity onPress={() => toggleFavorite(item._id || item.id)} style={s.heartBtn}>

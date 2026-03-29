@@ -15,7 +15,11 @@ mongoose.connect(process.env.MONGO_URI)
   .catch((err) => console.error('MongoDB connection error:', err));
 
 // Middleware
-app.use(cors());
+app.use(cors({
+    origin: '*', // In production, replace with your domain: 'https://dealspheree.in'
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
 
 // Simple Logger
@@ -40,6 +44,7 @@ app.use('/api/offers', require('./routes/offers'));
 app.use('/api/stores', require('./routes/stores'));
 app.use('/api/upload', require('./routes/upload'));
 app.use('/api/admin', require('./routes/admin'));
+app.use('/api/notifications', require('./routes/notifications'));
 
 app.get('/api/categories', (req, res) => {
     const { CATEGORIES } = require('./data/mockData');

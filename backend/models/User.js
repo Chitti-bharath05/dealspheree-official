@@ -16,6 +16,7 @@ const userSchema = new mongoose.Schema({
     resetPasswordOTP: { type: String },
     resetPasswordOTPExpire: { type: Date },
     pushToken: { type: String },
+    webPushSubscriptions: [{ type: Object }], // For browser-based push notifications
     city: { type: String, default: '' }
 }, { timestamps: true });
 

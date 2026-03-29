@@ -61,6 +61,16 @@ export const DataProvider = ({ children }) => {
         }
     };
 
+    const deleteStore = async (storeId) => {
+        try {
+            await apiClient.delete(`/stores/${storeId}`);
+            refetchStores();
+        } catch (e) {
+            console.error('Error deleting store:', e);
+            throw e;
+        }
+    };
+
     const approveStore = async (storeId) => {
         try {
             await apiClient.put(`/stores/${storeId}/approve`);
@@ -99,6 +109,28 @@ export const DataProvider = ({ children }) => {
 
     const getStoreById = (storeId) => {
         return stores.find((s) => (s._id || s.id) === storeId);
+    };
+
+    const incrementStoreViews = async (storeId) => {
+        try {
+            await apiClient.post(`/stores/${storeId}/view`);
+            // We don't necessarily need to refetch ALL stores every time someone views one,
+            // but for now, it's the simplest way to keep the dashboard in sync.
+            refetchStores();
+        } catch (e) {
+            console.error('Error incrementing store views:', e);
+        }
+    };
+
+    const likeStore = async (storeId) => {
+        try {
+            const res = await apiClient.post(`/stores/${storeId}/like`);
+            refetchStores();
+            return res; // { success: true, likes: number, isLiked: boolean }
+        } catch (e) {
+            console.error('Error liking store:', e);
+            throw e;
+        }
     };
 
     // ---- Offer operations ----
@@ -165,6 +197,7 @@ export const DataProvider = ({ children }) => {
                 isLoading: isLoadingStores || isLoadingOffers || isLoadingCategories,
                 registerStore,
                 updateStore,
+                deleteStore,
                 approveStore,
                 rejectStore,
                 getStoresByOwner,
@@ -177,6 +210,8 @@ export const DataProvider = ({ children }) => {
                 getOffersByStore,
                 getActiveOffers,
                 getOfferById,
+                incrementStoreViews,
+                likeStore,
                 getAdminStats: async () => {
                    const res = await apiClient.get('/admin/stats');
                    return res.stats;

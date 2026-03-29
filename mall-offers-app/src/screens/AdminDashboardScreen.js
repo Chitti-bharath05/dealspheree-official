@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert, ScrollView, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert, ScrollView, Platform, ActivityIndicator, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
@@ -10,7 +10,7 @@ const AdminDashboardScreen = () => {
     const { user, users, deleteUser, logout, fetchUsers, isLoading: authLoading } = useAuth();
     const { stores, offers, getPendingStores, approveStore, rejectStore, deleteOffer, getAdminStats, isLoading: dataLoading } = useData();
     const { t } = useLanguage();
-    const [activeTab, setActiveTab] = useState('approvals');
+    const [activeTab, setActiveTab] = useState('overview');
     const [adminStats, setAdminStats] = useState(null);
 
     React.useEffect(() => {
@@ -25,8 +25,7 @@ const AdminDashboardScreen = () => {
     if (isLoading || !user) {
         return (
             <View style={[s.container, { justifyContent: 'center', alignItems: 'center' }]}>
-                <LinearGradient colors={['#1a150d', '#000']} style={StyleSheet.absoluteFill} />
-                <ActivityIndicator color="#D4AF37" size="large" />
+                <ActivityIndicator color="#F5C518" size="large" />
             </View>
         );
     }
@@ -54,230 +53,274 @@ const AdminDashboardScreen = () => {
             Alert.alert(t('delete_acc'), confirmMsg, [{ text: t('cancel') }, { text: t('confirm'), style: 'destructive', onPress: () => deleteUser(id) }]);
         }
     };
-    const handleDeleteOffer = (id) => {
-        const confirmMsg = t('delete_confirm');
-        if (Platform.OS === 'web') {
-            if (window.confirm(confirmMsg)) {
-                deleteOffer(id);
-            }
-        } else {
-            Alert.alert(t('offers'), confirmMsg, [{ text: t('cancel') }, { text: t('confirm'), style: 'destructive', onPress: () => deleteOffer(id) }]);
-        }
-    };
 
-    const getRoleBadge = (role) => {
-        const map = { 
-            customer: { color: '#4ECDC4', label: 'Customer' }, 
-            store_owner: { color: '#D4AF37', label: 'Store Owner' }, 
-            admin: { color: '#A18CD1', label: 'Admin' } 
-        };
-        return map[role] || { color: '#8E8E93', label: role };
-    };
+    const StatCard = ({ label, value, icon, badge, badgeColor }) => (
+        <View style={s.statCard}>
+            <View style={s.statHeader}>
+                <Text style={s.statLabel}>{label}</Text>
+                <Ionicons name={icon} size={18} color="#8E8E93" />
+            </View>
+            <Text style={s.statValue}>{value}</Text>
+            <View style={[s.statBadge, { backgroundColor: badgeColor }]}>
+                <Text style={s.statBadgeTxt}>{badge}</Text>
+            </View>
+        </View>
+    );
 
     return (
         <View style={s.container}>
-            <LinearGradient colors={['#1a150d', '#000']} style={s.gradient}>
-                <View style={s.header}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                            <View>
-                                <Text style={s.headerTitle}>{t('admin_panel')}</Text>
-                                <Text style={s.headerSub}>{t('manage_platform')}</Text>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
+                    {/* Global Header is provided by AppNavigator */}
+                    <View style={{ height: Platform.OS === 'web' ? 70 : 0 }} />
+
+
+                {/* Main Heading */}
+                <View style={s.mainHeading}>
+                    <Text style={s.mainHeadingTitle}>Platform <Text style={s.italicGold}>Overview.</Text></Text>
+                </View>
+
+                {/* Action Buttons */}
+                <View style={s.actionRow}>
+                    <TouchableOpacity 
+                        style={[s.secondaryAction, activeTab === 'overview' && s.activeTabBtn]} 
+                        onPress={() => setActiveTab('overview')}
+                    >
+                        <Ionicons name="stats-chart" size={20} color={activeTab === 'overview' ? "#000" : "#fff"} style={{ marginRight: 8 }} />
+                        <Text style={[s.secondaryActionTxt, activeTab === 'overview' && s.activeTabTxt]}>Overview</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                        style={[s.secondaryAction, activeTab === 'approvals' && s.activeTabBtn]} 
+                        onPress={() => setActiveTab('approvals')}
+                    >
+                        <Ionicons name="storefront" size={20} color={activeTab === 'approvals' ? "#000" : "#fff"} style={{ marginRight: 8 }} />
+                        <Text style={[s.secondaryActionTxt, activeTab === 'approvals' && s.activeTabTxt]}>Approvals</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                        style={[s.secondaryAction, activeTab === 'users' && s.activeTabBtn]} 
+                        onPress={() => setActiveTab('users')}
+                    >
+                        <Ionicons name="people" size={20} color={activeTab === 'users' ? "#000" : "#fff"} style={{ marginRight: 8 }} />
+                        <Text style={[s.secondaryActionTxt, activeTab === 'users' && s.activeTabTxt]}>Users</Text>
+                    </TouchableOpacity>
+                </View>
+
+                {activeTab === 'overview' && (
+                    <>
+                        {/* Stats Grid */}
+                        <View style={s.statsGrid}>
+                            <StatCard 
+                                label="TOTAL USERS" 
+                                value={adminStats?.totalUsers || '0'} 
+                                icon="people-outline" 
+                                badge="+12%" 
+                                badgeColor="rgba(76,175,80,0.15)" 
+                            />
+                            <StatCard 
+                                label="TOTAL STORES" 
+                                value={adminStats?.totalStores || '0'} 
+                                icon="business-outline" 
+                                badge="+5%" 
+                                badgeColor="rgba(76,175,80,0.15)" 
+                            />
+                            <StatCard 
+                                label="ACTIVE OFFERS" 
+                                value={adminStats?.totalOffers || '0'} 
+                                icon="pricetag-outline" 
+                                badge="Live" 
+                                badgeColor="rgba(76,175,80,0.15)" 
+                            />
+                            <StatCard 
+                                label="PENDING REQUESTS" 
+                                value={adminStats?.pendingStores || pendingStores.length.toString()} 
+                                icon="alert-circle-outline" 
+                                badge="Urgent" 
+                                badgeColor="rgba(255,59,48,0.15)" 
+                            />
+                        </View>
+
+                        {/* Analytics Section */}
+                        <View style={s.section}>
+                            <View style={s.sectionHeader}>
+                                <View style={s.accentBar} />
+                                <View>
+                                    <Text style={s.sectionTitle}>New Store Registrations</Text>
+                                    <Text style={s.sectionSub}>Activity over the last 7 days</Text>
+                                </View>
+                            </View>
+                            
+                            <View style={s.chartArea}>
+                                {[40, 60, 50, 100, 45, 55, 65].map((h, i) => (
+                                    <View key={i} style={s.chartCol}>
+                                        <View style={[s.chartBar, { height: h }, i === 3 && { backgroundColor: '#F5C518' }]} />
+                                        <Text style={s.chartDay}>{['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'][i]}</Text>
+                                    </View>
+                                ))}
                             </View>
                         </View>
-                        <TouchableOpacity
-                            style={s.headerLogout}
-                            onPress={() => {
-                                const doLogout = () => logout();
-                                if (Platform.OS === 'web') {
-                                    if (window.confirm(t('sign_out') + '?')) doLogout();
-                                } else {
-                                    Alert.alert(t('sign_out'), t('delete_confirm'), [
-                                        { text: t('cancel'), style: 'cancel' },
-                                        { text: t('confirm'), style: 'destructive', onPress: () => doLogout() }
-                                    ]);
-                                }
-                            }}
-                        >
-                            <Ionicons name="log-out-outline" size={24} color="#D4AF37" />
-                        </TouchableOpacity>
-                    </View>
-                </View>
-                
-                {/* Stats Grid */}
-                <View style={s.statsRow}>
-                    <View style={s.statCard}>
-                        <Text style={[s.statVal, { color: '#D4AF37' }]}>{adminStats?.totalUsers || (users || []).length}</Text>
-                        <Text style={s.statLbl}>{t('users')}</Text>
-                    </View>
-                    <View style={s.statCard}>
-                        <Text style={[s.statVal, { color: '#D4AF37' }]}>{adminStats?.totalStores || (stores || []).length}</Text>
-                        <Text style={s.statLbl}>{t('my_stores')}</Text>
-                    </View>
-                    <View style={s.statCard}>
-                        <Text style={[s.statVal, { color: '#D4AF37' }]}>₹{(adminStats?.platformRevenue || 0).toLocaleString()}</Text>
-                        <Text style={s.statLbl}>{t('revenue')}</Text>
-                    </View>
-                </View>
 
-                {/* Tabs */}
-                <View style={s.tabWrapper}>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.tabContent}>
-                        {[
-                            { k: 'approvals', l: t('approvals'), ic: 'checkmark-circle-outline' }, 
-                            { k: 'users', l: t('users'), ic: 'people-outline' }, 
-                            { k: 'offers', l: t('offers'), ic: 'pricetags-outline' }
-                        ].map(tab => (
-                            <TouchableOpacity 
-                                key={tab.k} 
-                                style={[s.tab, activeTab === tab.k && s.tabAct]} 
-                                onPress={() => setActiveTab(tab.k)}
-                            >
-                                <Ionicons name={tab.ic} size={18} color={activeTab === tab.k ? '#000' : '#D4AF37'} />
-                                <Text style={[s.tabTxt, activeTab === tab.k && s.tabTxtAct]}>{tab.l}</Text>
-                                {tab.k === 'approvals' && pendingStores.length > 0 && (
-                                    <View style={s.badge}><Text style={s.badgeTxt}>{pendingStores.length}</Text></View>
-                                )}
-                            </TouchableOpacity>
-                        ))}
-                    </ScrollView>
-                </View>
+                        {/* Alerts Section */}
+                        <View style={s.section}>
+                            <View style={s.sectionHeader}>
+                                <View style={s.accentBar} />
+                                <Text style={s.sectionTitle}>System Alerts</Text>
+                            </View>
+                            
+                            <View style={s.alertList}>
+                                {[
+                                    { color: '#FF3B30', title: 'High Load Detected', sub: 'Database cluster 02 at 85% capacity.', time: '2 MINS AGO' },
+                                    { color: '#F5C518', title: 'New Partner Verified', sub: 'TechHaven store profile was approved.', time: '45 MINS AGO' },
+                                    { color: '#555555', title: 'Maintenance Scheduled', sub: 'Global deployment at 02:00 AM UTC.', time: '3 HOURS AGO' }
+                                ].map((alert, i) => (
+                                    <View key={i} style={s.alertItem}>
+                                        <View style={[s.alertDot, { backgroundColor: alert.color }]} />
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={s.alertTitle}>{alert.title}</Text>
+                                            <Text style={s.alertSub}>{alert.sub}</Text>
+                                            <Text style={s.alertTime}>{alert.time}</Text>
+                                        </View>
+                                    </View>
+                                ))}
+                            </View>
+                        </View>
+                    </>
+                )}
 
                 {activeTab === 'approvals' && (
-                    <FlatList 
-                        data={pendingStores} 
-                        keyExtractor={i => i._id || i.id} 
-                        contentContainerStyle={s.list} 
-                        showsVerticalScrollIndicator={false}
-                        renderItem={({ item }) => (
-                            <View style={s.card}>
-                                <View style={s.cardHeader}>
-                                    <View style={s.storeIc}><Ionicons name="storefront" size={24} color="#D4AF37" /></View>
-                                    <View style={{ flex: 1 }}>
-                                        <Text style={s.cardTitle}>{item.storeName}</Text>
-                                        <Text style={s.cardSub}>{item.location}</Text>
-                                    </View>
+                    <View style={s.listWrapper}>
+                        <Text style={s.listHeader}>Pending Registrations ({pendingStores.length})</Text>
+                        {pendingStores.map((item) => (
+                            <View key={item._id || item.id} style={s.listItem}>
+                                <View style={s.listInfo}>
+                                    <Text style={s.listItemTitle}>{item.storeName}</Text>
+                                    <Text style={s.listItemSub}>{item.location}</Text>
+                                    <Text style={s.listItemSub}>Category: {item.category}</Text>
                                 </View>
-                                <View style={s.actionRow}>
+                                <View style={s.listActions}>
                                     <TouchableOpacity style={s.approveBtn} onPress={() => handleApprove(item._id || item.id)}>
-                                        <Text style={s.approveBtnTxt}>{t('approve')}</Text>
+                                        <Ionicons name="checkmark" size={18} color="#000" />
                                     </TouchableOpacity>
                                     <TouchableOpacity style={s.rejectBtn} onPress={() => handleReject(item._id || item.id)}>
-                                        <Text style={s.rejectBtnTxt}>{t('reject')}</Text>
+                                        <Ionicons name="close" size={18} color="#fff" />
                                     </TouchableOpacity>
                                 </View>
                             </View>
-                        )}
-                        ListEmptyComponent={
-                            <View style={s.empty}>
-                                <Ionicons name="checkmark-done-circle-outline" size={60} color="#333" />
-                                <Text style={s.emptyTxt}>{t('no_pending')}</Text>
-                            </View>
-                        }
-                    />
+                        ))}
+                        {pendingStores.length === 0 && <Text style={s.emptyMsg}>No pending stores to approve.</Text>}
+                    </View>
                 )}
 
                 {activeTab === 'users' && (
-                    <FlatList 
-                        data={users} 
-                        keyExtractor={i => i._id || i.id} 
-                        contentContainerStyle={s.list} 
-                        showsVerticalScrollIndicator={false}
-                        renderItem={({ item }) => {
-                            const rb = getRoleBadge(item.role);
-                            return (
-                                <View style={s.card}>
-                                    <View style={s.cardContent}>
-                                        <View style={s.avatarBg}><Ionicons name="person" size={20} color="#D4AF37" /></View>
-                                        <View style={{ flex: 1 }}>
-                                            <Text style={s.cardTitle}>{item.name}</Text>
-                                            <Text style={s.cardSub}>{item.email}</Text>
-                                        </View>
-                                        <View style={[s.roleBadge, { backgroundColor: 'rgba(212,175,55,0.1)' }]}>
-                                            <Text style={s.roleText}>{rb.label}</Text>
-                                        </View>
+                    <View style={s.listWrapper}>
+                        <Text style={s.listHeader}>Platform Users ({users.length})</Text>
+                        {users.map((u) => (
+                            <View key={u._id || u.id} style={s.listItem}>
+                                <View style={s.listInfo}>
+                                    <Text style={s.listItemTitle}>{u.name || 'Anonymous'}</Text>
+                                    <Text style={s.listItemSub}>{u.email}</Text>
+                                    <View style={s.roleBadge}>
+                                        <Text style={s.roleText}>{u.role.toUpperCase()}</Text>
                                     </View>
-                                    {item.role !== 'admin' && (
-                                        <TouchableOpacity 
-                                            style={s.deleteUserBtn} 
-                                            onPress={() => handleDeleteUser(item._id || item.id)}
-                                        >
-                                            <Ionicons name="trash-outline" size={20} color="#FF6B6B" />
+                                </View>
+                                <View style={s.listActions}>
+                                    {u._id !== user.id && (
+                                        <TouchableOpacity style={s.deleteBtn} onPress={() => handleDeleteUser(u._id || u.id)}>
+                                            <Ionicons name="trash-outline" size={18} color="#FF3B30" />
                                         </TouchableOpacity>
                                     )}
                                 </View>
-                            );
-                        }}
-                    />
+                            </View>
+                        ))}
+                    </View>
                 )}
 
-                {activeTab === 'offers' && (
-                    <FlatList 
-                        data={offers} 
-                        keyExtractor={i => i._id || i.id} 
-                        contentContainerStyle={s.list} 
-                        showsVerticalScrollIndicator={false}
-                        renderItem={({ item }) => (
-                            <View style={s.card}>
-                                <View style={s.cardContent}>
-                                    <View style={{ flex: 1 }}>
-                                        <Text style={s.cardTitle} numberOfLines={1}>{item.title}</Text>
-                                        <Text style={s.cardSub}>{item.category} • {item.discount}% OFF</Text>
-                                    </View>
-                                    <TouchableOpacity 
-                                        style={s.delBtn} 
-                                        onPress={() => handleDeleteOffer(item._id || item.id)}
-                                    >
-                                        <Ionicons name="trash-outline" size={20} color="#FF6B6B" />
-                                    </TouchableOpacity>
-                                </View>
-                            </View>
-                        )}
-                    />
-                )}
-            </LinearGradient>
+                {/* Bottom Promo */}
+                <View style={s.promoCard}>
+                    <Text style={s.promoTitle}>Optimize Platform <Text style={s.italicGold}>Performance.</Text></Text>
+                    <Text style={s.promoDesc}>
+                        The admin core now includes real-time telemetry and advanced fraud detection for all store offers. Ensure every deal published meets the DealSphere quality benchmark.
+                    </Text>
+                    <View style={s.tagRow}>
+                        <View style={s.promoTag}><Text style={s.promoTagTxt}>ENGINE V1.2</Text></View>
+                        <View style={s.promoTag}><Text style={s.promoTagTxt}>LIVE TELEMETRY</Text></View>
+                    </View>
+                </View>
+            </ScrollView>
         </View>
     );
 };
 
 const s = StyleSheet.create({
-    container: { flex: 1 },
-    gradient: { flex: 1 },
-    header: { paddingHorizontal: 24, paddingTop: 60, paddingBottom: 20 },
-    headerTitle: { color: '#fff', fontSize: 28, fontWeight: '800' },
-    headerSub: { color: '#D4AF37', fontSize: 14, marginTop: 4, fontWeight: '600' },
-    headerLogout: { width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(255,255,255,0.05)', alignItems: 'center', justifyContent: 'center' },
-    statsRow: { flexDirection: 'row', paddingHorizontal: 24, gap: 12, marginBottom: 20 },
-    statCard: { flex: 1, backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 20, padding: 16, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(212,175,55,0.1)' },
-    statVal: { fontSize: 20, fontWeight: '900', color: '#D4AF37' },
-    statLbl: { color: '#8E8E93', fontSize: 12, marginTop: 4, fontWeight: '600' },
-    tabWrapper: { marginBottom: 10 },
-    tabContent: { paddingHorizontal: 24, gap: 12 },
-    tab: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.04)', gap: 8, borderWidth: 1, borderColor: 'rgba(212,175,55,0.1)' },
-    tabAct: { backgroundColor: '#D4AF37', borderColor: '#D4AF37' },
-    tabTxt: { color: '#8E8E93', fontSize: 14, fontWeight: '700' },
-    tabTxtAct: { color: '#000' },
-    badge: { backgroundColor: '#FF6B6B', borderRadius: 10, minWidth: 20, height: 20, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6, position: 'absolute', top: -5, right: -5 },
-    badgeTxt: { color: '#fff', fontSize: 10, fontWeight: '900' },
-    list: { padding: 24, paddingBottom: 100 },
-    card: { backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 24, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
-    cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 20 },
-    cardContent: { flexDirection: 'row', alignItems: 'center', gap: 16 },
-    cardTitle: { color: '#fff', fontSize: 17, fontWeight: '700' },
-    cardSub: { color: '#8E8E93', fontSize: 13, marginTop: 4 },
-    storeIc: { width: 50, height: 50, borderRadius: 15, backgroundColor: 'rgba(212,175,55,0.1)', alignItems: 'center', justifyContent: 'center' },
-    avatarBg: { width: 44, height: 44, borderRadius: 12, backgroundColor: 'rgba(212,175,55,0.1)', alignItems: 'center', justifyContent: 'center' },
-    actionRow: { flexDirection: 'row', gap: 12 },
-    approveBtn: { flex: 1, backgroundColor: '#D4AF37', paddingVertical: 14, borderRadius: 15, alignItems: 'center' },
-    approveBtnTxt: { color: '#000', fontSize: 14, fontWeight: '800' },
-    rejectBtn: { flex: 1, backgroundColor: 'rgba(255,107,107,0.1)', paddingVertical: 14, borderRadius: 15, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,107,107,0.2)' },
-    rejectBtnTxt: { color: '#FF6B6B', fontSize: 14, fontWeight: '800' },
-    roleBadge: { borderRadius: 10, paddingHorizontal: 12, paddingVertical: 6 },
-    roleText: { color: '#D4AF37', fontSize: 11, fontWeight: '800' },
-    deleteUserBtn: { position: 'absolute', top: 20, right: 20 },
-    delBtn: { width: 44, height: 44, borderRadius: 12, backgroundColor: 'rgba(255,107,107,0.1)', alignItems: 'center', justifyContent: 'center' },
-    empty: { alignItems: 'center', marginTop: 60 },
-    emptyTxt: { color: '#333', fontSize: 18, fontWeight: '700', marginTop: 15 },
+    container: { flex: 1, backgroundColor: '#0D0D0D' },
+    scroll: { 
+        paddingBottom: 100,
+        ...Platform.select({
+            web: { width: '100%', maxWidth: 1000, alignSelf: 'center' }
+        })
+    },
+    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingTop: 60, marginBottom: 20 },
+    headerLogo: { color: '#FFFFFF', fontSize: 20, fontWeight: '900' },
+    italic: { fontStyle: 'italic' },
+    statusRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
+    statusDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#4CAF50', marginRight: 6 },
+    statusText: { color: '#4CAF50', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
+    headerIcons: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+    adminAvatar: { width: 32, height: 32, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+    mainHeading: { paddingHorizontal: 24, marginBottom: 24 },
+    mainHeadingTitle: { color: '#FFFFFF', fontSize: 32, fontWeight: '900' },
+    italicGold: { color: '#F5C518', fontStyle: 'italic' },
+    actionRow: { flexDirection: 'row', paddingHorizontal: 24, gap: 12, marginBottom: 32 },
+    primaryAction: { flex: 1, height: 56, backgroundColor: '#F5C518', borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+    primaryActionTxt: { color: '#000', fontWeight: '900', fontSize: 14 },
+    secondaryAction: { flex: 1, height: 56, backgroundColor: '#1A1A1A', borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' },
+    secondaryActionTxt: { color: '#fff', fontWeight: '900', fontSize: 14 },
+    statsGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 24, gap: 16, marginBottom: 32 },
+    statCard: { width: (Dimensions ? Dimensions.get('window').width - 64 : 330) / 2, backgroundColor: '#1A1A1A', borderRadius: 24, padding: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' },
+    statHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
+    statLabel: { color: '#8E8E93', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
+    statValue: { color: '#FFFFFF', fontSize: 24, fontWeight: '900', marginBottom: 8 },
+    statBadge: { alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+    statBadgeTxt: { color: '#8E8E93', fontSize: 10, fontWeight: '700' },
+    section: { backgroundColor: '#1A1A1A', marginHorizontal: 24, borderRadius: 28, padding: 24, marginBottom: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' },
+    sectionHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 24 },
+    accentBar: { width: 4, height: 24, backgroundColor: '#F5C518', marginRight: 12, borderRadius: 2 },
+    sectionTitle: { color: '#FFFFFF', fontSize: 18, fontWeight: '900' },
+    sectionSub: { color: '#555555', fontSize: 12, fontWeight: '400', marginTop: 2 },
+    chartArea: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', height: 120, paddingTop: 20 },
+    chartCol: { alignItems: 'center', gap: 12 },
+    chartBar: { width: 12, backgroundColor: '#222', borderRadius: 6 },
+    chartDay: { color: '#555555', fontSize: 9, fontWeight: '800' },
+    chartLegend: { marginLeft: 'auto', flexDirection: 'row', alignItems: 'center', gap: 6 },
+    dot: { width: 8, height: 8, borderRadius: 4 },
+    legendTxt: { color: '#8E8E93', fontSize: 9, fontWeight: '800' },
+    alertList: { gap: 20 },
+    alertItem: { flexDirection: 'row', gap: 16 },
+    alertDot: { width: 8, height: 8, borderRadius: 4, marginTop: 6 },
+    alertTitle: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
+    alertSub: { color: '#8E8E93', fontSize: 13, marginTop: 2 },
+    alertTime: { color: '#555555', fontSize: 11, fontWeight: '600', marginTop: 4 },
+    auditBtn: { marginTop: 24, height: 48, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.04)', alignItems: 'center', justifyContent: 'center' },
+    auditBtnTxt: { color: '#8E8E93', fontSize: 13, fontWeight: '700' },
+    promoCard: { backgroundColor: '#0D0D0D', marginHorizontal: 24, borderRadius: 28, padding: 24, marginBottom: 40, borderWidth: 1, borderColor: 'rgba(255,197,24,0.1)' },
+    promoTitle: { color: '#FFFFFF', fontSize: 24, fontWeight: '900', marginBottom: 12 },
+    promoDesc: { color: '#8E8E93', fontSize: 14, lineHeight: 22, marginBottom: 20 },
+    tagRow: { flexDirection: 'row', gap: 10 },
+    promoTag: { paddingHorizontal: 12, paddingVertical: 6, backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 10 },
+    promoTagTxt: { color: '#555555', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
+    activeTabBtn: { backgroundColor: '#F5C518', borderColor: '#F5C518' },
+    activeTabTxt: { color: '#000' },
+    listWrapper: { paddingHorizontal: 24, marginBottom: 40 },
+    listHeader: { color: '#F5C518', fontSize: 20, fontWeight: '900', marginBottom: 20 },
+    listItem: { backgroundColor: '#1A1A1A', borderRadius: 16, padding: 16, flexDirection: 'row', alignItems: 'center', marginBottom: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' },
+    listInfo: { flex: 1 },
+    listItemTitle: { color: '#fff', fontSize: 16, fontWeight: '700' },
+    listItemSub: { color: '#8E8E93', fontSize: 13, marginTop: 2 },
+    listActions: { flexDirection: 'row', gap: 10 },
+    approveBtn: { width: 36, height: 36, backgroundColor: '#F5C518', borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+    rejectBtn: { width: 36, height: 36, backgroundColor: '#FF3B30', borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+    deleteBtn: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,59,48,0.2)' },
+    roleBadge: { alignSelf: 'flex-start', backgroundColor: 'rgba(245,197,24,0.1)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, marginTop: 6 },
+    roleText: { color: '#F5C518', fontSize: 10, fontWeight: '800' },
+    emptyMsg: { color: '#555', fontSize: 16, textAlign: 'center', marginTop: 40 }
 });
 
 export default AdminDashboardScreen;

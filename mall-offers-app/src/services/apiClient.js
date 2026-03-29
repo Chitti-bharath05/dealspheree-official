@@ -2,17 +2,19 @@ import axios from 'axios';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// For local development:
-// - Web: localhost works fine
-// - Physical Device (Expo Go): Use your computer's local IP address
-const BASE_URL = 'https://sizzling-valoris-mall-offers.onrender.com/api';
+// In Production, replace 'YOUR_BACKEND_URL' with your Render/Railway address:
+// Example: 'https://dealsphere-api.onrender.com/api'
+const PROD_API_URL = 'https://YOUR_BACKEND_URL/api'; 
+const DEV_API_URL = Platform.OS === 'web' ? 'http://localhost:5000/api' : 'http://192.168.1.xxx:5000/api';
+
+const BASE_URL = __DEV__ ? DEV_API_URL : PROD_API_URL;
 
 const apiClient = axios.create({
     baseURL: BASE_URL,
     headers: {
         'Content-Type': 'application/json',
     },
-    timeout: 10000,
+    timeout: 30000, // Increased to 30s for Render free-tier cold starts
 });
 
 apiClient.interceptors.request.use(

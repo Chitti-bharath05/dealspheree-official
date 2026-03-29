@@ -10,6 +10,9 @@ export default function ChangePasswordScreen({ navigation }) {
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [showCurrent, setShowCurrent] = useState(false);
+    const [showNew, setShowNew] = useState(false);
+    const [showConfirm, setShowConfirm] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
 
     const handleUpdate = async () => {
@@ -63,38 +66,53 @@ export default function ChangePasswordScreen({ navigation }) {
                     
                     <View style={s.inputSection}>
                         <Text style={s.label}>{t('password')}</Text>
-                        <TextInput 
-                            style={s.input} 
-                            secureTextEntry 
-                            value={currentPassword} 
-                            onChangeText={setCurrentPassword}
-                            placeholder="••••••••"
-                            placeholderTextColor="#555"
-                        />
+                        <View style={s.inputWrapper}>
+                            <TextInput 
+                                style={s.inputBox} 
+                                secureTextEntry={!showCurrent}
+                                value={currentPassword} 
+                                onChangeText={setCurrentPassword}
+                                placeholder="••••••••"
+                                placeholderTextColor="#555"
+                            />
+                            <TouchableOpacity onPress={() => setShowCurrent(!showCurrent)} style={s.eyeBtn}>
+                                <Ionicons name={showCurrent ? "eye-outline" : "eye-off-outline"} size={20} color="#8E8E93" />
+                            </TouchableOpacity>
+                        </View>
                     </View>
 
                     <View style={s.inputSection}>
                         <Text style={s.label}>{t('new_password')}</Text>
-                        <TextInput 
-                            style={s.input} 
-                            secureTextEntry 
-                            value={newPassword} 
-                            onChangeText={setNewPassword}
-                            placeholder={t('password_too_short')}
-                            placeholderTextColor="#555"
-                        />
+                        <View style={s.inputWrapper}>
+                            <TextInput 
+                                style={s.inputBox} 
+                                secureTextEntry={!showNew}
+                                value={newPassword} 
+                                onChangeText={setNewPassword}
+                                placeholder={t('password_too_short')}
+                                placeholderTextColor="#555"
+                            />
+                            <TouchableOpacity onPress={() => setShowNew(!showNew)} style={s.eyeBtn}>
+                                <Ionicons name={showNew ? "eye-outline" : "eye-off-outline"} size={20} color="#8E8E93" />
+                            </TouchableOpacity>
+                        </View>
                     </View>
 
                     <View style={s.inputSection}>
                         <Text style={s.label}>{t('confirm_password')}</Text>
-                        <TextInput 
-                            style={s.input} 
-                            secureTextEntry 
-                            value={confirmPassword} 
-                            onChangeText={setConfirmPassword}
-                            placeholder={t('confirm_password')}
-                            placeholderTextColor="#555"
-                        />
+                        <View style={s.inputWrapper}>
+                            <TextInput 
+                                style={s.inputBox} 
+                                secureTextEntry={!showConfirm}
+                                value={confirmPassword} 
+                                onChangeText={setConfirmPassword}
+                                placeholder={t('confirm_password')}
+                                placeholderTextColor="#555"
+                            />
+                            <TouchableOpacity onPress={() => setShowConfirm(!showConfirm)} style={s.eyeBtn}>
+                                <Ionicons name={showConfirm ? "eye-outline" : "eye-off-outline"} size={20} color="#8E8E93" />
+                            </TouchableOpacity>
+                        </View>
                     </View>
 
                     <TouchableOpacity style={s.saveBtn} onPress={handleUpdate} disabled={isSaving}>
@@ -121,7 +139,17 @@ const s = StyleSheet.create({
     sectionTitle: { color: '#D4AF37', fontSize: 13, fontWeight: '800', letterSpacing: 1, marginTop: 20, marginBottom: 25 },
     inputSection: { marginBottom: 20 },
     label: { color: '#8E8E93', fontSize: 12, fontWeight: '700', marginBottom: 10, marginLeft: 5 },
-    input: { backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 15, padding: 18, color: '#fff', fontSize: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
+    inputWrapper: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255,255,255,0.03)',
+        borderRadius: 15,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.05)',
+        paddingRight: 15
+    },
+    inputBox: { flex: 1, padding: 18, color: '#fff', fontSize: 16 },
+    eyeBtn: { padding: 5 },
     saveBtn: { backgroundColor: '#D4AF37', borderRadius: 20, height: 60, alignItems: 'center', justifyContent: 'center', marginTop: 30 },
     saveBtnTxt: { color: '#000', fontSize: 16, fontWeight: '800' },
 });

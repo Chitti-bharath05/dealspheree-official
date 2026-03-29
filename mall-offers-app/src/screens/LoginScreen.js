@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -11,353 +11,309 @@ import {
     ActivityIndicator,
     Image,
     ScrollView,
-    Modal,
-    Pressable,
+    useWindowDimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import * as LocalAuthentication from 'expo-local-authentication';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../context/AuthContext';
-import * as Google from 'expo-auth-session/providers/google';
-import * as WebBrowser from 'expo-web-browser';
-import * as AppleAuthentication from 'expo-apple-authentication';
-import { makeRedirectUri } from 'expo-auth-session';
-import Constants from 'expo-constants';
-
 import { useLanguage } from '../context/LanguageContext';
 
 const LoginScreen = ({ navigation }) => {
-    const [email, setEmail] = useState('');
+    const [identifier, setIdentifier] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
+    const [rememberMe, setRememberMe] = useState(false);
+    const [biometricSupported, setBiometricSupported] = useState(false);
+    const [biometricEnabled, setBiometricEnabled] = useState(false);
     const [loading, setLoading] = useState(false);
-    const [socialLoading, setSocialLoading] = useState(false);
-    const [pendingSocialData, setPendingSocialData] = useState(null);
-    const [showRoleModal, setShowRoleModal] = useState(false);
-    
-    const { login, socialLogin } = useAuth();
+    const [errorMsg, setErrorMsg] = useState('');
+    const { width, height } = useWindowDimensions();
+
+    const { login, loginWithBiometrics } = useAuth();
+
+    useEffect(() => {
+        checkBiometrics();
+    }, []);
+
+    const checkBiometrics = async () => {
+        if (Platform.OS === 'web') return;
+        const hasHardware = await LocalAuthentication.hasHardwareAsync();
+        const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+        const enabled = await AsyncStorage.getItem('settings_biometrics');
+        
+        setBiometricSupported(hasHardware && isEnrolled);
+        setBiometricEnabled(enabled === 'true');
+        
+        // Auto-trigger biometrics if enabled for a smooth flow
+        if (hasHardware && isEnrolled && enabled === 'true') {
+            handleBiometricLogin();
+        }
+    };
+
+    const handleBiometricLogin = async () => {
+        const result = await LocalAuthentication.authenticateAsync({
+            promptMessage: 'Login to DealSphere',
+            fallbackLabel: 'Use Password',
+        });
+
+        if (result.success) {
+            setLoading(true);
+            const loginRes = await loginWithBiometrics();
+            setLoading(false);
+            if (!loginRes.success) {
+                showError(loginRes.message || 'Biometric login failed. Please use your password.');
+            }
+        }
+    };
+    const showError = (msg) => {
+        if (Platform.OS === 'web') {
+            window.alert(msg);
+        } else {
+            Alert.alert('Login Error', msg);
+        }
+        setErrorMsg(msg);
+        setTimeout(() => setErrorMsg(''), 5000);
+    };
+
     const { t } = useLanguage();
 
-    const isExpoGo = Constants.appOwnership === 'expo';
-    const isStandalone = !isExpoGo && Platform.OS !== 'web';
-    
-    // Create the Redirect URI variable so we can log it correctly
-    const finalRedirectUri = makeRedirectUri({
-        scheme: 'com.credora.malloffersapp',
-        path: 'oauthredirect',
-        useProxy: Platform.OS !== 'web' // Only use proxy for Mobile
-    });
-
-    const [request, response, promptAsync] = Google.useAuthRequest({
-        // For Standalone APK & Expo Go: webClientId is used by the proxy.
-        // Explicitly setting clientId to the web ID ensures it's used as the fallback.
-        clientId: '1014294657035-l76t57bls0gj12a1kcti54g4t52sll2e.apps.googleusercontent.com',
-        androidClientId: "1014294657035-bpt2uqh58jbfgc8r7pn4kjorjum36b1a.apps.googleusercontent.com",
-        webClientId: "1014294657035-l76t57bls0gj12a1kcti54g4t52sll2e.apps.googleusercontent.com",
-        redirectUri: finalRedirectUri
-    });
-
-    // Logging to help debug production APK issues
-    React.useEffect(() => {
-        const envInfo = `Env: ${isExpoGo ? 'Expo Go' : (isStandalone ? 'Standalone APK' : 'Web')} | Redirect: ${finalRedirectUri}`;
-        console.log('[DEBUG] Google Auth Config:', envInfo);
-        
-        if (response) {
-            console.log('[DEBUG] Response Received Type:', response.type);
-            if (response.type === 'error') {
-                console.error('[DEBUG] OAuth Error Object:', response.params);
-            }
-        }
-    }, [response]);
-
-    // Google Auth handled via useEffect
-    React.useEffect(() => {
-        if (response?.type === 'success') {
-            const { authentication } = response;
-            if (Platform.OS !== 'web') Alert.alert('Success', 'Google Access Granted!');
-            fetchGoogleInfo(authentication.accessToken);
-        } else if (response?.type === 'error') {
-            const errorMsg = response.error?.message || 'Unknown OAuth Error';
-            Alert.alert('Auth Error', errorMsg);
-            console.error('[DEBUG] OAuth Error Details:', response.error);
-        }
-    }, [response]);
-
-    const fetchGoogleInfo = async (token) => {
-        if (Platform.OS !== 'web') Alert.alert('Status', 'Step 1: Fetching User Info...');
-        setSocialLoading(true);
-        try {
-            const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            const googleUser = await res.json();
-            
-            if (Platform.OS !== 'web') Alert.alert('Status', `Step 2: Found ${googleUser.email}.\nCalling Backend...`);
-            
-            const socialData = {
-                provider: 'google',
-                id: googleUser.sub,
-                email: googleUser.email,
-                name: googleUser.name,
-                picture: googleUser.picture
-            };
-
-            // Attempt immediate login
-            const result = await socialLogin('google', socialData);
-            
-            if (Platform.OS !== 'web') Alert.alert('Status', `Step 3: Backend Result: ${result.success}`);
-            console.log('[DEBUG] result.requiresRole:', result.requiresRole);
-
-            if (result.requiresRole) {
-                setPendingSocialData(socialData);
-                setShowRoleModal(true);
-            } else if (!result.success) {
-                Alert.alert('Error', result.message);
-            }
-        } catch (e) {
-            Alert.alert('Error', 'Failed to fetch Google account info: ' + e.message);
-        } finally {
-            setSocialLoading(false);
-        }
-    };
-
-    const handleRoleSelection = async (role) => {
-        setShowRoleModal(false);
-        setSocialLoading(true);
-        
-        const result = await socialLogin(pendingSocialData.provider, {
-            ...pendingSocialData,
-            role: role
-        });
-        
-        setSocialLoading(false);
-        if (!result.success) {
-            Alert.alert('Login Failed', result.message);
-        }
-    };
-
     const handleLogin = async () => {
-        if (!email.trim() || !password.trim()) {
-            Alert.alert('Error', 'Please fill in all fields');
+        if (!identifier.trim() || !password.trim()) {
+            showError("Please enter your email or partner ID and your password.");
             return;
         }
+        
         setLoading(true);
-        const result = await login(email.trim().toLowerCase(), password);
-        setLoading(false);
-        if (!result.success) {
-            Alert.alert('Login Failed', result.message);
+        setErrorMsg('');
+        try {
+            const result = await login(identifier.trim().toLowerCase(), password, rememberMe);
+            if (!result.success) {
+                showError(result.message || 'Invalid credentials. Please try again.');
+            }
+        } catch (e) {
+            showError('Could not reach the server. Please wait a moment and try again.');
+        } finally {
+            setLoading(false);
         }
     };
+
+    const isDesktop = width > 768;
+    const cardWidth = isDesktop ? 480 : width * 0.9;
 
     return (
         <View style={s.container}>
-            <LinearGradient colors={['#1a150d', '#000000']} style={s.gradient}>
-                <KeyboardAvoidingView 
+            <LinearGradient colors={['#000000', '#1a1a1a']} style={s.gradient}>
+                <KeyboardAvoidingView
                     behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                     style={{ flex: 1 }}
                 >
-                    <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
-                        {/* Header Image & Title */}
-                        <View style={s.header}>
-                            <View style={s.logoRow}>
-                                <View style={s.logoCircle}>
-                                    <Ionicons name="diamond" size={24} color="#D4AF37" />
+                    <ScrollView 
+                        contentContainerStyle={[s.scroll, { minHeight: height }]} 
+                        showsVerticalScrollIndicator={false}
+                    >
+                        <View style={s.centerContainer}>
+                            {/* Premium Card */}
+                            <View style={[s.card, { width: cardWidth }]}>
+                                {/* Header */}
+                                <View style={s.cardHeader}>
+                                    <View style={s.logoCircle}>
+                                        <Ionicons name="flash" size={32} color="#F5C518" />
+                                    </View>
+                                    <Text style={s.logoText}>DealSphere</Text>
+                                    <Text style={s.welcomeText}>Welcome back to excellence</Text>
                                 </View>
-                                <Text style={s.logoText}>Sizzling Valoris</Text>
+
+                                {/* Inputs */}
+                                <View style={s.inputContainer}>
+                                    <View style={s.inputGroup}>
+                                        <Text style={s.label}>SECURE IDENTIFIER</Text>
+                                        <View style={s.inputWrapper}>
+                                            <Ionicons name="person-outline" size={20} color="#F5C518" style={s.inputIcon} />
+                                            <TextInput
+                                                style={s.cardInput}
+                                                placeholder="Email or Partner ID"
+                                                placeholderTextColor="#555"
+                                                value={identifier}
+                                                onChangeText={setIdentifier}
+                                                autoCapitalize="none"
+                                            />
+                                        </View>
+                                    </View>
+
+                                    <View style={s.inputGroup}>
+                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                                            <Text style={s.label}>ACCESS KEY</Text>
+                                            <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
+                                                <Text style={s.forgotTxtSmall}>Forgot?</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                        <View style={s.inputWrapper}>
+                                            <Ionicons name="lock-closed-outline" size={20} color="#F5C518" style={s.inputIcon} />
+                                            <TextInput
+                                                style={s.cardInput}
+                                                placeholder="••••••••"
+                                                placeholderTextColor="#555"
+                                                value={password}
+                                                onChangeText={setPassword}
+                                                secureTextEntry={!showPassword}
+                                            />
+                                            <TouchableOpacity 
+                                                onPress={() => setShowPassword(!showPassword)}
+                                                style={{ paddingHorizontal: 16 }}
+                                            >
+                                                <Ionicons 
+                                                    name={showPassword ? "eye-outline" : "eye-off-outline"} 
+                                                    size={20} 
+                                                    color="#8E8E93" 
+                                                />
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+                                </View>
+
+                                {/* Action Button */}
+                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: -15, marginBottom: 20 }}>
+                                        {Platform.OS === 'web' ? (
+                                            <TouchableOpacity 
+                                                style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
+                                                onPress={() => setRememberMe(!rememberMe)}
+                                            >
+                                                <View style={{ 
+                                                    width: 18, 
+                                                    height: 18, 
+                                                    borderRadius: 4, 
+                                                    borderWidth: 1, 
+                                                    borderColor: rememberMe ? '#F5C518' : '#333',
+                                                    backgroundColor: rememberMe ? '#F5C518' : 'transparent',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center'
+                                                }}>
+                                                    {rememberMe && <Ionicons name="checkmark" size={12} color="#000" />}
+                                                </View>
+                                                <Text style={{ color: '#888', fontSize: 13, fontWeight: '500' }}>Remember Me</Text>
+                                            </TouchableOpacity>
+                                        ) : (
+                                            <View />
+                                        )}
+                                        
+                                        {biometricSupported && biometricEnabled && (
+                                            <TouchableOpacity 
+                                                onPress={handleBiometricLogin}
+                                                style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
+                                            >
+                                                <Ionicons name="finger-print" size={24} color="#F5C518" />
+                                                <Text style={{ color: '#F5C518', fontSize: 12, fontWeight: '700' }}>Biometric</Text>
+                                            </TouchableOpacity>
+                                        )}
+                                    </View>
+
+                                    <TouchableOpacity 
+                                        style={s.loginBtn} 
+                                        onPress={() => handleLogin()}
+                                        disabled={loading}
+                                    >
+                                        <LinearGradient 
+                                            colors={['#F5C518', '#D4AF37', '#E5C05B']} 
+                                            style={s.loginGradient}
+                                            start={{ x: 0, y: 0 }}
+                                            end={{ x: 1, y: 0 }}
+                                        >
+                                            {loading ? (
+                                                <ActivityIndicator color="#000" />
+                                            ) : (
+                                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                                                    <Text style={s.loginBtnText}>SIGN IN</Text>
+                                                    <Ionicons name="arrow-forward" size={18} color="#000" />
+                                                </View>
+                                            )}
+                                        </LinearGradient>
+                                    </TouchableOpacity>
+
+                                {/* Footer / Alternative Actions */}
+                                <View style={s.cardFooter}>
+                                    <Text style={s.noAccountText}>New to DealSphere?</Text>
+                                    <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+                                        <Text style={s.registerLink}>Create Private Access</Text>
+                                    </TouchableOpacity>
+                                </View>
                             </View>
 
-                            <View style={s.heroWrapper}>
-                                <Image 
-                                    source={require('../../assets/luxury_login_bg.png')} 
-                                    style={s.heroImage}
-                                    resizeMode="cover"
-                                />
-                                <LinearGradient colors={['transparent', 'rgba(26,21,13,0.8)', '#1a150d']} style={s.heroFade} />
+                            {/* External Footer */}
+                            <View style={s.externalFooter}>
+                                <Text style={s.copyrightText}>© 2026 DEALSPHERE SECURE PORTAL</Text>
                             </View>
-
-                            <Text style={s.title}>{t('welcome_back')}</Text>
-                            <Text style={s.subtitle}>{t('luxury_shopping_sub')}</Text>
-                        </View>
-
-                        {/* Form */}
-                        <View style={s.form}>
-                            <Text style={s.label}>{t('email_addr')}</Text>
-                            <View style={s.inputContainer}>
-                                <Ionicons name="mail-outline" size={18} color="#D4AF37" style={s.inputIcon} />
-                                <TextInput
-                                    style={s.input}
-                                    placeholder="name@example.com"
-                                    placeholderTextColor="#555"
-                                    value={email}
-                                    onChangeText={setEmail}
-                                    keyboardType="email-address"
-                                    autoCapitalize="none"
-                                />
-                            </View>
-
-                            <View style={s.labelRow}>
-                                <Text style={s.label}>{t('password')}</Text>
-                                <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
-                                    <Text style={s.forgotText}>{t('forgot_pass_q')}</Text>
-                                </TouchableOpacity>
-                            </View>
-                            <View style={s.inputContainer}>
-                                <Ionicons name="lock-closed-outline" size={18} color="#D4AF37" style={s.inputIcon} />
-                                <TextInput
-                                    style={s.input}
-                                    placeholder="••••••••"
-                                    placeholderTextColor="#555"
-                                    value={password}
-                                    onChangeText={setPassword}
-                                    secureTextEntry={!showPassword}
-                                />
-                                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                                    <Ionicons name={showPassword ? 'eye-outline' : 'eye-off-outline'} size={18} color="#8E8E93" />
-                                </TouchableOpacity>
-                            </View>
-
-                            <TouchableOpacity style={s.loginBtn} onPress={handleLogin} disabled={loading}>
-                                <LinearGradient colors={['#FFD700', '#D4AF37']} style={s.loginGradient}>
-                                    {loading ? <ActivityIndicator color="#000" /> : <Text style={s.loginBtnText}>{t('login_btn')}</Text>}
-                                </LinearGradient>
-                            </TouchableOpacity>
-
-                            <View style={s.divider}>
-                                <View style={s.line} />
-                                <Text style={s.dividerText}>{t('or_continue_with')}</Text>
-                                <View style={s.line} />
-                            </View>
-
-                            {/* Social Buttons */}
-                            <View style={s.socialRow}>
-                                <TouchableOpacity 
-                                    style={[s.socialBtn, { backgroundColor: '#4285F4', elevation: 10, zIndex: 100 }]} 
-                                    onPress={async () => {
-                                        if (request) {
-                                            promptAsync({ prompt: 'select_account' }).catch(err => {
-                                                console.error('Google Auth Error:', err);
-                                                Alert.alert('Login Error', 'Failed to start Google Sign-In');
-                                            });
-                                        } else {
-                                            Alert.alert('Configuration Error', 'Google Login not configured properly');
-                                        }
-                                    }}
-                                >
-                                    {socialLoading && pendingSocialData?.provider === 'google' ? (
-                                        <ActivityIndicator color="#fff" />
-                                    ) : (
-                                        <>
-                                            <Ionicons name="logo-google" size={20} color="#fff" style={{ marginRight: 8 }} />
-                                            <Text style={s.socialText}>Google</Text>
-                                        </>
-                                    )}
-                                </TouchableOpacity>
-                            </View>
-
-                            <TouchableOpacity style={s.registerLink} onPress={() => navigation.navigate('Register')}>
-                                <Text style={s.registerText}>
-                                    {t('new_to_valoris')} <Text style={s.registerBold}>{t('create_acc')}</Text>
-                                </Text>
-                            </TouchableOpacity>
                         </View>
                     </ScrollView>
                 </KeyboardAvoidingView>
             </LinearGradient>
-
-            {/* Role Selection Modal */}
-            <Modal
-                transparent
-                visible={showRoleModal}
-                animationType="fade"
-                onRequestClose={() => setShowRoleModal(false)}
-            >
-                <View style={s.modalOverlay}>
-                    <View style={s.modalContent}>
-                        <Text style={s.modalTitle}>Select your Role</Text>
-                        <Text style={s.modalSubtitle}>How will you be using Sizzling Valoris?</Text>
-                        
-                        <TouchableOpacity 
-                            style={s.roleOption} 
-                            onPress={() => handleRoleSelection('customer')}
-                        >
-                            <View style={[s.roleIconCircle, { backgroundColor: '#4285F4' }]}>
-                                <Ionicons name="person" size={24} color="#fff" />
-                            </View>
-                            <View>
-                                <Text style={s.roleOptionTitle}>Customer</Text>
-                                <Text style={s.roleOptionDesc}>I want to discover mall offers</Text>
-                            </View>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity 
-                            style={s.roleOption} 
-                            onPress={() => handleRoleSelection('store_owner')}
-                        >
-                            <View style={[s.roleIconCircle, { backgroundColor: '#D4AF37' }]}>
-                                <Ionicons name="storefront" size={24} color="#fff" />
-                            </View>
-                            <View>
-                                <Text style={s.roleOptionTitle}>Store Owner</Text>
-                                <Text style={s.roleOptionDesc}>I want to manage my store offers</Text>
-                            </View>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity 
-                            style={s.cancelBtn} 
-                            onPress={() => setShowRoleModal(false)}
-                        >
-                            <Text style={s.cancelText}>Cancel</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </Modal>
         </View>
     );
 };
 
 const s = StyleSheet.create({
-    container: { flex: 1 },
+    container: { flex: 1, backgroundColor: '#000' },
     gradient: { flex: 1 },
-    scroll: { paddingBottom: 40 },
-    header: { alignItems: 'center', paddingTop: 60 },
-    logoRow: { flexDirection: 'row', alignItems: 'center', gap: 10, alignSelf: 'flex-start', paddingHorizontal: 24, marginBottom: 30 },
-    logoCircle: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#D4AF37', alignItems: 'center', justifyContent: 'center' },
-    logoText: { color: '#fff', fontSize: 18, fontWeight: '800' },
-    heroWrapper: { width: '100%', height: 260, position: 'relative' },
-    heroImage: { width: '100%', height: '100%', borderBottomLeftRadius: 40, borderBottomRightRadius: 40 },
-    heroFade: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 120 },
-    title: { color: '#fff', fontSize: 32, fontWeight: '800', marginTop: 10 },
-    subtitle: { color: '#8E8E93', fontSize: 13, marginTop: 8 },
-    form: { paddingHorizontal: 24, marginTop: 30 },
-    label: { color: '#fff', fontSize: 14, fontWeight: '600', marginBottom: 10 },
-    labelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-    forgotText: { color: '#D4AF37', fontSize: 12, fontWeight: '700' },
-    inputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 20, paddingHorizontal: 16, height: 56, marginBottom: 20, borderWidth: 1, borderColor: 'rgba(212, 175, 55, 0.2)' },
-    inputIcon: { marginRight: 12 },
-    input: { flex: 1, color: '#fff', fontSize: 15 },
-    loginBtn: { borderRadius: 25, overflow: 'hidden', marginTop: 10, shadowColor: '#D4AF37', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 5 },
-    loginGradient: { paddingVertical: 18, alignItems: 'center' },
-    loginBtnText: { color: '#000', fontSize: 15, fontWeight: '800' },
-    divider: { flexDirection: 'row', alignItems: 'center', marginVertical: 30 },
-    line: { flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.1)' },
-    dividerText: { color: '#555', marginHorizontal: 16, fontSize: 10, fontWeight: '800', letterSpacing: 1 },
-    socialRow: { flexDirection: 'row', gap: 12 },
-    socialBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 20, paddingVertical: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
-    socialText: { color: '#fff', fontSize: 14, fontWeight: '600' },
-    registerLink: { marginTop: 30, alignItems: 'center' },
-    registerText: { color: '#8E8E93', fontSize: 14 },
-    registerBold: { color: '#D4AF37', fontWeight: '800' },
-
-    // Modal Styles
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'center', alignItems: 'center', padding: 20 },
-    modalContent: { backgroundColor: '#1a150d', borderRadius: 30, padding: 30, width: '100%', maxWidth: 400, borderWidth: 1, borderColor: 'rgba(212,175,55,0.3)' },
-    modalTitle: { color: '#fff', fontSize: 24, fontWeight: '800', textAlign: 'center', marginBottom: 10 },
-    modalSubtitle: { color: '#8E8E93', fontSize: 14, textAlign: 'center', marginBottom: 30 },
-    roleOption: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 20, padding: 20, marginBottom: 15, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
-    roleIconCircle: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginRight: 16 },
-    roleOptionTitle: { color: '#fff', fontSize: 18, fontWeight: '700' },
-    roleOptionDesc: { color: '#8E8E93', fontSize: 12 },
-    cancelBtn: { marginTop: 10, padding: 15, alignItems: 'center' },
-    cancelText: { color: '#8E8E93', fontSize: 14, fontWeight: '600' },
+    scroll: { flexGrow: 1 },
+    centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 40 },
+    card: { 
+        backgroundColor: '#121212', 
+        borderRadius: 24, 
+        padding: 40, 
+        borderWidth: 1, 
+        borderColor: 'rgba(245, 197, 24, 0.15)',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 20 },
+        shadowOpacity: 0.5,
+        shadowRadius: 40,
+        elevation: 20
+    },
+    cardHeader: { alignItems: 'center', marginBottom: 40 },
+    logoCircle: { 
+        width: 72, 
+        height: 72, 
+        borderRadius: 36, 
+        backgroundColor: 'rgba(245, 197, 24, 0.1)', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: 'rgba(245, 197, 24, 0.2)'
+    },
+    logoText: { color: '#F5C518', fontSize: 28, fontWeight: '900', letterSpacing: 1.5, textTransform: 'uppercase' },
+    welcomeText: { color: '#888', fontSize: 13, fontWeight: '500', marginTop: 8 },
+    inputContainer: { gap: 24, marginBottom: 32 },
+    inputGroup: { gap: 10 },
+    label: { color: '#F5C518', fontSize: 10, fontWeight: '800', letterSpacing: 2, marginLeft: 4, opacity: 0.8 },
+    inputWrapper: { 
+        flexDirection: 'row', 
+        alignItems: 'center', 
+        backgroundColor: '#1A1A1A', 
+        borderRadius: 12, 
+        borderWidth: 1, 
+        borderColor: 'rgba(255,255,255,0.05)',
+        overflow: 'hidden'
+    },
+    inputIcon: { marginLeft: 16 },
+    cardInput: { 
+        flex: 1, 
+        height: 56, 
+        paddingHorizontal: 12, 
+        color: '#FFFFFF', 
+        fontSize: 15, 
+        fontWeight: '500' 
+    },
+    forgotTxtSmall: { color: '#F5C518', fontSize: 10, fontWeight: '700', opacity: 0.6 },
+    loginBtn: { height: 56, borderRadius: 12, overflow: 'hidden', shadowColor: '#F5C518', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 10, marginBottom: 32 },
+    loginGradient: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+    loginBtnText: { color: '#000', fontSize: 15, fontWeight: '900', letterSpacing: 1 },
+    cardFooter: { alignItems: 'center', gap: 8 },
+    noAccountText: { color: '#666', fontSize: 13, fontWeight: '500' },
+    registerLink: { color: '#F5C518', fontSize: 14, fontWeight: '700' },
+    externalFooter: { marginTop: 40, alignItems: 'center' },
+    copyrightText: { color: '#333', fontSize: 9, fontWeight: '800', letterSpacing: 2 },
 });
 
 export default LoginScreen;
+
