@@ -4,12 +4,15 @@ const sendEmail = async (options) => {
     // 1) Create a transporter
     const transporter = nodemailer.createTransport({
         host: 'smtp.gmail.com',
-        port: 465,
-        secure: true, // true for 465, false for other ports
+        port: 587,
+        secure: false, // false for 587
         auth: {
             user: process.env.EMAIL_USERNAME,
             pass: process.env.EMAIL_PASSWORD,
         },
+        // Add a timeout for the connection
+        connectionTimeout: 10000, // 10s
+        socketTimeout: 15000,     // 15s
     });
 
     // 2) Define the email options
