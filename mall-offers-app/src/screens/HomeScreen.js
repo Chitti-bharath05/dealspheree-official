@@ -127,20 +127,23 @@ export default function HomeScreen({ navigation }) {
                     </View>
                     
                     <View style={[s.catContainer, isWeb && s.catGridWeb]}>
-                        {['Fashion', 'Electronics', 'Beauty', 'Food', 'Home', 'Footwear', 'Watches & Accessories', 'Sports'].map((cat) => (
-                            <TouchableOpacity 
-                                key={cat} 
-                                style={[s.catTile, isWeb && { width: '11%' }]}
-                                onPress={() => setSelectedCategory(cat)}
-                            >
-                                <View style={[s.catIconBox, selectedCategory === cat && s.catIconBoxActive]}>
-                                    <Ionicons name={catIcons[cat] || 'apps'} size={isWeb ? 28 : 22} color={selectedCategory === cat ? "#000" : "#fff"} />
-                                </View>
-                                <Text style={[s.catLabel, selectedCategory === cat && s.catLabelActive]}>
-                                    {cat.toUpperCase()}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
+                        {['Fashion', 'Electronics', 'Beauty', 'Food', 'Home', 'Footwear', 'Watches & Accessories', 'Sports'].map((cat) => {
+                            const catWidth = width < 768 ? '21%' : '11%'; // 4 per row on mobile, 8 on desktop
+                            return (
+                                <TouchableOpacity 
+                                    key={cat} 
+                                    style={[s.catTile, isWeb && { width: catWidth }]}
+                                    onPress={() => setSelectedCategory(cat)}
+                                >
+                                    <View style={[s.catIconBox, selectedCategory === cat && s.catIconBoxActive]}>
+                                        <Ionicons name={catIcons[cat] || 'apps'} size={(isWeb && width > 768) ? 28 : 22} color={selectedCategory === cat ? "#000" : "#fff"} />
+                                    </View>
+                                    <Text style={[s.catLabel, selectedCategory === cat && s.catLabelActive]}>
+                                        {cat.toUpperCase()}
+                                    </Text>
+                                </TouchableOpacity>
+                            );
+                        })}
                     </View>
 
                     {/* Exclusive Offers (Multi-Column Grid) */}
@@ -156,28 +159,35 @@ export default function HomeScreen({ navigation }) {
 
                     <View style={[s.heroGrid, isWeb && s.heroGridWeb]}>
                         {filteredOffers.length > 0 ? (
-                            filteredOffers.slice(0, isWeb ? 8 : 4).map((item) => (
-                            <TouchableOpacity 
-                                key={item._id || item.id} 
-                                style={[s.heroCard, isWeb ? { width: '24%', height: 440, marginBottom: 20 } : { width: width - 48 }]}
-                                onPress={() => navigation.navigate('OfferDetails', { offerId: item._id || item.id })}
-                            >
-                                <Image source={{ uri: item.image || 'https://via.placeholder.com/600x400' }} style={s.heroImg} />
-                                <LinearGradient 
-                                    colors={['transparent', 'rgba(0,0,0,0.95)']} 
-                                    style={s.heroOverlay}
-                                >
-                                    <View style={s.heroBadge}>
-                                        <Text style={s.heroBadgeTxt}>AMAZING DEAL</Text>
-                                    </View>
-                                    <View style={s.heroContent}>
-                                        <Text style={[s.offerText, isWeb && { fontSize: 32 }]}>{item.discount}% OFF</Text>
-                                        <Text style={[s.storeText, isWeb && { fontSize: 18 }]}>{item.storeId?.storeName || 'Premium Store'}</Text>
-                                        <Text style={s.descText} numberOfLines={2}>{item.title}</Text>
-                                    </View>
-                                </LinearGradient>
-                            </TouchableOpacity>
-                            ))
+                            filteredOffers.slice(0, isWeb ? 8 : 4).map((item) => {
+                                // Responsive card width: 4 per row on desktop (>1024), 2 per row on tablet/mobile (<1024)
+                                const cardWidth = width > 1024 ? '24%' : '48%';
+                                const cardHeight = width > 1024 ? 440 : 280;
+                                const discountSize = width > 1024 ? 32 : (width < 480 ? 24 : 28);
+                                
+                                return (
+                                    <TouchableOpacity 
+                                        key={item._id || item.id} 
+                                        style={[s.heroCard, isWeb ? { width: cardWidth, height: cardHeight, marginBottom: 20 } : { width: width - 48 }]}
+                                        onPress={() => navigation.navigate('OfferDetails', { offerId: item._id || item.id })}
+                                    >
+                                        <Image source={{ uri: item.image || 'https://via.placeholder.com/600x400' }} style={s.heroImg} />
+                                        <LinearGradient 
+                                            colors={['transparent', 'rgba(0,0,0,0.95)']} 
+                                            style={s.heroOverlay}
+                                        >
+                                            <View style={s.heroBadge}>
+                                                <Text style={s.heroBadgeTxt}>AMAZING DEAL</Text>
+                                            </View>
+                                            <View style={s.heroContent}>
+                                                <Text style={[s.offerText, { fontSize: discountSize }]}>{item.discount}% OFF</Text>
+                                                <Text style={[s.storeText, { fontSize: width > 1024 ? 18 : 14 }]} numberOfLines={1}>{item.storeId?.storeName || 'Premium Store'}</Text>
+                                                <Text style={s.descText} numberOfLines={1}>{item.title}</Text>
+                                            </View>
+                                        </LinearGradient>
+                                    </TouchableOpacity>
+                                );
+                            })
                         ) : (
                             <View style={s.emptyState}>
                                 <Ionicons name="storefront-outline" size={48} color="#333" />
@@ -265,11 +275,11 @@ const s = StyleSheet.create({
     heroGridWeb: { justifyContent: 'space-between' },
     heroCard: { width: '100%', height: 380, borderRadius: 12, overflow: 'hidden', backgroundColor: '#1A1A1A' },
     heroImg: { width: '100%', height: '100%', resizeMode: 'cover' },
-    heroOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, height: '70%', padding: 24, justifyContent: 'flex-end' },
-    heroBadge: { position: 'absolute', top: 20, left: 20, backgroundColor: '#F5C518', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 4 },
-    heroBadgeTxt: { color: '#000', fontSize: 10, fontWeight: '900' },
-    heroContent: { gap: 6 },
-    offerText: { color: '#F5C518', fontSize: 44, fontWeight: '950' },
+    heroOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, height: '70%', padding: 12, justifyContent: 'flex-end' }, // Reduced padding for mobile
+    heroBadge: { position: 'absolute', top: 12, left: 12, backgroundColor: '#F5C518', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4 }, // Scaled down
+    heroBadgeTxt: { color: '#000', fontSize: 8, fontWeight: '900' }, // Scaled down
+    heroContent: { gap: 4 },
+    offerText: { color: '#F5C518', fontSize: 44, fontWeight: '950', lineHeight: 48 }, // Added line height to avoid cutoff
     storeText: { color: '#FFFFFF', fontSize: 20, fontWeight: '800' },
     descText: { color: '#A0A0A0', fontSize: 15, fontWeight: '400', lineHeight: 22 },
     nearList: { paddingHorizontal: 24, gap: 16 },
