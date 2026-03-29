@@ -6,23 +6,21 @@ const sendEmail = async (options) => {
     // We are using a more advanced config to force IPv4 and bypass Render connection issues.
     const transporter = nodemailer.createTransport({
         host: 'smtp.gmail.com',
-        port: 465,
-        secure: true, 
+        port: 587,
+        secure: false, // TLS
         auth: {
             user: process.env.EMAIL_USERNAME,
             pass: process.env.EMAIL_PASSWORD,
         },
-        connectionTimeout: 10000, 
-        greetingTimeout: 10000,
-        socketTimeout: 10000,
-        dnsTimeout: 10000,
-        // Force the connection to use IPv4 directly
-        tls: {
-            rejectUnauthorized: false
+        // Unbreakable Fix: Manually resolve to IPv4 using dns.lookup
+        lookup: (hostname, options, callback) => {
+            dns.lookup(hostname, { family: 4 }, (err, address, family) => {
+                callback(err, address, family);
+            });
         },
-        // IMPORTANT: Force the lookup to prefer IPv4
-        // Some versions of nodemailer support logical 'family'
-        family: 4
+        connectionTimeout: 20000, 
+        greetingTimeout: 20000,
+        socketTimeout: 20000,
     });
 
     // 2) Define the email options
