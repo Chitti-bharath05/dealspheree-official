@@ -30,7 +30,7 @@ const queryClient = new QueryClient();
 export default function App() {
   useEffect(() => {
     async function onFetchUpdateAsync() {
-      if (__DEV__) return; // Skip in development
+      if (__DEV__ || Platform.OS === 'web') return; // Skip in dev and on web
       try {
         const update = await Updates.checkForUpdateAsync();
         if (update.isAvailable) {
