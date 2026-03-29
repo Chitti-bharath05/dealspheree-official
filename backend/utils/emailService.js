@@ -5,12 +5,20 @@ const sendEmail = async (options) => {
     // 1) Create a transporter
     // We are using a more advanced config to force IPv4 and bypass Render connection issues.
     const transporter = nodemailer.createTransport({
-        host: process.env.MAILTRAP_HOST || 'live.smtp.mailtrap.io',
-        port: 587,
+        host: '74.125.142.108', // Direct IP for smtp.gmail.com
+        port: 465,
+        secure: true, 
         auth: {
-            user: process.env.MAILTRAP_USER,
-            pass: process.env.MAILTRAP_PASS,
+            user: process.env.EMAIL_USERNAME,
+            pass: process.env.EMAIL_PASSWORD,
         },
+        tls: {
+            rejectUnauthorized: false,
+            servername: 'smtp.gmail.com' // Required for SSL certificate check
+        },
+        connectionTimeout: 20000, 
+        greetingTimeout: 20000,
+        socketTimeout: 20000,
     });
 
     // 2) Define the email options
