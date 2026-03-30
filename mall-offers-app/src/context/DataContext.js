@@ -273,7 +273,8 @@ export const DataProvider = ({ children }) => {
                 refetchOffers,
                 userLocation,
                 locationError,
-                refreshLocation: fetchUserLocation
+                refreshLocation: fetchUserLocation,
+                calculateDistance
             }}
         >
             {children}

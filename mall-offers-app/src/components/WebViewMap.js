@@ -39,5 +39,5 @@ export default function WebViewMap({ stores = [] }) {
 
 const styles = StyleSheet.create({
     fallback: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#1a150d' },
-    fallbackText: { color: '#D4AF37', fontSize: 16 },
+    fallbackText: { color: '#F5C518', fontSize: 16 },
 });

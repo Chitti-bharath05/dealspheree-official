@@ -54,7 +54,7 @@ const LoginScreen = ({ navigation }) => {
 
     const handleBiometricLogin = async () => {
         const result = await LocalAuthentication.authenticateAsync({
-            promptMessage: 'Login to DealSphere',
+            promptMessage: 'Login to Dealspheree',
             fallbackLabel: 'Use Password',
         });
 
@@ -121,7 +121,7 @@ const LoginScreen = ({ navigation }) => {
                                     <View style={s.logoCircle}>
                                         <Ionicons name="flash" size={32} color="#F5C518" />
                                     </View>
-                                    <Text style={s.logoText}>DealSphere</Text>
+                                    <Text style={s.logoText}>Dealspheree</Text>
                                     <Text style={s.welcomeText}>Welcome back to excellence</Text>
                                 </View>
 
@@ -215,7 +215,7 @@ const LoginScreen = ({ navigation }) => {
                                         disabled={loading}
                                     >
                                         <LinearGradient 
-                                            colors={['#F5C518', '#D4AF37', '#E5C05B']} 
+                                            colors={['#F5C518', '#F5C518', '#E5C05B']} 
                                             style={s.loginGradient}
                                             start={{ x: 0, y: 0 }}
                                             end={{ x: 1, y: 0 }}
@@ -233,7 +233,7 @@ const LoginScreen = ({ navigation }) => {
 
                                 {/* Footer / Alternative Actions */}
                                 <View style={s.cardFooter}>
-                                    <Text style={s.noAccountText}>New to DealSphere?</Text>
+                                    <Text style={s.noAccountText}>New to Dealspheree?</Text>
                                     <TouchableOpacity onPress={() => navigation.navigate('Register')}>
                                         <Text style={s.registerLink}>Create Private Access</Text>
                                     </TouchableOpacity>
@@ -242,7 +242,7 @@ const LoginScreen = ({ navigation }) => {
 
                             {/* External Footer */}
                             <View style={s.externalFooter}>
-                                <Text style={s.copyrightText}>© 2026 DEALSPHERE SECURE PORTAL</Text>
+                                <Text style={s.copyrightText}>© 2026 DEALSPHEREE SECURE PORTAL</Text>
                             </View>
                         </View>
                     </ScrollView>

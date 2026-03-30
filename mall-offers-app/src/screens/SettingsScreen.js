@@ -15,7 +15,7 @@ const SettingItem = ({ icon, label, right, onPress }) => (
         disabled={!onPress}
     >
         <View style={s.itemLeft}>
-            <View style={s.iconBox}><Ionicons name={icon} size={20} color="#D4AF37" /></View>
+            <View style={s.iconBox}><Ionicons name={icon} size={20} color="#F5C518" /></View>
             <Text style={s.label}>{label}</Text>
         </View>
         <View style={s.itemRight}>
@@ -190,7 +190,7 @@ export default function SettingsScreen({ navigation }) {
                                 <Switch 
                                     value={biometrics} 
                                     onValueChange={(val) => toggleSwitch('biometrics', val, setBiometrics)} 
-                                    trackColor={{ false: '#333', true: '#D4AF37' }} 
+                                    trackColor={{ false: '#333', true: '#F5C518' }} 
                                     thumbColor="#fff" 
                                 />
                             }
@@ -206,7 +206,7 @@ export default function SettingsScreen({ navigation }) {
                                 <Switch 
                                     value={notifications} 
                                     onValueChange={(val) => toggleSwitch('notifications', val, setNotifications)} 
-                                    trackColor={{ false: '#333', true: '#D4AF37' }} 
+                                    trackColor={{ false: '#333', true: '#F5C518' }} 
                                     thumbColor="#fff" 
                                 />
                             }
@@ -266,7 +266,7 @@ export default function SettingsScreen({ navigation }) {
                                 onPress={() => { changeLanguage('en'); setShowLangModal(false); }}
                             >
                                 <Text style={[s.langText, currentLanguage === 'en' && s.langTextActive]}>English</Text>
-                                {currentLanguage === 'en' && <Ionicons name="checkmark-circle" size={20} color="#D4AF37" />}
+                                {currentLanguage === 'en' && <Ionicons name="checkmark-circle" size={20} color="#F5C518" />}
                             </TouchableOpacity>
 
                             <TouchableOpacity 
@@ -274,7 +274,7 @@ export default function SettingsScreen({ navigation }) {
                                 onPress={() => { changeLanguage('hi'); setShowLangModal(false); }}
                             >
                                 <Text style={[s.langText, currentLanguage === 'hi' && s.langTextActive]}>हिन्दी (Hindi)</Text>
-                                {currentLanguage === 'hi' && <Ionicons name="checkmark-circle" size={20} color="#D4AF37" />}
+                                {currentLanguage === 'hi' && <Ionicons name="checkmark-circle" size={20} color="#F5C518" />}
                             </TouchableOpacity>
 
                             <TouchableOpacity 
@@ -282,7 +282,7 @@ export default function SettingsScreen({ navigation }) {
                                 onPress={() => { changeLanguage('te'); setShowLangModal(false); }}
                             >
                                 <Text style={[s.langText, currentLanguage === 'te' && s.langTextActive]}>తెలుగు (Telugu)</Text>
-                                {currentLanguage === 'te' && <Ionicons name="checkmark-circle" size={20} color="#D4AF37" />}
+                                {currentLanguage === 'te' && <Ionicons name="checkmark-circle" size={20} color="#F5C518" />}
                             </TouchableOpacity>
 
                             <TouchableOpacity style={s.modalCancel} onPress={() => setShowLangModal(false)}>
@@ -301,7 +301,7 @@ export default function SettingsScreen({ navigation }) {
                     <View style={s.modalOverlay}>
                         <View style={s.modalContent}>
                             <View style={s.modalHeader}>
-                                <Ionicons name="shield-checkmark" size={32} color="#D4AF37" />
+                                <Ionicons name="shield-checkmark" size={32} color="#F5C518" />
                                 <Text style={s.modalTitle}>{t('secure_setup') || 'Secure Setup'}</Text>
                             </View>
                             <Text style={s.modalSub}>{t('bio_pass_msg') || 'Please enter your current account password to enable biometric login on this device.'}</Text>
@@ -352,7 +352,7 @@ const s = StyleSheet.create({
     backBtn: { width: 44, height: 44, borderRadius: 15, backgroundColor: 'rgba(255,255,255,0.05)', alignItems: 'center', justifyContent: 'center' },
     headerTitle: { color: '#fff', fontSize: 20, fontWeight: '800' },
     scroll: { paddingHorizontal: 24, paddingBottom: 50 },
-    sectionTitle: { color: '#D4AF37', fontSize: 13, fontWeight: '800', letterSpacing: 1, marginTop: 30, marginBottom: 15, marginLeft: 10 },
+    sectionTitle: { color: '#F5C518', fontSize: 13, fontWeight: '800', letterSpacing: 1, marginTop: 30, marginBottom: 15, marginLeft: 10 },
     section: { backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 24, paddingVertical: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
     item: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 15 },
     itemLeft: { flexDirection: 'row', alignItems: 'center', gap: 15 },
@@ -370,13 +370,13 @@ const s = StyleSheet.create({
     langOption: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 18, paddingHorizontal: 20, borderRadius: 15, backgroundColor: 'rgba(255,255,255,0.03)', marginBottom: 10 },
     langOptionActive: { backgroundColor: 'rgba(212,175,55,0.1)', borderWidth: 1, borderColor: 'rgba(212,175,55,0.3)' },
     langText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-    langTextActive: { color: '#D4AF37' },
+    langTextActive: { color: '#F5C518' },
     modalCancel: { marginTop: 15, paddingVertical: 15, alignItems: 'center' },
     modalCancelTxt: { color: '#8E8E93', fontSize: 16, fontWeight: '600' },
     input: { backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 15, padding: 18, color: '#fff', fontSize: 16, marginBottom: 25, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
     modalBtns: { flexDirection: 'row', gap: 12 },
     modalBtn: { flex: 1, height: 55, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
-    modalBtnPrimary: { backgroundColor: '#D4AF37' },
+    modalBtnPrimary: { backgroundColor: '#F5C518' },
     modalBtnSecondary: { backgroundColor: 'rgba(255,255,255,0.05)' },
     modalBtnTxtPrimary: { color: '#000', fontSize: 16, fontWeight: '700' },
     modalBtnTxtSecondary: { color: '#fff', fontSize: 16, fontWeight: '700' },

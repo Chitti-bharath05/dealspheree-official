@@ -606,7 +606,7 @@ const s = StyleSheet.create({
     },
     gridAddBtnTxt: { color: '#F5C518', fontSize: 14, fontWeight: '800', textTransform: 'uppercase' },
     disabledBtn: { borderColor: '#333' },
-    pendingWarning: { color: '#D4AF37', textAlign: 'center', marginTop: -5, marginBottom: 15, fontSize: 12, fontStyle: 'italic' },
+    pendingWarning: { color: '#F5C518', textAlign: 'center', marginTop: -5, marginBottom: 15, fontSize: 12, fontStyle: 'italic' },
     sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 10 },
     sectionTitle: { color: '#FFFFFF', fontSize: 22, fontWeight: '900' },
     viewAll: { color: '#8E8E93', fontSize: 13, fontWeight: '700', marginBottom: 2 },

@@ -281,7 +281,7 @@ const OfferDetailsScreen = ({ route, navigation }) => {
                     <Ionicons
                         name={(i < current) ? "star" : "star-outline"}
                         size={size}
-                        color="#D4AF37"
+                        color="#F5C518"
                     />
                 </TouchableOpacity>
             ))}

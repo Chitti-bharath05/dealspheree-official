@@ -32,7 +32,7 @@ const catKeys = {
 };
 
 export default function OffersScreen({ route, navigation }) {
-    const { offers, categories, isLoading, getActiveOffers } = useData();
+    const { offers, categories, isLoading, getActiveOffers, userLocation, calculateDistance } = useData();
     const { favorites, toggleFavorite } = useAuth();
     const { t } = useLanguage();
     
@@ -74,6 +74,15 @@ export default function OffersScreen({ route, navigation }) {
         const expiryDate = item.expiryDate ? new Date(item.expiryDate) : new Date();
         const daysLeft = Math.max(0, Math.ceil((expiryDate - new Date()) / (1000 * 60 * 60 * 24)));
 
+        // Calculate distance
+        const storeLat = item.storeId?.lat;
+        const storeLng = item.storeId?.lng;
+        let distanceText = "";
+        if (userLocation && storeLat && storeLng) {
+            const dist = calculateDistance(userLocation.lat, userLocation.lng, storeLat, storeLng);
+            distanceText = `${dist.toFixed(1)} km`;
+        }
+
         return (
             <TouchableOpacity 
                 style={[s.card, { width: cardWidth }]} 
@@ -88,12 +97,18 @@ export default function OffersScreen({ route, navigation }) {
                     <View style={s.discountBadge}>
                         <Text style={s.discountBadgeTxt}>{item.discount}% OFF</Text>
                     </View>
+                    {distanceText ? (
+                        <View style={s.distanceBadge}>
+                            <Ionicons name="location" size={10} color="#000" />
+                            <Text style={s.distanceBadgeTxt}>{distanceText}</Text>
+                        </View>
+                    ) : null}
                 </View>
                 <View style={s.cardInfo}>
                     <View style={s.cardHeader}>
                         <Text style={s.cardTitle} numberOfLines={1}>{item.title}</Text>
                         <TouchableOpacity onPress={(e) => { e.stopPropagation(); toggleFavorite(item._id || item.id); }}>
-                            <Ionicons name={isFavorite ? "heart" : "heart-outline"} size={20} color="#D4AF37" />
+                            <Ionicons name={isFavorite ? "heart" : "heart-outline"} size={22} color="#F5C518" />
                         </TouchableOpacity>
                     </View>
                     <Text style={s.cardStore} numberOfLines={1}>{item.storeId?.storeName || 'Boutique'}</Text>
@@ -103,8 +118,8 @@ export default function OffersScreen({ route, navigation }) {
                             <Text style={s.oldPrice}>₹{item.originalPrice.toLocaleString()}</Text>
                         </View>
                         <View style={s.expBadge}>
-                            <Ionicons name="time-outline" size={12} color="#8E8E93" />
-                            <Text style={s.cardExp}>{daysLeft}d</Text>
+                            <Ionicons name="time-outline" size={14} color="#F5C518" />
+                            <Text style={s.cardExp}>{daysLeft}d left</Text>
                         </View>
                     </View>
                 </View>
@@ -116,7 +131,7 @@ export default function OffersScreen({ route, navigation }) {
         return (
             <View style={s.loading}>
                 <LinearGradient colors={['#1a150d', '#000']} style={StyleSheet.absoluteFill} />
-                <ActivityIndicator color="#D4AF37" size="large" />
+                <ActivityIndicator color="#F5C518" size="large" />
             </View>
         );
     }
@@ -203,22 +218,24 @@ const s = StyleSheet.create({
     catText: { color: '#8E8E93', fontSize: 13, fontWeight: '800' },
     catTextActive: { color: '#000' },
     list: { paddingHorizontal: 24, paddingBottom: 100 },
-    columnWrapper: { justifyContent: 'flex-start', gap: 20 },
-    card: { backgroundColor: '#121212', borderRadius: 12, marginBottom: 20, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
-    cardImgWrapper: { width: '100%', height: 260, position: 'relative' },
+    columnWrapper: { justifyContent: 'flex-start', gap: 16 },
+    card: { backgroundColor: '#1A1A1A', borderRadius: 16, marginBottom: 20, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
+    cardImgWrapper: { width: '100%', height: 280, position: 'relative' },
     cardImg: { width: '100%', height: '100%' },
-    cardImgOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, height: '40%' },
-    discountBadge: { position: 'absolute', top: 12, left: 12, backgroundColor: '#F5C518', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 4 },
-    discountBadgeTxt: { color: '#000', fontSize: 10, fontWeight: '900' },
-    cardInfo: { padding: 15 },
+    cardImgOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, height: '50%' },
+    discountBadge: { position: 'absolute', top: 12, left: 12, backgroundColor: '#F5C518', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6 },
+    discountBadgeTxt: { color: '#000', fontSize: 11, fontWeight: '900' },
+    distanceBadge: { position: 'absolute', top: 12, right: 12, backgroundColor: '#F5C518', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6, flexDirection: 'row', alignItems: 'center', gap: 4 },
+    distanceBadgeTxt: { color: '#000', fontSize: 11, fontWeight: '900' },
+    cardInfo: { padding: 18 },
     cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    cardTitle: { color: '#fff', fontSize: 18, fontWeight: '800', flex: 1, marginRight: 8 },
-    cardStore: { color: '#8E8E93', fontSize: 14, marginTop: 4, fontWeight: '500' },
-    cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 15 },
-    cardPrice: { color: '#F5C518', fontSize: 22, fontWeight: '950' },
-    oldPrice: { color: '#555', fontSize: 12, textDecorationLine: 'line-through', marginTop: 2 },
-    expBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(255,255,255,0.05)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4 },
-    cardExp: { color: '#8E8E93', fontSize: 11, fontWeight: '700' },
+    cardTitle: { color: '#fff', fontSize: 20, fontWeight: '900', flex: 1, marginRight: 8 },
+    cardStore: { color: '#A0A0A0', fontSize: 15, marginTop: 6, fontWeight: '600' },
+    cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 20 },
+    cardPrice: { color: '#F5C518', fontSize: 26, fontWeight: '950' },
+    oldPrice: { color: '#555', fontSize: 14, textDecorationLine: 'line-through', marginTop: 4 },
+    expBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(245,197,24,0.1)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6 },
+    cardExp: { color: '#F5C518', fontSize: 12, fontWeight: '800' },
     empty: { alignItems: 'center', marginTop: 100 },
     emptyTxt: { color: '#555', fontSize: 18, fontWeight: '700', marginTop: 15 },
 });

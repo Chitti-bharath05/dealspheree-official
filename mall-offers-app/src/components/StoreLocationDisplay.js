@@ -25,7 +25,7 @@ window.addEventListener('message', function(e) {
 
         var storeIcon = L.divIcon({
             html: \`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 50" width="40" height="50">
-            <path d="M20 0 C9 0 0 9 0 20 C0 35 20 50 20 50 C20 50 40 35 40 20 C40 9 31 0 20 0Z" fill="#D4AF37" stroke="#fff" stroke-width="2"/>
+            <path d="M20 0 C9 0 0 9 0 20 C0 35 20 50 20 50 C20 50 40 35 40 20 C40 9 31 0 20 0Z" fill="#F5C518" stroke="#fff" stroke-width="2"/>
             <circle cx="20" cy="20" r="9" fill="#fff"/>
             </svg>\`,
             className: '', iconSize: [40, 50], iconAnchor: [20, 50]

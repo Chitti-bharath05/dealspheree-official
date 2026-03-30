@@ -324,7 +324,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: 'rgba(245,197,24,0.2)',
     },
-    addressText: { color: '#D4AF37', fontSize: 13, flex: 1, lineHeight: 18 },
+    addressText: { color: '#F5C518', fontSize: 13, flex: 1, lineHeight: 18 },
     searchRow: { flexDirection: 'row', gap: 8, marginBottom: 10 },
     searchInput: {
         flex: 1,

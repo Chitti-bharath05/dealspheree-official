@@ -75,7 +75,7 @@ const RegisterScreen = ({ navigation }) => {
             <Ionicons
                 name={icon}
                 size={22}
-                color={role === value ? '#D4AF37' : '#8E8E93'}
+                color={role === value ? '#F5C518' : '#8E8E93'}
             />
             <Text
                 style={[styles.roleButtonText, role === value && styles.roleButtonTextActive]}
@@ -132,7 +132,7 @@ const RegisterScreen = ({ navigation }) => {
                             </View>
 
                             <View style={styles.inputContainer}>
-                                <Ionicons name="person-outline" size={20} color="#D4AF37" style={styles.inputIcon} />
+                                <Ionicons name="person-outline" size={20} color="#F5C518" style={styles.inputIcon} />
                                 <TextInput
                                     style={styles.input}
                                     placeholder={t('full_name')}
@@ -143,7 +143,7 @@ const RegisterScreen = ({ navigation }) => {
                             </View>
 
                             <View style={styles.inputContainer}>
-                                <Ionicons name="mail-outline" size={20} color="#D4AF37" style={styles.inputIcon} />
+                                <Ionicons name="mail-outline" size={20} color="#F5C518" style={styles.inputIcon} />
                                 <TextInput
                                     style={styles.input}
                                     placeholder={t('email_addr')}
@@ -156,7 +156,7 @@ const RegisterScreen = ({ navigation }) => {
                             </View>
 
                             <View style={styles.inputContainer}>
-                                <Ionicons name="call-outline" size={20} color="#D4AF37" style={styles.inputIcon} />
+                                <Ionicons name="call-outline" size={20} color="#F5C518" style={styles.inputIcon} />
                                 <TextInput
                                     style={styles.input}
                                     placeholder={t('phone_num')}
@@ -168,7 +168,7 @@ const RegisterScreen = ({ navigation }) => {
                             </View>
 
                             <View style={styles.inputContainer}>
-                                <Ionicons name="lock-closed-outline" size={20} color="#D4AF37" style={styles.inputIcon} />
+                                <Ionicons name="lock-closed-outline" size={20} color="#F5C518" style={styles.inputIcon} />
                                 <TextInput
                                     style={styles.input}
                                     placeholder={t('password')}
@@ -187,7 +187,7 @@ const RegisterScreen = ({ navigation }) => {
                             </View>
 
                             <View style={styles.inputContainer}>
-                                <Ionicons name="shield-checkmark-outline" size={20} color="#D4AF37" style={styles.inputIcon} />
+                                <Ionicons name="shield-checkmark-outline" size={20} color="#F5C518" style={styles.inputIcon} />
                                 <TextInput
                                     style={styles.input}
                                     placeholder="Confirm Password"
@@ -211,7 +211,7 @@ const RegisterScreen = ({ navigation }) => {
                                 disabled={loading}
                             >
                                 <LinearGradient
-                                    colors={['#FFD700', '#D4AF37']}
+                                    colors={['#FFD700', '#F5C518']}
                                     start={{ x: 0, y: 0 }}
                                     end={{ x: 1, y: 0 }}
                                     style={styles.registerGradient}
@@ -314,7 +314,7 @@ const styles = StyleSheet.create({
         borderColor: 'rgba(255, 255, 255, 0.1)',
     },
     roleButtonActive: {
-        borderColor: '#FF6B6B',
+        borderColor: '#F5C518',
         backgroundColor: 'rgba(255, 107, 107, 0.1)',
     },
     roleButtonText: {
@@ -323,7 +323,7 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     roleButtonTextActive: {
-        color: '#FF6B6B',
+        color: '#F5C518',
     },
     inputContainer: {
         flexDirection: 'row',

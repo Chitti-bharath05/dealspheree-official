@@ -136,7 +136,7 @@ const s = StyleSheet.create({
     backBtn: { width: 44, height: 44, borderRadius: 15, backgroundColor: 'rgba(255,255,255,0.05)', alignItems: 'center', justifyContent: 'center' },
     headerTitle: { color: '#fff', fontSize: 22, fontWeight: '800' },
     scroll: { paddingHorizontal: 24, paddingBottom: 50 },
-    sectionTitle: { color: '#D4AF37', fontSize: 13, fontWeight: '800', letterSpacing: 1, marginTop: 20, marginBottom: 25 },
+    sectionTitle: { color: '#F5C518', fontSize: 13, fontWeight: '800', letterSpacing: 1, marginTop: 20, marginBottom: 25 },
     inputSection: { marginBottom: 20 },
     label: { color: '#8E8E93', fontSize: 12, fontWeight: '700', marginBottom: 10, marginLeft: 5 },
     inputWrapper: {
@@ -150,7 +150,7 @@ const s = StyleSheet.create({
     },
     inputBox: { flex: 1, padding: 18, color: '#fff', fontSize: 16 },
     eyeBtn: { padding: 5 },
-    saveBtn: { backgroundColor: '#D4AF37', borderRadius: 20, height: 60, alignItems: 'center', justifyContent: 'center', marginTop: 30 },
+    saveBtn: { backgroundColor: '#F5C518', borderRadius: 20, height: 60, alignItems: 'center', justifyContent: 'center', marginTop: 30 },
     saveBtnTxt: { color: '#000', fontSize: 16, fontWeight: '800' },
 });
 

@@ -123,7 +123,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
                                     disabled={loading}
                                 >
                                     <LinearGradient
-                                        colors={['#F5C518', '#D4AF37', '#E5C05B']}
+                                        colors={['#F5C518', '#F5C518', '#E5C05B']}
                                         start={{ x: 0, y: 0 }}
                                         end={{ x: 1, y: 0 }}
                                         style={s.actionGradient}
@@ -146,7 +146,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
 
                             {/* External Footer */}
                             <View style={s.externalFooter}>
-                                <Text style={s.copyrightText}>© 2026 DEALSPHERE SECURE PORTAL</Text>
+                                <Text style={s.copyrightText}>© 2026 DEALSPHEREE SECURE PORTAL</Text>
                             </View>
                         </View>
                     </ScrollView>

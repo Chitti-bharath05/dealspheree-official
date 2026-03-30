@@ -49,7 +49,7 @@ export default function FavoritesScreen({ navigation }) {
                     <Text style={s.cardExp}>{t('expires_in_days').replace('{days}', daysLeft)}</Text>
                 </View>
                 <TouchableOpacity onPress={() => toggleFavorite(item._id || item.id)} style={s.heartBtn}>
-                    <Ionicons name="heart" size={22} color="#D4AF37" />
+                    <Ionicons name="heart" size={22} color="#F5C518" />
                 </TouchableOpacity>
             </TouchableOpacity>
         );
@@ -73,7 +73,7 @@ export default function FavoritesScreen({ navigation }) {
                 {/* Search Bar */}
                 <View style={s.searchWrap}>
                     <View style={s.searchBox}>
-                        <Ionicons name="search" size={20} color="#D4AF37" style={{ marginRight: 12 }} />
+                        <Ionicons name="search" size={20} color="#F5C518" style={{ marginRight: 12 }} />
                         <TextInput 
                             placeholder={t('search_favorites')} 
                             placeholderTextColor="#555" 
@@ -103,7 +103,7 @@ export default function FavoritesScreen({ navigation }) {
                     ListEmptyComponent={
                         <View style={s.empty}>
                             <View style={s.emptyIcWrap}>
-                                <Ionicons name="heart-dislike-outline" size={60} color="#D4AF37" />
+                                <Ionicons name="heart-dislike-outline" size={60} color="#F5C518" />
                             </View>
                             <Text style={s.emptyTxt}>{activeTab === 'Deals' ? t('no_saved_deals') : t('no_saved_stores')}</Text>
                         </View>
@@ -121,21 +121,21 @@ const s = StyleSheet.create({
     backBtn: { width: 44, height: 44, borderRadius: 15, backgroundColor: 'rgba(255,255,255,0.05)', alignItems: 'center', justifyContent: 'center' },
     headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     headerTitle: { color: '#fff', fontSize: 22, fontWeight: '800' },
-    clearAll: { color: '#D4AF37', fontWeight: '700', fontSize: 14 },
+    clearAll: { color: '#F5C518', fontWeight: '700', fontSize: 14 },
     searchWrap: { paddingHorizontal: 24, marginBottom: 20 },
     searchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 20, paddingHorizontal: 16, height: 56, borderWidth: 1, borderColor: 'rgba(212,175,55,0.2)' },
     searchInput: { flex: 1, color: '#fff', fontSize: 16 },
     tabRow: { flexDirection: 'row', paddingHorizontal: 24, gap: 24, marginBottom: 20 },
     tab: { paddingBottom: 10, borderBottomWidth: 2, borderBottomColor: 'transparent' },
-    tabAct: { borderBottomColor: '#D4AF37' },
+    tabAct: { borderBottomColor: '#F5C518' },
     tabTxt: { color: '#555', fontSize: 16, fontWeight: '700' },
-    tabTxtAct: { color: '#D4AF37' },
+    tabTxtAct: { color: '#F5C518' },
     list: { paddingHorizontal: 24, paddingBottom: 100 },
     card: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 24, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
     cardImg: { width: 84, height: 84, borderRadius: 18 },
     cardInfo: { flex: 1, marginLeft: 16 },
     cardTitle: { color: '#fff', fontSize: 17, fontWeight: '700' },
-    cardStore: { color: '#D4AF37', fontSize: 13, marginTop: 4, fontWeight: '600' },
+    cardStore: { color: '#F5C518', fontSize: 13, marginTop: 4, fontWeight: '600' },
     cardExp: { color: '#8E8E93', fontSize: 12, marginTop: 6, fontWeight: '500' },
     heartBtn: { padding: 8 },
     empty: { alignItems: 'center', marginTop: 120 },

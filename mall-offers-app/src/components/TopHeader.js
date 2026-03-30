@@ -24,7 +24,7 @@ const TopHeader = ({ title }) => {
                 navigator.geolocation.getCurrentPosition(async (position) => {
                     const { latitude, longitude } = position.coords;
                     try {
-                        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&email=admin@dealsphere.com`);
+                        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&email=support@dealspheree.in`);
                         if (!response.ok) throw new Error('Nominatim request failed: ' + response.statusText);
                         const data = await response.json();
                         
@@ -63,9 +63,9 @@ const TopHeader = ({ title }) => {
     };
 
     const getAppTitle = () => {
-        if (user?.role === 'admin') return "DealSphere Admin";
-        if (user?.role === 'store_owner') return "DealSphere Store";
-        return "DealSphere";
+        if (user?.role === 'admin') return "Dealspheree Admin";
+        if (user?.role === 'store_owner') return "Dealspheree Store";
+        return "Dealspheree";
     };
 
     return (
@@ -179,7 +179,7 @@ const s = StyleSheet.create({
         height: 36,
         borderRadius: 18,
         borderWidth: 1.5,
-        borderColor: '#D4AF37',
+        borderColor: '#F5C518',
         alignItems: 'center',
         justifyContent: 'center',
         overflow: 'hidden',

@@ -237,7 +237,7 @@ const AdminDashboardScreen = () => {
                 <View style={s.promoCard}>
                     <Text style={s.promoTitle}>Optimize Platform <Text style={s.italicGold}>Performance.</Text></Text>
                     <Text style={s.promoDesc}>
-                        The admin core now includes real-time telemetry and advanced fraud detection for all store offers. Ensure every deal published meets the DealSphere quality benchmark.
+                        The admin core now includes real-time telemetry and advanced fraud detection for all store offers. Ensure every deal published meets the Dealspheree quality benchmark.
                     </Text>
                     <View style={s.tagRow}>
                         <View style={s.promoTag}><Text style={s.promoTagTxt}>ENGINE V1.2</Text></View>

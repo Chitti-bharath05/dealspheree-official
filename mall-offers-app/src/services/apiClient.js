@@ -74,7 +74,7 @@ apiClient.interceptors.response.use(
                             refreshToken: userInfo.refreshToken
                         });
 
-                        if (refreshRes.data.success) {
+                        if (refreshRes.status === 200 && refreshRes.data.success) {
                             const newToken = refreshRes.data.token;
                             // Update storage
                             userInfo.token = newToken;
@@ -88,8 +88,12 @@ apiClient.interceptors.response.use(
                 }
             } catch (refreshError) {
                 console.error('Token refresh failed', refreshError);
-                // Optional: Trigger logout by clearing storage
-                // await AsyncStorage.removeItem('userInfo');
+                // If the refresh itself fails with 403, we should clear the session
+                if (refreshError.response?.status === 403) {
+                    console.log('[apiClient] Refresh token invalid/expired, clearing session');
+                    await AsyncStorage.removeItem('userInfo');
+                    // Optional: trigger a real-time event for UI to respond (e.g., via a context)
+                }
             }
         }
 

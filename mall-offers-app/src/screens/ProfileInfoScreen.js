@@ -117,11 +117,11 @@ const s = StyleSheet.create({
     headerTitle: { color: '#fff', fontSize: 22, fontWeight: '800' },
     scroll: { paddingHorizontal: 24, paddingBottom: 50 },
     inputSection: { marginBottom: 25 },
-    label: { color: '#D4AF37', fontSize: 13, fontWeight: '800', letterSpacing: 1, marginBottom: 10, marginLeft: 5 },
+    label: { color: '#F5C518', fontSize: 13, fontWeight: '800', letterSpacing: 1, marginBottom: 10, marginLeft: 5 },
     input: { backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 15, padding: 18, color: '#fff', fontSize: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
     disabledInput: { color: '#555', backgroundColor: 'rgba(255,255,255,0.01)' },
     hint: { color: '#444', fontSize: 11, marginTop: 5, marginLeft: 5 },
-    saveBtn: { backgroundColor: '#D4AF37', borderRadius: 20, height: 60, alignItems: 'center', justifyContent: 'center', marginTop: 20 },
+    saveBtn: { backgroundColor: '#F5C518', borderRadius: 20, height: 60, alignItems: 'center', justifyContent: 'center', marginTop: 20 },
     saveBtnTxt: { color: '#000', fontSize: 16, fontWeight: '800' },
 });
 

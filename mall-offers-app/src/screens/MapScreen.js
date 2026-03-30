@@ -20,7 +20,7 @@ export default function MapScreen() {
     if (isLoading) {
         return (
             <View style={s.loading}>
-                <ActivityIndicator color="#D4AF37" size="large" />
+                <ActivityIndicator color="#F5C518" size="large" />
                 <Text style={s.loadingText}>Loading stores...</Text>
             </View>
         );
@@ -46,5 +46,5 @@ export default function MapScreen() {
 const s = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#000' },
     loading: { flex: 1, backgroundColor: '#1a150d', justifyContent: 'center', alignItems: 'center' },
-    loadingText: { color: '#D4AF37', fontSize: 16, marginTop: 16, fontWeight: '700' },
+    loadingText: { color: '#F5C518', fontSize: 16, marginTop: 16, fontWeight: '700' },
 });

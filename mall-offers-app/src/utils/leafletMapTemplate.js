@@ -30,9 +30,9 @@ export const generateLeafletHTML = (stores = []) => {
   #info-addr { color: #8E8E93; font-size: 13px; margin-top: 3px; }
   #info-dist { color: #4ECDC4; font-size: 14px; font-weight: 700; margin-top: 6px; display: none; }
   #info-close { position: absolute; top: 10px; right: 12px; background: rgba(255,255,255,0.08); border: none; border-radius: 50%; width: 30px; height: 30px; color: #fff; font-size: 16px; cursor: pointer; }
-  #myloc-btn { position: fixed; bottom: 16px; right: 16px; background: #D4AF37; border: none; border-radius: 22px; padding: 12px 20px; color: #000; font-size: 14px; font-weight: 900; cursor: pointer; z-index: 1000; box-shadow: 0 4px 12px rgba(212,175,55,0.4); }
-  #badge { position: fixed; bottom: 16px; left: 16px; background: rgba(26,21,13,0.88); border: 1px solid rgba(212,175,55,0.2); border-radius: 10px; padding: 7px 12px; color: #D4AF37; font-size: 11px; font-weight: 700; z-index: 1000; }
-  #status { position: fixed; top: 12px; left: 12px; right: 12px; background: rgba(26,21,13,0.92); border: 1px solid rgba(212,175,55,0.3); border-radius: 10px; padding: 10px 14px; color: #D4AF37; font-size: 13px; font-weight: 600; z-index: 1000; text-align: center; display: none; }
+  #myloc-btn { position: fixed; bottom: 16px; right: 16px; background: #F5C518; border: none; border-radius: 22px; padding: 12px 20px; color: #000; font-size: 14px; font-weight: 900; cursor: pointer; z-index: 1000; box-shadow: 0 4px 12px rgba(212,175,55,0.4); }
+  #badge { position: fixed; bottom: 16px; left: 16px; background: rgba(26,21,13,0.88); border: 1px solid rgba(212,175,55,0.2); border-radius: 10px; padding: 7px 12px; color: #F5C518; font-size: 11px; font-weight: 700; z-index: 1000; }
+  #status { position: fixed; top: 12px; left: 12px; right: 12px; background: rgba(26,21,13,0.92); border: 1px solid rgba(212,175,55,0.3); border-radius: 10px; padding: 10px 14px; color: #F5C518; font-size: 13px; font-weight: 600; z-index: 1000; text-align: center; display: none; }
   .leaflet-popup-content-wrapper { background: #1a150d; border: 1px solid rgba(212,175,55,0.4); border-radius: 12px; color: #fff; }
   .leaflet-popup-tip { background: #1a150d; }
 </style>
@@ -66,7 +66,7 @@ const userIcon = L.divIcon({
   className: '', iconSize:[36,36], iconAnchor:[18,18]
 });
 const storeIcon = L.divIcon({
-  html: '<div style="width:34px;height:40px;"><svg xmlns=\\'http://www.w3.org/2000/svg\\' viewBox=\\'0 0 34 42\\'><path d=\\'M17 0 C8 0 0 8 0 17 C0 30 17 42 17 42 C17 42 34 30 34 17 C34 8 26 0 17 0Z\\' fill=\\'#D4AF37\\' stroke=\\'#fff\\' stroke-width=\\'2\\'/><circle cx=\\'17\\' cy=\\'17\\' r=\\'8\\' fill=\\'#fff\\'/></svg></div>',
+  html: '<div style="width:34px;height:40px;"><svg xmlns=\\'http://www.w3.org/2000/svg\\' viewBox=\\'0 0 34 42\\'><path d=\\'M17 0 C8 0 0 8 0 17 C0 30 17 42 17 42 C17 42 34 30 34 17 C34 8 26 0 17 0Z\\' fill=\\'#F5C518\\' stroke=\\'#fff\\' stroke-width=\\'2\\'/><circle cx=\\'17\\' cy=\\'17\\' r=\\'8\\' fill=\\'#fff\\'/></svg></div>',
   className: '', iconSize:[34,40], iconAnchor:[17,40], popupAnchor:[0,-42]
 });
 const selectedIcon = L.divIcon({
@@ -144,13 +144,13 @@ async function onStoreClick(store, coords, marker) {
     const route = await fetchRoute(userLatLng, coords);
     hideStatus();
     if(route) {
-      routeLine = L.polyline(route, {color:'#D4AF37',weight:5,opacity:0.85,dashArray:'8,5'}).addTo(map);
+      routeLine = L.polyline(route, {color:'#F5C518',weight:5,opacity:0.85,dashArray:'8,5'}).addTo(map);
       const bounds = L.latLngBounds([...route.map(p=>p), [userLatLng.lat,userLatLng.lng], [coords.lat,coords.lng]]);
       map.fitBounds(bounds, {padding:[40,40]});
     }
   }
   
-  marker.bindPopup('<b style="color:#D4AF37">'+store.name+'</b><br/><span style="color:#aaa">'+[store.area,store.city].filter(Boolean).join(', ')+'</span>').openPopup();
+  marker.bindPopup('<b style="color:#F5C518">'+store.name+'</b><br/><span style="color:#aaa">'+[store.area,store.city].filter(Boolean).join(', ')+'</span>').openPopup();
 }
 
 function closePanel() {

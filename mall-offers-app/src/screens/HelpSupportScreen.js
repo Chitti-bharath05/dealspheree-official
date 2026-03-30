@@ -14,7 +14,7 @@ export default function HelpSupportScreen({ navigation }) {
             <TouchableOpacity style={s.faq} onPress={() => setOpen(!open)}>
                 <View style={s.faqHeader}>
                     <Text style={s.question}>{question}</Text>
-                    <Ionicons name={open ? "chevron-up" : "chevron-down"} size={18} color="#D4AF37" />
+                    <Ionicons name={open ? "chevron-up" : "chevron-down"} size={18} color="#F5C518" />
                 </View>
                 {open && <Text style={s.answer}>{answer}</Text>}
             </TouchableOpacity>
@@ -54,11 +54,11 @@ export default function HelpSupportScreen({ navigation }) {
                     <Text style={s.sectionTitle}>{t('get_in_touch')}</Text>
                     <View style={s.section}>
                         <TouchableOpacity style={s.contactItem}>
-                            <Ionicons name="mail" size={20} color="#D4AF37" />
-                            <Text style={s.contactTxt}>Email: support@valories.com</Text>
+                            <Ionicons name="mail" size={20} color="#F5C518" />
+                            <Text style={s.contactTxt}>Email: support@dealspheree.in</Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={s.contactItem}>
-                            <Ionicons name="chatbubbles" size={20} color="#D4AF37" />
+                            <Ionicons name="chatbubbles" size={20} color="#F5C518" />
                             <Text style={s.contactTxt}>{t('live_chat')}</Text>
                         </TouchableOpacity>
                     </View>
@@ -92,7 +92,7 @@ const s = StyleSheet.create({
     backBtn: { width: 44, height: 44, borderRadius: 15, backgroundColor: 'rgba(255,255,255,0.05)', alignItems: 'center', justifyContent: 'center' },
     headerTitle: { color: '#fff', fontSize: 20, fontWeight: '800' },
     scroll: { paddingHorizontal: 24, paddingBottom: 50 },
-    sectionTitle: { color: '#D4AF37', fontSize: 13, fontWeight: '800', letterSpacing: 1, marginTop: 30, marginBottom: 15, marginLeft: 10 },
+    sectionTitle: { color: '#F5C518', fontSize: 13, fontWeight: '800', letterSpacing: 1, marginTop: 30, marginBottom: 15, marginLeft: 10 },
     section: { backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 24, paddingVertical: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
     faq: { paddingHorizontal: 20, paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },
     faqHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
@@ -102,6 +102,6 @@ const s = StyleSheet.create({
     contactTxt: { color: '#fff', fontSize: 15, fontWeight: '600' },
     feedbackBox: { backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 24, padding: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
     feedbackInput: { height: 120, textAlignVertical: 'top', color: '#fff', fontSize: 15 },
-    submitBtn: { backgroundColor: '#D4AF37', borderRadius: 15, paddingVertical: 15, alignItems: 'center', marginTop: 15 },
+    submitBtn: { backgroundColor: '#F5C518', borderRadius: 15, paddingVertical: 15, alignItems: 'center', marginTop: 15 },
     submitBtnTxt: { color: '#000', fontWeight: '800', fontSize: 15 },
 });

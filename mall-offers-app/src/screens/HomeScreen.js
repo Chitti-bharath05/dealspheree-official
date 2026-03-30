@@ -47,7 +47,7 @@ const { width } = Dimensions.get('window');
 
 export default function HomeScreen({ navigation }) {
     const { user } = useAuth();
-    const { offers, categories, isLoading, getActiveOffers, userLocation, locationError, refreshLocation } = useData();
+    const { offers, categories, isLoading, getActiveOffers, userLocation, locationError, refreshLocation, calculateDistance } = useData();
     const { t } = useLanguage();
     const [selectedCategory, setSelectedCategory] = useState('All');
     const [searchQuery, setSearchQuery] = useState('');
@@ -179,9 +179,17 @@ export default function HomeScreen({ navigation }) {
                                             <View style={s.heroBadge}>
                                                 <Text style={s.heroBadgeTxt}>AMAZING DEAL</Text>
                                             </View>
+                                            {userLocation && item.storeId?.lat && item.storeId?.lng && (
+                                                <View style={s.distIndicator}>
+                                                    <Ionicons name="location" size={10} color="#000" />
+                                                    <Text style={s.distIndicatorTxt}>
+                                                        {calculateDistance(userLocation.lat, userLocation.lng, item.storeId.lat, item.storeId.lng).toFixed(1)} km
+                                                    </Text>
+                                                </View>
+                                            )}
                                             <View style={s.heroContent}>
                                                 <Text style={[s.offerText, { fontSize: discountSize }]}>{item.discount}% OFF</Text>
-                                                <Text style={[s.storeText, { fontSize: width > 1024 ? 18 : 14 }]} numberOfLines={1}>{item.storeId?.storeName || 'Premium Store'}</Text>
+                                                <Text style={[s.storeText, { fontSize: width > 1024 ? 18 : 15 }]} numberOfLines={1}>{item.storeId?.storeName || 'Premium Store'}</Text>
                                                 <Text style={s.descText} numberOfLines={1}>{item.title}</Text>
                                             </View>
                                         </LinearGradient>
@@ -216,19 +224,23 @@ export default function HomeScreen({ navigation }) {
                                 <Image source={{ uri: item.image || 'https://via.placeholder.com/100' }} style={s.nearImg} />
                                 <View style={s.nearInfo}>
                                     <View style={s.nearTitleRow}>
-                                        <Text style={s.nearStoreName}>{item.storeId?.storeName || 'The Burger Lab'}</Text>
-                                        <View style={s.distBadge}>
-                                            <Text style={s.distBadgeTxt}>2.4 km</Text>
-                                        </View>
+                                        <Text style={s.nearStoreName} numberOfLines={1}>{item.storeId?.storeName || 'The Burger Lab'}</Text>
+                                        {userLocation && item.storeId?.lat && item.storeId?.lng && (
+                                            <View style={s.distBadge}>
+                                                <Text style={s.distBadgeTxt}>
+                                                    {calculateDistance(userLocation.lat, userLocation.lng, item.storeId.lat, item.storeId.lng).toFixed(1)} km
+                                                </Text>
+                                            </View>
+                                        )}
                                     </View>
                                     <Text style={s.nearDesc} numberOfLines={2}>{item.title}</Text>
                                     <View style={s.expiryRow}>
                                         <Ionicons name="time-outline" size={14} color="#F5C518" />
-                                        <Text style={s.expiryText}>ENDS IN 4H</Text>
+                                        <Text style={s.expiryText}>ACTIVE NOW</Text>
                                     </View>
                                 </View>
                             </TouchableOpacity>
-                            )
+                            ))
                         ) : null}
                     </View>
                 </View>
@@ -288,13 +300,15 @@ const s = StyleSheet.create({
     heroGridWeb: { justifyContent: 'space-between' },
     heroCard: { width: '100%', height: 380, borderRadius: 12, overflow: 'hidden', backgroundColor: '#1A1A1A' },
     heroImg: { width: '100%', height: '100%', resizeMode: 'cover' },
-    heroOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, height: '70%', padding: 12, justifyContent: 'flex-end' }, // Reduced padding for mobile
-    heroBadge: { position: 'absolute', top: 12, left: 12, backgroundColor: '#F5C518', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4 }, // Scaled down
-    heroBadgeTxt: { color: '#000', fontSize: 8, fontWeight: '900' }, // Scaled down
-    heroContent: { gap: 4 },
-    offerText: { color: '#F5C518', fontSize: 44, fontWeight: '950', lineHeight: 48 }, // Added line height to avoid cutoff
-    storeText: { color: '#FFFFFF', fontSize: 20, fontWeight: '800' },
-    descText: { color: '#A0A0A0', fontSize: 15, fontWeight: '400', lineHeight: 22 },
+    heroOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, height: '75%', padding: 15, justifyContent: 'flex-end' },
+    heroBadge: { position: 'absolute', top: 12, left: 12, backgroundColor: '#F5C518', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4 },
+    heroBadgeTxt: { color: '#000', fontSize: 8, fontWeight: '900' },
+    distIndicator: { position: 'absolute', top: 12, right: 12, backgroundColor: '#F5C518', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4, flexDirection: 'row', alignItems: 'center', gap: 4 },
+    distIndicatorTxt: { color: '#000', fontSize: 9, fontWeight: '900' },
+    heroContent: { gap: 6 },
+    offerText: { color: '#F5C518', fontSize: 44, fontWeight: '950', lineHeight: 50 },
+    storeText: { color: '#FFFFFF', fontSize: 20, fontWeight: '900' },
+    descText: { color: '#A0A0A0', fontSize: 16, fontWeight: '500', lineHeight: 22 },
     nearList: { paddingHorizontal: 24, gap: 16 },
     nearGridWeb: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
     nearCard: { flexDirection: 'row', backgroundColor: '#1A1A1A', borderRadius: 12, padding: 16, gap: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' },
