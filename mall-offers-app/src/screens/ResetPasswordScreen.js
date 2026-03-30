@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -10,6 +10,7 @@ import {
     ActivityIndicator,
     ScrollView,
     useWindowDimensions,
+    Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -25,12 +26,60 @@ const ResetPasswordScreen = ({ route, navigation }) => {
     const [errorMsg, setErrorMsg] = useState('');
     const [successMsg, setSuccessMsg] = useState('');
     const [showPassword, setShowPassword] = useState(false);
-    
+
+    // Resend Code state
+    const [resendTimer, setResendTimer] = useState(30);
+    const [canResend, setCanResend] = useState(false);
+    const [resendLoading, setResendLoading] = useState(false);
+
     const { t } = useLanguage();
     const { width, height } = useWindowDimensions();
 
     const showError = (msg) => { setSuccessMsg(''); setErrorMsg(msg); };
     const showSuccess = (msg) => { setErrorMsg(''); setSuccessMsg(msg); };
+
+    // Start countdown on mount
+    useEffect(() => {
+        startCountdown();
+    }, []);
+
+    const startCountdown = () => {
+        setCanResend(false);
+        setResendTimer(30);
+        const interval = setInterval(() => {
+            setResendTimer((prev) => {
+                if (prev <= 1) {
+                    clearInterval(interval);
+                    setCanResend(true);
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+        return () => clearInterval(interval);
+    };
+
+    const handleResendCode = async () => {
+        if (!canResend || resendLoading) return;
+        setResendLoading(true);
+        setErrorMsg('');
+        try {
+            const response = await apiClient.post('/auth/forgotpassword', {
+                email: email?.trim().toLowerCase()
+            });
+            if (response.success) {
+                showSuccess('A new verification code has been sent to your email.');
+                startCountdown();
+            } else {
+                showError(response.message || 'Failed to resend code.');
+            }
+        } catch (err) {
+            const msg = err?.response?.data?.message || err?.message || 'Failed to resend code. Please try again.';
+            showError(msg);
+        } finally {
+            setResendLoading(false);
+        }
+    };
 
     const handleResetPassword = async () => {
         if (!otp || !newPassword || !confirmPassword) {
@@ -51,7 +100,7 @@ const ResetPasswordScreen = ({ route, navigation }) => {
         setSuccessMsg('');
 
         try {
-            const response = await apiClient.put('/auth/resetpassword', {
+            const response = await apiClient.post('/auth/resetpassword', {
                 email,
                 otp,
                 password: newPassword
@@ -67,8 +116,8 @@ const ResetPasswordScreen = ({ route, navigation }) => {
             }
         } catch (error) {
             setLoading(false);
-            const errorMessage = error?.response?.data?.message || error?.message || 'Failed to reset password.';
-            showError(errorMessage);
+            const msg = error?.response?.data?.message || error?.message || 'Something went wrong. Please try again.';
+            showError(msg);
         }
     };
 
@@ -130,6 +179,19 @@ const ResetPasswordScreen = ({ route, navigation }) => {
                                                 keyboardType="number-pad"
                                                 maxLength={6}
                                             />
+                                        </View>
+                                        {/* Resend Code Row */}
+                                        <View style={s.resendRow}>
+                                            <Text style={s.resendLabel}>Didn't receive the code?</Text>
+                                            {resendLoading ? (
+                                                <ActivityIndicator size="small" color="#F5C518" style={{ marginLeft: 6 }} />
+                                            ) : canResend ? (
+                                                <TouchableOpacity onPress={handleResendCode}>
+                                                    <Text style={s.resendBtn}>Resend Code</Text>
+                                                </TouchableOpacity>
+                                            ) : (
+                                                <Text style={s.resendTimer}>Resend in {resendTimer}s</Text>
+                                            )}
                                         </View>
                                     </View>
 
@@ -265,6 +327,16 @@ const s = StyleSheet.create({
         fontSize: 15, 
         fontWeight: '500' 
     },
+    resendRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        marginTop: 4,
+    },
+    resendLabel: { color: '#8E8E93', fontSize: 13 },
+    resendBtn: { color: '#F5C518', fontSize: 13, fontWeight: '700' },
+    resendTimer: { color: '#555555', fontSize: 13 },
     actionBtn: { height: 56, borderRadius: 12, overflow: 'hidden', marginBottom: 20 },
     actionGradient: { flex: 1, alignItems: 'center', justifyContent: 'center' },
     actionBtnText: { color: '#000', fontSize: 15, fontWeight: '900', letterSpacing: 1 },

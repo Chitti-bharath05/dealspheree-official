@@ -237,18 +237,28 @@ router.post('/forgotpassword', async (req, res) => {
         console.log(`OTP:   ${otp}`);
         console.log('*********************************\n');
 
-        const message = `You are receiving this email because you (or someone else) has requested the reset of a password. Please use the following 6-digit code to reset your password:\n\n${otp}\n\nIf you did not request this, please ignore this email.`;
+        const htmlMessage = `
+          <div style="font-family: Arial, sans-serif; max-width: 500px; margin: auto; padding: 30px; background: #1a1a1a; color: #fff; border-radius: 12px; border: 1px solid rgba(245,197,24,0.2);">
+            <h2 style="color: #F5C518; margin-top: 0;">&#128274; Password Reset Code</h2>
+            <p style="color: #ccc;">You requested a password reset for your Dealspheree account. Use the code below:</p>
+            <div style="font-size: 40px; font-weight: bold; color: #F5C518; letter-spacing: 10px; text-align: center; margin: 30px 0; padding: 20px; background: rgba(245,197,24,0.08); border-radius: 8px; border: 1px solid rgba(245,197,24,0.3);">${otp}</div>
+            <p style="color: #8E8E93;">This code expires in <strong style="color:#fff;">10 minutes</strong>.</p>
+            <p style="color: #8E8E93; font-size: 13px;">If you didn't request this, you can safely ignore this email.</p>
+            <hr style="border-color: rgba(255,255,255,0.1); margin: 20px 0;" />
+            <p style="color: #555; font-size: 11px;">Dealspheree &mdash; support@dealspheree.in</p>
+          </div>
+        `;
 
         try {
             console.log(`Attempting to send OTP email to: ${user.email}`);
             await sendEmail({
                 email: user.email,
-                subject: 'Password Reset OTP',
-                message,
+                subject: '\uD83D\uDD10 Your Dealspheree Password Reset Code',
+                html: htmlMessage,
             });
             console.log(`OTP email sent successfully to: ${user.email}`);
 
-            res.status(200).json({ success: true, message: 'Email sent' });
+            res.status(200).json({ success: true, message: 'OTP sent to your email' });
         } catch (err) {
             console.error(`Failed to send OTP email to ${user.email}:`, err);
             user.resetPasswordOTP = undefined;
@@ -345,6 +355,51 @@ router.put('/resetpassword', async (req, res) => {
 
         res.status(200).json({ success: true, message: 'Password reset successful' });
     } catch (error) {
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// @desc    Reset password via OTP (POST alias for compatibility)
+// @route   POST /api/auth/resetpassword
+// @access  Public
+router.post('/resetpassword', async (req, res) => {
+    try {
+        const { otp, password, newPassword, email, mobileNumber } = req.body;
+        const finalPassword = password || newPassword;
+
+        if (!otp || !finalPassword) {
+            return res.status(400).json({ success: false, message: 'OTP and new password are required' });
+        }
+
+        let query = {
+            resetPasswordOTP: otp,
+            resetPasswordOTPExpire: { $gt: Date.now() },
+        };
+
+        if (email) {
+            query.email = email.toLowerCase();
+        } else if (mobileNumber) {
+            query.mobileNumber = mobileNumber;
+        } else {
+            return res.status(400).json({ success: false, message: 'Please provide email or mobile number' });
+        }
+
+        const user = await User.findOne(query);
+
+        if (!user) {
+            return res.status(400).json({ success: false, message: 'Invalid or expired OTP. Please request a new one.' });
+        }
+
+        // Set new password
+        user.password = finalPassword;
+        user.resetPasswordOTP = undefined;
+        user.resetPasswordOTPExpire = undefined;
+        user.resetPasswordToken = undefined;
+        await user.save();
+
+        res.status(200).json({ success: true, message: 'Password reset successful' });
+    } catch (error) {
+        console.error('Reset password error:', error);
         res.status(500).json({ success: false, message: 'Server error' });
     }
 });

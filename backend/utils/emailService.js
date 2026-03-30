@@ -2,15 +2,21 @@ const axios = require('axios');
 
 const sendEmail = async (options) => {
     const apiKey = process.env.BREVO_API_KEY;
-    const senderEmail = process.env.EMAIL_FROM || 'teamalloffers@gmail.com';
+    const senderEmail = process.env.EMAIL_FROM || 'support@dealspheree.in';
 
-    // Brevo API Payload
+    // Brevo API Payload — supports both html and plain text
     const data = {
-        sender: { name: "DealSphere Security", email: senderEmail },
+        sender: { name: "Dealspheree Security", email: senderEmail },
         to: [{ email: options.email }],
         subject: options.subject,
-        textContent: options.message,
     };
+
+    // Prefer HTML over plain text if provided
+    if (options.html) {
+        data.htmlContent = options.html;
+    } else if (options.message) {
+        data.textContent = options.message;
+    }
 
     try {
         console.log(`[EmailService] Sending email via Brevo API to ${options.email}...`);
