@@ -22,8 +22,6 @@ import { useAuth } from '../context/AuthContext';
 import apiClient from '../services/apiClient';
 import { useLanguage } from '../context/LanguageContext';
 
-const { width } = Dimensions.get('window');
-
 const OfferDetailsScreen = ({ route, navigation }) => {
     const { offerId } = route.params;
     const { getOfferById, refetchStores, incrementStoreViews, likeStore } = useData();
@@ -39,12 +37,12 @@ const OfferDetailsScreen = ({ route, navigation }) => {
 
     const showToast = (msg) => {
         setToastMessage(msg);
-        setTimeout(() => setToastMessage(null), 2000);
+        setTimeout(() => setToastMessage(null), 2500);
     };
 
     const { width } = useWindowDimensions();
     const isWeb = Platform.OS === 'web';
-    const contentWidth = isWeb ? Math.min(width, 800) : width;
+    const cardWidth = isWeb ? Math.min(width, 520) : width;
 
     const offer = getOfferById(offerId);
     const [store, setStore] = useState(null);
@@ -62,7 +60,6 @@ const OfferDetailsScreen = ({ route, navigation }) => {
         }
     }, [existingRatingObj]);
 
-    // ✅ FIX 1: Get customer's live location ONCE on mount (works on both web and mobile)
     useEffect(() => {
         if (navigator?.geolocation) {
             navigator.geolocation.getCurrentPosition(
@@ -72,7 +69,6 @@ const OfferDetailsScreen = ({ route, navigation }) => {
         }
     }, []);
 
-    // ✅ FIX 2: Fetch full store data including location
     useEffect(() => {
         if (offer && offer.storeId) {
             const storeId = offer.storeId._id || offer.storeId.id || offer.storeId;
@@ -98,32 +94,12 @@ const OfferDetailsScreen = ({ route, navigation }) => {
         const now = new Date();
         const diffTime = expiry.getTime() - now.getTime();
         const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        
         if (daysLeft <= 0) return 'Expired';
         if (daysLeft <= 3) return `Expires in ${daysLeft} day${daysLeft > 1 ? 's' : ''}`;
-        
-        const formattedDate = expiry.toLocaleDateString('en-GB', {
-            day: 'numeric',
-            month: 'short',
-            year: 'numeric'
-        });
+        const formattedDate = expiry.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
         return `Expires on ${formattedDate}`;
     };
 
-    if (!offer) {
-        return (
-            <View style={s.container}>
-                <LinearGradient colors={['#1a150d', '#000']} style={s.gradient}>
-                    <Text style={s.errorText}>Offer not found</Text>
-                </LinearGradient>
-            </View>
-        );
-    }
-
-    const discountedPrice = Math.round((offer?.originalPrice || 0) * (1 - (offer?.discount || 0) / 100));
-
-    // ✅ FIX 3: Correctly read store location from nested location object OR flat lat/lng
-    // Supports both: store.location.lat/lng AND store.lat/lng (covers both API response formats)
     const getStoreLat = () => store?.location?.lat ?? store?.lat ?? null;
     const getStoreLng = () => store?.location?.lng ?? store?.lng ?? null;
     const getStoreAddress = () => store?.address ?? store?.location?.address ?? store?.locationDescription ?? 'Store address not set';
@@ -133,18 +109,12 @@ const OfferDetailsScreen = ({ route, navigation }) => {
         try {
             const shareTitle = `${offer.discount}% OFF: ${offer.title} at ${store?.storeName}`;
             const shareMessage = `Check out this amazing deal: ${offer.title} at ${store?.storeName}! ${offer.description}\n\nDownload Dealspheree Mall Offers to see more!`;
-
-            const result = await Share.share({
-                title: shareTitle,
-                message: shareMessage,
-                url: Platform.OS === 'ios' ? 'https://apps.apple.com/app/dealspheree' : undefined
-            });
+            await Share.share({ title: shareTitle, message: shareMessage });
         } catch (error) {
             Alert.alert('Error', 'Could not share this offer.');
         }
     };
 
-    // ✅ FIX 4: Navigate uses correct lat/lng + works on mobile AND web
     const openMapsNavigation = async () => {
         const storeLat = getStoreLat();
         const storeLng = getStoreLng();
@@ -162,50 +132,34 @@ const OfferDetailsScreen = ({ route, navigation }) => {
         const destination = `${storeLat},${storeLng}`;
 
         if (Platform.OS === 'web') {
-            if (userLocation) {
-                const origin = `${userLocation.lat},${userLocation.lng}`;
-                window.open(
-                    `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=driving&dir_action=navigate`,
-                    '_blank'
-                );
-            } else {
-                window.open(
-                    `https://www.google.com/maps/dir/?api=1&destination=${destination}&travelmode=driving&dir_action=navigate`,
-                    '_blank'
-                );
-            }
+            const origin = userLocation ? `${userLocation.lat},${userLocation.lng}` : null;
+            const url = origin
+                ? `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=driving&dir_action=navigate`
+                : `https://www.google.com/maps/dir/?api=1&destination=${destination}&travelmode=driving&dir_action=navigate`;
+            window.open(url, '_blank');
             setIsNavigating(false);
             return;
         }
 
-        // ✅ FIX 5: Mobile native navigation - opens Google Maps app with Start button
-        const isMobile = Platform.OS === 'android' || Platform.OS === 'ios';
-        if (isMobile) {
-            let url = '';
-            if (Platform.OS === 'android') {
-                // Google Maps app deep link with navigation mode
-                url = `google.navigation:q=${destination}&mode=d`;
-            } else if (Platform.OS === 'ios') {
-                // Apple Maps with directions
-                url = `maps://app?daddr=${destination}&dirflg=d`;
-            }
+        let url = Platform.OS === 'android'
+            ? `google.navigation:q=${destination}&mode=d`
+            : `maps://app?daddr=${destination}&dirflg=d`;
 
+        try {
+            const supported = await Linking.canOpenURL(url);
+            if (supported) {
+                await Linking.openURL(url);
+            } else {
+                const webUrl = userLocation
+                    ? `https://www.google.com/maps/dir/?api=1&origin=${userLocation.lat},${userLocation.lng}&destination=${destination}&travelmode=driving&dir_action=navigate`
+                    : `https://www.google.com/maps/dir/?api=1&destination=${destination}&travelmode=driving&dir_action=navigate`;
+                await Linking.openURL(webUrl);
+            }
+        } catch (error) {
             try {
-                const supported = await Linking.canOpenURL(url);
-                if (supported) {
-                    await Linking.openURL(url);
-                } else {
-                    // Fallback to Google Maps web with dir_action=navigate
-                    const webUrl = userLocation
-                        ? `https://www.google.com/maps/dir/?api=1&origin=${userLocation.lat},${userLocation.lng}&destination=${destination}&travelmode=driving&dir_action=navigate`
-                        : `https://www.google.com/maps/dir/?api=1&destination=${destination}&travelmode=driving&dir_action=navigate`;
-                    await Linking.openURL(webUrl);
-                }
-            } catch (error) {
-                const webUrl = `https://www.google.com/maps/dir/?api=1&destination=${destination}&travelmode=driving&dir_action=navigate`;
-                try { await Linking.openURL(webUrl); } catch (e) {
-                    Alert.alert('Error', 'Could not open maps. Please try again later.');
-                }
+                await Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${destination}&travelmode=driving&dir_action=navigate`);
+            } catch (e) {
+                Alert.alert('Error', 'Could not open maps. Please try again later.');
             }
         }
         setIsNavigating(false);
@@ -217,11 +171,10 @@ const OfferDetailsScreen = ({ route, navigation }) => {
         try {
             const res = await likeStore(storeId);
             if (res.success) {
-                // Update local store state to reflect new like count and status
                 setStore(prev => ({
                     ...prev,
                     likes: res.likes,
-                    likedBy: res.isLiked 
+                    likedBy: res.isLiked
                         ? [...(prev.likedBy || []), user?._id || user?.id]
                         : (prev.likedBy || []).filter(id => id.toString() !== (user?._id || user?.id).toString())
                 }));
@@ -239,37 +192,40 @@ const OfferDetailsScreen = ({ route, navigation }) => {
     }, [store, user]);
 
     const submitRating = async () => {
-        if (existingRatingObj) {
-            showToast("Rating already submitted, can't be modified");
-            return;
-        }
-        if (rating === 0) {
-            showToast('Please select a star rating.');
-            return;
-        }
+        if (existingRatingObj) { showToast("Rating already submitted, can't be modified"); return; }
+        if (rating === 0) { showToast('Please select a star rating.'); return; }
         setIsSubmitting(true);
         try {
-            const response = await apiClient.post(`/stores/${store._id || store.id}/rate`, {
-                score: rating,
-                comment: comment
-            });
-            if (response.success) {
-                showToast('Thank you for your response!');
-                refetchStores();
-            }
+            const response = await apiClient.post(`/stores/${store._id || store.id}/rate`, { score: rating, comment });
+            if (response.success) { showToast('Thank you for your review!'); refetchStores(); }
         } catch (error) {
-            const errMsg = error.response?.data?.message || 'Failed to submit rating. Please try again later.';
-            showToast(errMsg);
+            showToast(error.response?.data?.message || 'Failed to submit rating.');
         } finally {
             setIsSubmitting(false);
         }
     };
 
-    const RatingStars = ({ current, max = 5, onSelect, size = 24 }) => (
+    if (!offer) {
+        return (
+            <View style={s.container}>
+                <LinearGradient colors={['#0D0D0D', '#000']} style={s.gradient}>
+                    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                        <Ionicons name="alert-circle-outline" size={48} color="#F5C518" />
+                        <Text style={s.errorText}>Offer not found</Text>
+                    </View>
+                </LinearGradient>
+            </View>
+        );
+    }
+
+    const discountedPrice = Math.round((offer?.originalPrice || 0) * (1 - (offer?.discount || 0) / 100));
+    const expiryStr = getExpiryString(offer?.expiryDate);
+
+    const RatingStars = ({ current, max = 5, onSelect, size = 28 }) => (
         <View style={s.starsRow}>
             {[...Array(max)].map((_, i) => (
-                <TouchableOpacity 
-                    key={i} 
+                <TouchableOpacity
+                    key={i}
                     onPress={() => {
                         if (existingRatingObj) {
                             showToast("Rating already submitted, can't be modified");
@@ -279,7 +235,7 @@ const OfferDetailsScreen = ({ route, navigation }) => {
                     }}
                 >
                     <Ionicons
-                        name={(i < current) ? "star" : "star-outline"}
+                        name={i < current ? 'star' : 'star-outline'}
                         size={size}
                         color="#F5C518"
                     />
@@ -290,196 +246,209 @@ const OfferDetailsScreen = ({ route, navigation }) => {
 
     return (
         <View style={s.container}>
-            <LinearGradient colors={['#1a150d', '#000']} style={s.gradient}>
-                {/* Global Header is provided by AppNavigator */}
-                <View style={{ height: Platform.OS === 'web' ? 70 : 0 }} />
+            <LinearGradient colors={['#0D0D0D', '#000000']} style={s.gradient}>
+                {/* Web header spacer */}
+                {isWeb && <View style={{ height: 70 }} />}
 
-                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
-                    <View style={[s.contentWrapper, isWeb && s.webFlexRow]}>
-                        
-                        {/* Left Column: Image (Desktop) / Hero (Mobile) */}
-                        <View style={[s.heroWrapper, isWeb && s.webLeftCol]}>
-                            <Image source={{ uri: offer?.image || 'https://via.placeholder.com/400' }} style={s.heroImage} />
-                            <LinearGradient colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.8)']} style={s.heroOverlay} />
-                            <View style={s.badgeRow}>
+                <ScrollView
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={[s.scroll, isWeb && { alignItems: 'center' }]}
+                >
+                    <View style={[s.card, isWeb && { width: cardWidth }]}>
+
+                        {/* ── HERO IMAGE ── */}
+                        <View style={s.heroContainer}>
+                            <Image
+                                source={{ uri: offer?.image || 'https://via.placeholder.com/400x280/1a1a1a/F5C518?text=No+Image' }}
+                                style={s.heroImage}
+                                resizeMode="cover"
+                            />
+                            {/* Dark gradient overlay at bottom */}
+                            <LinearGradient
+                                colors={['transparent', 'rgba(0,0,0,0.85)']}
+                                style={s.heroGradient}
+                            />
+                            {/* Badges overlaid on image */}
+                            <View style={s.heroBadgeRow}>
                                 <View style={s.limitedBadge}>
-                                    <Ionicons name="flash" size={12} color="#000" />
-                                    <Text style={s.limitedTxt}> {t('limited_offer')}</Text>
+                                    <Ionicons name="flash" size={11} color="#000" />
+                                    <Text style={s.limitedTxt}> LIMITED OFFER</Text>
                                 </View>
-                                {offer?.expiryDate && (
-                                    <View style={[s.expiryBadge, { marginLeft: 10 }]}>
+                                {expiryStr ? (
+                                    <View style={s.expiryBadge}>
                                         <Ionicons name="time-outline" size={12} color="#F5C518" />
-                                        <Text style={s.expiryTxt}>{getExpiryString(offer.expiryDate)}</Text>
+                                        <Text style={s.expiryTxt}> {expiryStr}</Text>
                                     </View>
-                                )}
+                                ) : null}
                             </View>
-                            {!isWeb && (
-                                <View style={s.heroContent}>
-                                    <Text style={s.discountTitle}>{offer.discount}% Off {offer.title}</Text>
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
-                                        <Text style={s.storeSub}>{store?.storeName || 'Dealspheree Luxury Store'}</Text>
-                                        <TouchableOpacity style={s.storeLikeBtn} onPress={handleToggleLike}>
-                                            <Ionicons 
-                                                name={isStoreLiked ? "heart" : "heart-outline"} 
-                                                size={18} 
-                                                color="#F5C518" 
-                                            />
-                                            <Text style={s.storeLikeTxt}>{store?.likes || 0}</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                </View>
-                            )}
+                            {/* Share + Like buttons top-right */}
+                            <View style={s.heroTopRight}>
+                                <TouchableOpacity style={s.iconCircle} onPress={handleShare}>
+                                    <Ionicons name="share-social-outline" size={18} color="#fff" />
+                                </TouchableOpacity>
+                                <TouchableOpacity style={s.iconCircle} onPress={handleToggleLike}>
+                                    <Ionicons name={isStoreLiked ? 'heart' : 'heart-outline'} size={18} color={isStoreLiked ? '#F5C518' : '#fff'} />
+                                    {(store?.likes > 0) && <Text style={s.likeCountOverlay}>{store.likes}</Text>}
+                                </TouchableOpacity>
+                            </View>
+                            {/* Back button */}
+                            <TouchableOpacity style={s.backBtn} onPress={() => navigation.goBack()}>
+                                <Ionicons name="arrow-back" size={20} color="#fff" />
+                            </TouchableOpacity>
                         </View>
 
-                        {/* Right Column: Details */}
-                        <View style={[isWeb && s.webRightCol]}>
-                            {isWeb && (
-                                <View style={s.webDetailsHeader}>
-                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                        <View style={{ flex: 1 }}>
-                                            <Text style={s.webStoreLabel}>{store?.storeName || 'Dealspheree Store'}</Text>
-                                            <Text style={s.webMainTitle}>{offer.title}</Text>
-                                        </View>
-                                        <TouchableOpacity style={s.storeLikeBtn} onPress={handleToggleLike}>
-                                            <Ionicons 
-                                                name={isStoreLiked ? "heart" : "heart-outline"} 
-                                                size={20} 
-                                                color="#F5C518" 
-                                            />
-                                            <Text style={s.storeLikeTxt}>{store?.likes || 0}</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 15 }}>
-                                        <View style={[s.webDiscountBadge, { marginTop: 0 }]}>
-                                            <Text style={s.webDiscountTxt}>{offer.discount}% OFF</Text>
-                                        </View>
-                                        {offer?.expiryDate && (
-                                            <View style={s.expiryBadge}>
-                                                <Ionicons name="time-outline" size={16} color="#F5C518" />
-                                                <Text style={[s.expiryTxt, { fontSize: 13 }]}>{getExpiryString(offer.expiryDate)}</Text>
-                                            </View>
-                                        )}
-                                    </View>
-                                </View>
-                            )}
+                        {/* ── BODY ── */}
+                        <View style={s.body}>
 
-                            {/* Price & Rating */}
+                            {/* Store name */}
+                            <Text style={s.storeName}>{store?.storeName || 'Dealspheree Store'}</Text>
+
+                            {/* Offer title */}
+                            <Text style={s.offerTitle}>{offer.title}</Text>
+
+                            {/* Discount + Expiry row */}
+                            <View style={s.badgeRow}>
+                                <View style={s.discountBadge}>
+                                    <Text style={s.discountTxt}>{offer.discount}% OFF</Text>
+                                </View>
+                                {expiryStr ? (
+                                    <View style={s.expiryRowBadge}>
+                                        <Ionicons name="time-outline" size={13} color="#F5C518" />
+                                        <Text style={s.expiryRowTxt}> {expiryStr}</Text>
+                                    </View>
+                                ) : null}
+                                {/* Favorite toggle */}
+                                <TouchableOpacity
+                                    style={[s.favToggle, isFavorite && s.favToggleActive]}
+                                    onPress={() => toggleFavorite(offerId)}
+                                >
+                                    <Ionicons name={isFavorite ? 'heart' : 'heart-outline'} size={16} color={isFavorite ? '#000' : '#F5C518'} />
+                                </TouchableOpacity>
+                            </View>
+
+                            {/* Stats row */}
                             <View style={s.statsRow}>
-                                <View style={s.statCard}>
-                                    <Text style={s.statLabel}>{t('exclusive_price')}</Text>
-                                    <Text style={s.statValue}>₹{discountedPrice.toLocaleString()}</Text>
+                                <View style={s.statBox}>
+                                    <Text style={s.statLabel}>EXCLUSIVE{'\n'}PRICE</Text>
+                                    <Text style={s.statValue}>₹{discountedPrice > 0 ? discountedPrice.toLocaleString() : '—'}</Text>
                                 </View>
                                 {store?.averageRating > 0 && (
-                                    <View style={s.statCard}>
-                                        <Text style={s.statLabel}>{t('store_rating')}</Text>
-                                        <View style={s.miniRate}>
+                                    <View style={s.statBox}>
+                                        <Text style={s.statLabel}>STORE{'\n'}RATING</Text>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
                                             <Text style={s.statValue}>{store.averageRating.toFixed(1)}</Text>
-                                            <Ionicons name="star" size={20} color="#F5C518" style={{ marginLeft: 5 }} />
+                                            <Ionicons name="star" size={16} color="#F5C518" style={{ marginLeft: 4 }} />
                                         </View>
                                     </View>
                                 )}
+                                <View style={[s.statBox, { borderColor: 'rgba(245,197,24,0.08)' }]}>
+                                    <Text style={s.statLabel}>STORE{'\n'}ADDRESS</Text>
+                                    <Text style={[s.statValue, { fontSize: 11, fontWeight: '600', color: '#ccc', marginTop: 4 }]} numberOfLines={2}>{getStoreAddress()}</Text>
+                                </View>
                             </View>
 
-                            {/* Description */}
-                            <View style={s.content}>
-                                <View style={s.sectionHeader}>
+                            {/* ── ABOUT THIS OFFER ── */}
+                            <View style={s.section}>
+                                <View style={s.sectionTitleRow}>
                                     <View style={s.goldBar} />
-                                    <Text style={s.sectionTitle}>{t('about_offer')}</Text>
+                                    <Text style={s.sectionTitle}>About this offer</Text>
                                 </View>
                                 <View style={s.descCard}>
-                                    <Text style={s.descTxt}>{offer.description || 'Experience unmatched luxury with this exclusive deal.'}</Text>
+                                    <Text style={s.descTxt}>{offer.description || 'Experience an unmatched exclusive deal at this store.'}</Text>
                                 </View>
                             </View>
 
-                            {/* Rating Section */}
-                            <View style={s.content}>
-                                <View style={s.sectionHeader}>
+                            {/* ── RATE THIS STORE ── */}
+                            <View style={s.section}>
+                                <View style={s.sectionTitleRow}>
                                     <View style={s.goldBar} />
-                                    <Text style={s.sectionTitle}>{t('rate_store')}</Text>
+                                    <Text style={s.sectionTitle}>Rate this Store</Text>
                                 </View>
                                 <View style={s.ratingCard}>
-                                    <Text style={s.ratingHint}>{t('rating_hint')} {store?.storeName || 'this store'}?</Text>
+                                    <Text style={s.ratingHint}>
+                                        How was your experience at <Text style={{ color: '#F5C518' }}>{store?.storeName || 'this store'}</Text>?
+                                    </Text>
                                     <RatingStars current={rating} onSelect={setRating} size={32} />
                                     <TextInput
-                                        placeholder={existingRatingObj ? "" : t('rating_input_hint')}
-                                        placeholderTextColor="#555"
-                                        style={[s.ratingInput, existingRatingObj && { opacity: 0.7 }]}
+                                        placeholder={existingRatingObj ? '' : 'Leave a comment (optional)...'}
+                                        placeholderTextColor="#444"
+                                        style={[s.ratingInput, existingRatingObj && { opacity: 0.6 }]}
                                         value={comment}
                                         onChangeText={setComment}
                                         editable={!existingRatingObj}
+                                        multiline
                                         onPressIn={() => existingRatingObj && showToast("Rating already submitted, can't be modified")}
                                     />
-                                    <TouchableOpacity 
-                                        style={[s.rateBtn, existingRatingObj && { backgroundColor: 'rgba(245,197,24,0.5)' }]} 
-                                        onPress={submitRating} 
-                                        disabled={isSubmitting || existingRatingObj}
+                                    <TouchableOpacity
+                                        style={[s.submitBtn, existingRatingObj && { backgroundColor: 'rgba(245,197,24,0.4)' }]}
+                                        onPress={submitRating}
+                                        disabled={isSubmitting || !!existingRatingObj}
                                     >
-                                        {isSubmitting ? (
-                                            <ActivityIndicator color="#000" />
-                                        ) : (
-                                            <Text style={s.rateBtnTxt}>{t('submit_rating')}</Text>
-                                        )}
+                                        {isSubmitting
+                                            ? <ActivityIndicator color="#000" />
+                                            : <Text style={s.submitBtnTxt}>{existingRatingObj ? 'Already Rated' : t('submit_rating')}</Text>
+                                        }
                                     </TouchableOpacity>
                                 </View>
                             </View>
 
-                            {/* Status Cards */}
-                            <View style={s.statusCards}>
-                                <View style={s.statusCard}>
-                                    <View style={s.statusIcon}>
-                                        <Ionicons name="checkmark-circle" size={24} color="#F5C518" />
-                                    </View>
-                                    <View>
-                                        <Text style={s.statusTitle}>{t('verified_deal')}</Text>
-                                        <Text style={s.statusSub}>{t('validated_by')}</Text>
-                                    </View>
-                                </View>
-                                <View style={s.statusCard}>
-                                    <View style={[s.statusIcon, { backgroundColor: 'rgba(245,197,24,0.1)' }]}>
-                                        <Ionicons name="location" size={24} color="#F5C518" />
+                            {/* ── VERIFIED DEAL STATUS ── */}
+                            <View style={s.section}>
+                                <View style={s.verifiedCard}>
+                                    <View style={s.verifiedIcon}>
+                                        <Ionicons name="checkmark-circle" size={22} color="#F5C518" />
                                     </View>
                                     <View style={{ flex: 1 }}>
-                                        <Text style={s.statusTitle}>{t('in_store_offer')}</Text>
-                                        <Text style={s.statusSub}>{getStoreAddress()}</Text>
+                                        <Text style={s.verifiedTitle}>{t('verified_deal')}</Text>
+                                        <Text style={s.verifiedSub}>{t('validated_by')}</Text>
                                     </View>
                                 </View>
                             </View>
+
+                            {/* Bottom spacer so content clears sticky bar */}
+                            <View style={{ height: 100 }} />
                         </View>
                     </View>
                 </ScrollView>
 
-                {/* Bottom Buttons */}
-                <View style={s.bottomRow}>
-                    <TouchableOpacity style={s.favBtn} onPress={() => toggleFavorite(offerId)}>
-                        <Ionicons name={isFavorite ? "heart" : "heart-outline"} size={22} color={isFavorite ? "#FFD700" : "#fff"} />
-                        <Text style={[s.favTxt, isFavorite && { color: '#FFD700' }]}>{t('favorite')}</Text>
+                {/* ── STICKY BOTTOM BAR ── */}
+                <View style={[s.bottomBar, isWeb && { maxWidth: cardWidth, alignSelf: 'center', width: '100%' }]}>
+                    <TouchableOpacity
+                        style={s.favBtn}
+                        onPress={() => toggleFavorite(offerId)}
+                    >
+                        <Ionicons name={isFavorite ? 'heart' : 'heart-outline'} size={22} color={isFavorite ? '#F5C518' : '#fff'} />
+                        <Text style={[s.favBtnTxt, isFavorite && { color: '#F5C518' }]}>{t('favorite')}</Text>
                     </TouchableOpacity>
 
-                    {/* ✅ FIX 7: Navigate button uses hasLocation() helper - works with both data formats */}
                     <TouchableOpacity
-                        style={[s.navBtn, !hasLocation() && { opacity: 0.5 }]}
+                        style={[s.navBtn, (!hasLocation() || isNavigating) && { opacity: 0.6 }]}
                         onPress={openMapsNavigation}
                         disabled={!hasLocation() || isNavigating}
                     >
-                        {isNavigating ? (
-                            <ActivityIndicator color="#000" size="small" />
-                        ) : (
-                            <>
-                                <Ionicons name="navigate" size={22} color="#000" />
-                                <Text style={s.navTxt}>
-                                    {!hasLocation() ? 'Location not set' : t('navigate')}
-                                </Text>
-                            </>
-                        )}
+                        <LinearGradient
+                            colors={['#F5C518', '#E6B800']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={s.navBtnGradient}
+                        >
+                            {isNavigating
+                                ? <ActivityIndicator color="#000" size="small" />
+                                : <>
+                                    <Ionicons name="navigate" size={20} color="#000" />
+                                    <Text style={s.navBtnTxt}>{!hasLocation() ? 'No Location' : t('navigate')}</Text>
+                                </>
+                            }
+                        </LinearGradient>
                     </TouchableOpacity>
                 </View>
-
             </LinearGradient>
 
+            {/* ── TOAST ── */}
             {toastMessage && (
-                <View style={s.toastOverlay}>
+                <View style={s.toastOverlay} pointerEvents="none">
                     <View style={s.toastBox}>
-                        <Text style={s.toastText}>{toastMessage}</Text>
+                        <Text style={s.toastTxt}>{toastMessage}</Text>
                     </View>
                 </View>
             )}
@@ -490,64 +459,312 @@ const OfferDetailsScreen = ({ route, navigation }) => {
 const s = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#000' },
     gradient: { flex: 1 },
-    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, paddingTop: 60, paddingBottom: 20, maxWidth: 800, alignSelf: 'center', width: '100%' },
-    backBtn: { width: 44, height: 44, borderRadius: 15, backgroundColor: 'rgba(255,255,255,0.06)', alignItems: 'center', justifyContent: 'center' },
-    headerTitle: { color: '#fff', fontSize: 20, fontWeight: '900' },
-    shareBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-    scroll: { paddingBottom: 120 },
-    contentWrapper: { width: '100%' },
-    webFlexRow: { flexDirection: 'row', maxWidth: 1200, alignSelf: 'center', paddingHorizontal: 24, gap: 40, marginTop: 20 },
-    webLeftCol: { width: '50%', height: 600, marginHorizontal: 0 },
-    webRightCol: { width: '50%', paddingRight: 0 },
-    webDetailsHeader: { marginBottom: 30 },
-    webStoreLabel: { color: '#F5C518', fontSize: 18, fontWeight: '800', marginBottom: 8 },
-    webMainTitle: { color: '#fff', fontSize: 36, fontWeight: '900', lineHeight: 44 },
-    webDiscountBadge: { alignSelf: 'flex-start', backgroundColor: '#F5C518', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 4, marginTop: 15 },
-    webDiscountTxt: { color: '#000', fontWeight: '900', fontSize: 14 },
-    heroWrapper: { marginHorizontal: 24, height: 360, borderRadius: 12, overflow: 'hidden', position: 'relative', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
-    heroImage: { width: '100%', height: '100%', resizeMode: 'cover' },
-    heroOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, height: '70%' },
-    badgeRow: { position: 'absolute', top: 20, left: 20, flexDirection: 'row', alignItems: 'center' },
-    limitedBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F5C518', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 4 },
-    limitedTxt: { color: '#000', fontSize: 11, fontWeight: '950' },
-    expiryBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 4, gap: 5, borderWidth: 1, borderColor: 'rgba(245,197,24,0.3)' },
-    expiryTxt: { color: '#F5C518', fontSize: 11, fontWeight: '800', letterSpacing: 0.5 },
-    heroContent: { position: 'absolute', bottom: 30, left: 25, right: 25 },
-    discountTitle: { color: '#fff', fontSize: 32, fontWeight: '950', lineHeight: 40 },
-    storeSub: { color: '#F5C518', fontSize: 18, fontWeight: '700', marginTop: 10 },
-    statsRow: { flexDirection: 'row', gap: 15, paddingHorizontal: 24, paddingHorizontal: Platform.OS === 'web' ? 0 : 24, marginTop: Platform.OS === 'web' ? 0 : 24 },
-    statCard: { flex: 1, minHeight: 100, backgroundColor: '#1A1A1A', borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', paddingVertical: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 5 },
-    statLabel: { color: '#F5C518', fontSize: 12, fontWeight: '850', marginBottom: 6, letterSpacing: 1.2, textTransform: 'uppercase' },
-    statValue: { color: '#fff', fontSize: 26, fontWeight: '950' },
-    miniRate: { flexDirection: 'row', alignItems: 'center' },
-    content: { paddingHorizontal: Platform.OS === 'web' ? 0 : 24, marginTop: 32 },
-    sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
-    goldBar: { width: 4, height: 26, backgroundColor: '#F5C518', borderRadius: 2 },
-    sectionTitle: { color: '#fff', fontSize: 24, fontWeight: '900', letterSpacing: 0.5 },
-    descCard: { backgroundColor: '#1A1A1A', borderRadius: 16, padding: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 6, elevation: 3 },
-    descTxt: { color: '#FFFFFF', fontSize: 16, lineHeight: 26, fontWeight: '500' },
-    ratingCard: { backgroundColor: '#1A1A1A', borderRadius: 16, padding: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 6, elevation: 3 },
-    ratingHint: { color: '#fff', fontSize: 16, fontWeight: '700', marginBottom: 20, textAlign: 'center' },
-    starsRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
-    ratingInput: { width: '100%', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 8, padding: 16, color: '#fff', fontSize: 15, minHeight: 80, textAlignVertical: 'top', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
-    rateBtn: { width: '100%', backgroundColor: '#F5C518', borderRadius: 8, paddingVertical: 14, alignItems: 'center', marginTop: 20 },
-    rateBtnTxt: { color: '#000', fontWeight: '900', fontSize: 16 },
-    statusCards: { paddingHorizontal: Platform.OS === 'web' ? 0 : 24, marginTop: 32, gap: 16 },
-    statusCard: { flexDirection: 'row', alignItems: 'center', gap: 18, backgroundColor: '#1A1A1A', padding: 22, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 6, elevation: 3 },
-    statusIcon: { width: 56, height: 56, borderRadius: 12, backgroundColor: 'rgba(245,197,24,0.1)', alignItems: 'center', justifyContent: 'center' },
-    statusTitle: { color: '#fff', fontSize: 17, fontWeight: '800' },
-    statusSub: { color: '#8E8E93', fontSize: 14, marginTop: 4 },
-    bottomRow: { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', gap: 15, paddingHorizontal: 24, paddingBottom: 40, paddingTop: 20, backgroundColor: 'rgba(0,0,0,0.95)', maxWidth: 1200, alignSelf: 'center', width: '100%', borderTopWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
-    favBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, height: 60, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
-    favTxt: { color: '#fff', fontWeight: '900', fontSize: 16 },
-    navBtn: { flex: 1.4, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, height: 60, borderRadius: 12, backgroundColor: '#F5C518' },
-    navTxt: { color: '#000', fontWeight: '950', fontSize: 16 },
-    errorText: { color: '#fff', textAlign: 'center', marginTop: 100 },
-    storeLikeBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(245, 197, 24, 0.15)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, gap: 6, borderWidth: 1, borderColor: 'rgba(245, 197, 24, 0.3)' },
-    storeLikeTxt: { color: '#F5C518', fontSize: 13, fontWeight: '800' },
-    toastOverlay: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, alignItems: 'center', justifyContent: 'center', zIndex: 9999, pointerEvents: 'none' },
-    toastBox: { backgroundColor: 'rgba(20,20,20,0.95)', paddingVertical: 15, paddingHorizontal: 25, borderRadius: 12, borderWidth: 1, borderColor: '#F5C518', maxWidth: '80%', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.5, shadowRadius: 10, elevation: 10 },
-    toastText: { color: '#F5C518', fontSize: 14, fontWeight: '800', textAlign: 'center' }
+    scroll: { paddingBottom: 0 },
+
+    card: { width: '100%' },
+
+    // Hero
+    heroContainer: {
+        width: '100%',
+        height: 280,
+        position: 'relative',
+        backgroundColor: '#111',
+    },
+    heroImage: { width: '100%', height: '100%' },
+    heroGradient: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 120 },
+    heroBadgeRow: {
+        position: 'absolute',
+        top: 16,
+        left: 16,
+        flexDirection: 'row',
+        gap: 8,
+        alignItems: 'center',
+    },
+    limitedBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F5C518',
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 6,
+    },
+    limitedTxt: { color: '#000', fontSize: 11, fontWeight: '900' },
+    expiryBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        borderWidth: 1,
+        borderColor: 'rgba(245,197,24,0.4)',
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 6,
+    },
+    expiryTxt: { color: '#F5C518', fontSize: 11, fontWeight: '700' },
+    heroTopRight: {
+        position: 'absolute',
+        top: 14,
+        right: 14,
+        flexDirection: 'row',
+        gap: 8,
+    },
+    iconCircle: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: 'rgba(0,0,0,0.55)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.12)',
+    },
+    likeCountOverlay: {
+        color: '#F5C518',
+        fontSize: 9,
+        fontWeight: '900',
+        position: 'absolute',
+        bottom: -2,
+        right: -2,
+        backgroundColor: '#000',
+        borderRadius: 6,
+        paddingHorizontal: 3,
+    },
+    backBtn: {
+        position: 'absolute',
+        top: Platform.OS === 'ios' ? 50 : 14,
+        left: 14,
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: 'rgba(0,0,0,0.55)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.12)',
+    },
+
+    // Body
+    body: {
+        backgroundColor: '#0D0D0D',
+        paddingHorizontal: 20,
+        paddingTop: 22,
+        paddingBottom: 10,
+    },
+    storeName: {
+        color: '#F5C518',
+        fontSize: 13,
+        fontWeight: '800',
+        letterSpacing: 1,
+        textTransform: 'uppercase',
+        marginBottom: 6,
+    },
+    offerTitle: {
+        color: '#FFFFFF',
+        fontSize: 28,
+        fontWeight: '900',
+        lineHeight: 34,
+        marginBottom: 14,
+    },
+
+    // Badge row
+    badgeRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        marginBottom: 20,
+        flexWrap: 'wrap',
+    },
+    discountBadge: {
+        backgroundColor: '#F5C518',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 6,
+    },
+    discountTxt: { color: '#000', fontWeight: '900', fontSize: 13 },
+    expiryRowBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(245,197,24,0.35)',
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 6,
+        backgroundColor: 'rgba(245,197,24,0.06)',
+    },
+    expiryRowTxt: { color: '#F5C518', fontSize: 12, fontWeight: '700' },
+    favToggle: {
+        marginLeft: 'auto',
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        borderWidth: 1.5,
+        borderColor: '#F5C518',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    favToggleActive: { backgroundColor: '#F5C518' },
+
+    // Stats
+    statsRow: {
+        flexDirection: 'row',
+        gap: 10,
+        marginBottom: 24,
+    },
+    statBox: {
+        flex: 1,
+        backgroundColor: '#1A1A1A',
+        borderRadius: 12,
+        padding: 14,
+        borderWidth: 1,
+        borderColor: 'rgba(245,197,24,0.12)',
+    },
+    statLabel: {
+        color: '#8E8E93',
+        fontSize: 9,
+        fontWeight: '800',
+        letterSpacing: 0.8,
+        textTransform: 'uppercase',
+        marginBottom: 4,
+    },
+    statValue: { color: '#FFFFFF', fontSize: 20, fontWeight: '900' },
+
+    // Sections
+    section: { marginBottom: 24 },
+    sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
+    goldBar: { width: 4, height: 22, backgroundColor: '#F5C518', borderRadius: 2 },
+    sectionTitle: { color: '#FFFFFF', fontSize: 18, fontWeight: '900' },
+
+    descCard: {
+        backgroundColor: '#1A1A1A',
+        borderRadius: 12,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.06)',
+    },
+    descTxt: { color: '#CCCCCC', fontSize: 15, lineHeight: 24, fontWeight: '400' },
+
+    // Rating
+    ratingCard: {
+        backgroundColor: '#1A1A1A',
+        borderRadius: 12,
+        padding: 20,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.06)',
+        alignItems: 'center',
+    },
+    ratingHint: { color: '#fff', fontSize: 15, fontWeight: '600', marginBottom: 16, textAlign: 'center' },
+    starsRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
+    ratingInput: {
+        width: '100%',
+        backgroundColor: 'rgba(255,255,255,0.04)',
+        borderRadius: 8,
+        padding: 14,
+        color: '#fff',
+        fontSize: 14,
+        minHeight: 72,
+        textAlignVertical: 'top',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.08)',
+        marginBottom: 14,
+    },
+    submitBtn: {
+        width: '100%',
+        backgroundColor: '#F5C518',
+        borderRadius: 10,
+        paddingVertical: 14,
+        alignItems: 'center',
+    },
+    submitBtnTxt: { color: '#000', fontWeight: '900', fontSize: 15 },
+
+    // Verified
+    verifiedCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 14,
+        backgroundColor: '#1A1A1A',
+        padding: 16,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: 'rgba(245,197,24,0.12)',
+    },
+    verifiedIcon: {
+        width: 44,
+        height: 44,
+        borderRadius: 10,
+        backgroundColor: 'rgba(245,197,24,0.1)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    verifiedTitle: { color: '#fff', fontSize: 15, fontWeight: '800' },
+    verifiedSub: { color: '#8E8E93', fontSize: 12, marginTop: 2 },
+
+    // Bottom bar
+    bottomBar: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        flexDirection: 'row',
+        gap: 12,
+        paddingHorizontal: 20,
+        paddingBottom: Platform.OS === 'ios' ? 30 : 20,
+        paddingTop: 14,
+        backgroundColor: 'rgba(0,0,0,0.96)',
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(255,255,255,0.06)',
+    },
+    favBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        height: 56,
+        flex: 0.6,
+        borderRadius: 14,
+        backgroundColor: '#1A1A1A',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.1)',
+    },
+    favBtnTxt: { color: '#fff', fontWeight: '800', fontSize: 15 },
+    navBtn: {
+        flex: 1,
+        height: 56,
+        borderRadius: 14,
+        overflow: 'hidden',
+    },
+    navBtnGradient: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+    },
+    navBtnTxt: { color: '#000', fontWeight: '900', fontSize: 16 },
+
+    // Toast
+    toastOverlay: {
+        position: 'absolute',
+        top: 0, bottom: 0, left: 0, right: 0,
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 9999,
+    },
+    toastBox: {
+        backgroundColor: 'rgba(10,10,10,0.95)',
+        paddingVertical: 14,
+        paddingHorizontal: 24,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#F5C518',
+        maxWidth: '80%',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.5,
+        shadowRadius: 10,
+        elevation: 10,
+    },
+    toastTxt: { color: '#F5C518', fontSize: 14, fontWeight: '800', textAlign: 'center' },
+
+    errorText: { color: '#888', textAlign: 'center', marginTop: 16, fontSize: 16 },
 });
 
 export default OfferDetailsScreen;
