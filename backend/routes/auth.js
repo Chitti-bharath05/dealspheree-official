@@ -10,13 +10,13 @@ const sendEmail = require('../utils/emailService');
 const sendSMS = require('../utils/smsService');
 
 const generateAccessToken = (id) => {
-    return jwt.sign({ id }, process.env.JWT_SECRET || 'supersecret_placeholder_key', {
+    return jwt.sign({ id }, process.env.JWT_SECRET, {
         expiresIn: '15m', // Short-lived
     });
 };
 
 const generateRefreshToken = (id) => {
-    return jwt.sign({ id }, process.env.JWT_SECRET || 'supersecret_placeholder_key', {
+    return jwt.sign({ id }, process.env.JWT_SECRET, {
         expiresIn: '30d', // Long-lived
     });
 };
@@ -73,7 +73,7 @@ router.post('/register', validateRequest('register'), async (req, res) => {
             return res.status(400).json({ success: false, message: 'User already exists' });
         }
 
-        const accessToken = jwt.sign({ temp: 'auth' }, process.env.JWT_SECRET || 'supersecret_placeholder_key'); // Placeholder for creation
+        const accessToken = jwt.sign({ temp: 'auth' }, process.env.JWT_SECRET); // Placeholder for creation
 
         const newUserData = {
             name,
@@ -129,7 +129,7 @@ router.post('/refresh', async (req, res) => {
         }
 
         // Verify token
-        jwt.verify(refreshToken, process.env.JWT_SECRET || 'supersecret_placeholder_key', (err, decoded) => {
+        jwt.verify(refreshToken, process.env.JWT_SECRET, (err, decoded) => {
             if (err) return res.status(403).json({ success: false, message: 'Token expired or invalid' });
             
             const newAccessToken = generateAccessToken(user._id);
