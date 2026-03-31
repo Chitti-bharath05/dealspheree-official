@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { Animated, Easing } from 'react-native';
 import { useData } from '../context/DataContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
@@ -38,8 +39,22 @@ export default function OffersScreen({ route, navigation }) {
     
     const [selectedCategory, setSelectedCategory] = useState(route.params?.category || 'All');
     const [searchQuery, setSearchQuery] = useState('');
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [menuAnim] = useState(new Animated.Value(-300)); // Hidden by default
+
     const storeId = route.params?.storeId;
     const selectedStore = useMemo(() => storeId ? stores.find(s => (s._id || s.id) === storeId) : null, [storeId, stores]);
+
+    const toggleMenu = () => {
+        const toValue = isMenuOpen ? -300 : 0;
+        Animated.timing(menuAnim, {
+            toValue,
+            duration: 300,
+            easing: Easing.out(Easing.quad),
+            useNativeDriver: Platform.OS !== 'web',
+        }).start();
+        setIsMenuOpen(!isMenuOpen);
+    };
 
     useEffect(() => {
         if (route.params?.category) {
@@ -152,99 +167,197 @@ export default function OffersScreen({ route, navigation }) {
     return (
         <View style={s.container}>
             <LinearGradient colors={['#1a150d', '#000']} style={s.gradient}>
-                {/* Global Header is provided by AppNavigator */}
                 <View style={{ height: Platform.OS === 'web' ? 70 : 0 }} />
 
-
-                {/* Store Header if filtered */}
-                {selectedStore && (
-                    <View style={s.storeHeaderInline}>
-                        <View style={s.storeInfoRow}>
-                            <Ionicons name="storefront" size={20} color="#F5C518" />
-                            <Text style={s.storeHeaderTitle}>Offers at {selectedStore.storeName}</Text>
+                <View style={s.mainLayout}>
+                    {/* Animated Side Menu */}
+                    <Animated.View style={[s.sideMenu, { left: menuAnim }]}>
+                        <View style={s.menuHeader}>
+                            <Text style={s.menuTitle}>CATEGORIES</Text>
+                            <TouchableOpacity onPress={toggleMenu} style={s.closeBtn}>
+                                <Ionicons name="close" size={24} color="#F5C518" />
+                            </TouchableOpacity>
                         </View>
-                        <TouchableOpacity onPress={() => navigation.setParams({ storeId: null })}>
-                            <Text style={s.clearFilter}>Show all stores</Text>
-                        </TouchableOpacity>
-                    </View>
-                )}
+                        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.menuScroll}>
+                            {['All', ...categories].map((item) => (
+                                <TouchableOpacity 
+                                    key={item}
+                                    onPress={() => {
+                                        setSelectedCategory(item);
+                                        if (width < 768) toggleMenu();
+                                    }}
+                                    style={[s.menuItem, selectedCategory === item && s.menuItemActive]}
+                                >
+                                    <Ionicons 
+                                        name={catIcons[item] || 'apps'} 
+                                        size={20} 
+                                        color={selectedCategory === item ? "#000" : "#8E8E93"} 
+                                    />
+                                    <Text style={[s.menuItemText, selectedCategory === item && s.menuItemTextActive]}>
+                                        {t(catKeys[item] || 'cat_all').toUpperCase()}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                    </Animated.View>
 
-                {/* Search Bar */}
-                <View style={s.searchWrap}>
-                    <View style={s.searchBox}>
-                        <Ionicons name="search" size={22} color="#F5C518" style={{ marginRight: 12 }} />
-                        <TextInput 
-                            placeholder={t('search_deals')} 
-                            placeholderTextColor="#555" 
-                            style={s.searchInput} 
-                            value={searchQuery}
-                            onChangeText={setSearchQuery}
+                    {/* Main Content Area */}
+                    <View style={s.contentArea}>
+                        {/* Custom Header with Menu and Search */}
+                        <View style={s.topBar}>
+                            <TouchableOpacity style={s.menuToggle} onPress={toggleMenu}>
+                                <Ionicons name="menu" size={28} color="#F5C518" />
+                                <Text style={s.menuToggleText}>CATEGORIES</Text>
+                            </TouchableOpacity>
+                            
+                            <View style={s.searchBox}>
+                                <Ionicons name="search" size={20} color="#F5C518" style={{ marginRight: 10 }} />
+                                <TextInput 
+                                    placeholder={t('search_deals')} 
+                                    placeholderTextColor="#555" 
+                                    style={s.searchInput} 
+                                    value={searchQuery}
+                                    onChangeText={setSearchQuery}
+                                />
+                            </View>
+                        </View>
+
+                        {/* Store Header if filtered */}
+                        {selectedStore && (
+                            <View style={s.storeHeaderInline}>
+                                <View style={s.storeInfoRow}>
+                                    <Ionicons name="storefront" size={20} color="#F5C518" />
+                                    <Text style={s.storeHeaderTitle}>Offers at {selectedStore.storeName}</Text>
+                                </View>
+                                <TouchableOpacity onPress={() => navigation.setParams({ storeId: null })}>
+                                    <Text style={s.clearFilter}>Show all stores</Text>
+                                </TouchableOpacity>
+                            </View>
+                        )}
+
+                        <FlatList
+                            key={`grid-${numColumns}`}
+                            data={filteredOffers}
+                            renderItem={renderOfferCard}
+                            numColumns={numColumns}
+                            keyExtractor={item => item._id || item.id}
+                            contentContainerStyle={[s.list, isWeb && { maxWidth: 1440, alignSelf: 'center', width: '100%' }]}
+                            columnWrapperStyle={numColumns > 1 ? s.columnWrapper : null}
+                            showsVerticalScrollIndicator={false}
+                            ListEmptyComponent={
+                                <View style={s.empty}>
+                                    <Ionicons name="pricetags-outline" size={60} color="#333" />
+                                    <Text style={s.emptyTxt}>
+                                        {storeId 
+                                            ? `No active offers found for this store.` 
+                                            : selectedCategory !== 'All' 
+                                                ? `No deals available in ${selectedCategory} yet.` 
+                                                : t('no_offers_found')}
+                                    </Text>
+                                </View>
+                            }
                         />
                     </View>
                 </View>
-
-                {/* Category Pills */}
-                <View>
-                    <FlatList
-                        horizontal
-                        data={['All', ...categories]}
-                        keyExtractor={item => item}
-                        showsHorizontalScrollIndicator={false}
-                        contentContainerStyle={s.catList}
-                        renderItem={({ item }) => (
-                            <TouchableOpacity 
-                                onPress={() => setSelectedCategory(item)}
-                                style={[s.catPill, selectedCategory === item && s.catPillActive]}
-                            >
-                                <Text style={[s.catText, selectedCategory === item && s.catTextActive]}>
-                                    {t(catKeys[item] || 'cat_all')}
-                                </Text>
-                            </TouchableOpacity>
-                        )}
-                    />
-                </View>
-
-                <FlatList
-                    key={`grid-${numColumns}`}
-                    data={filteredOffers}
-                    renderItem={renderOfferCard}
-                    numColumns={numColumns}
-                    keyExtractor={item => item._id || item.id}
-                    contentContainerStyle={[s.list, isWeb && { maxWidth: 1440, alignSelf: 'center', width: '100%' }]}
-                    columnWrapperStyle={numColumns > 1 ? s.columnWrapper : null}
-                    showsVerticalScrollIndicator={false}
-                    ListEmptyComponent={
-                        <View style={s.empty}>
-                            <Ionicons name="pricetags-outline" size={60} color="#333" />
-                            <Text style={s.emptyTxt}>
-                                {storeId 
-                                    ? `No active offers found for this store.` 
-                                    : selectedCategory !== 'All' 
-                                        ? `No stores available in ${selectedCategory} yet.` 
-                                        : t('no_offers_found')}
-                            </Text>
-                        </View>
-                    }
-                />
             </LinearGradient>
+            
+            {/* Backdrop for mobile when menu is open */}
+            {isMenuOpen && width < 768 && (
+                <TouchableOpacity 
+                    style={s.backdrop} 
+                    activeOpacity={1} 
+                    onPress={toggleMenu} 
+                />
+            )}
         </View>
     );
 }
 
+const catIcons = {
+    'All': 'apps',
+    'Fashion': 'shirt',
+    'Electronics': 'phone-portrait',
+    'Beauty': 'sparkles',
+    'Sports': 'fitness',
+    'Home & Living': 'home',
+    'Footwear': 'footsteps',
+    'Watches & Accessories': 'watch',
+    'Food': 'fast-food'
+};
+
 const s = StyleSheet.create({
-    container: { flex: 1 },
+    container: { flex: 1, backgroundColor: '#000' },
     gradient: { flex: 1 },
+    mainLayout: { flex: 1, flexDirection: 'row', overflow: 'hidden' },
+    sideMenu: { 
+        position: 'absolute', 
+        top: 0, 
+        bottom: 0, 
+        width: 280, 
+        backgroundColor: '#111', 
+        zIndex: 2000,
+        borderRightWidth: 1,
+        borderRightColor: 'rgba(255,255,255,0.05)',
+        paddingTop: 20
+    },
+    menuHeader: { 
+        flexDirection: 'row', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        paddingHorizontal: 24, 
+        paddingBottom: 24,
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(255,255,255,0.05)'
+    },
+    menuTitle: { color: '#F5C518', fontSize: 13, fontWeight: '900', letterSpacing: 2 },
+    closeBtn: { padding: 4 },
+    menuScroll: { paddingVertical: 20 },
+    menuItem: { 
+        flexDirection: 'row', 
+        alignItems: 'center', 
+        paddingHorizontal: 24, 
+        paddingVertical: 16, 
+        gap: 12 
+    },
+    menuItemActive: { backgroundColor: 'rgba(245,197,24,0.1)' },
+    menuItemText: { color: '#8E8E93', fontSize: 14, fontWeight: '800' },
+    menuItemTextActive: { color: '#F5C518' },
+    contentArea: { flex: 1 },
+    topBar: { 
+        flexDirection: 'row', 
+        alignItems: 'center', 
+        paddingHorizontal: 24, 
+        paddingVertical: 15, 
+        gap: 15,
+        backgroundColor: 'rgba(0,0,0,0.3)'
+    },
+    menuToggle: { 
+        flexDirection: 'row', 
+        alignItems: 'center', 
+        gap: 8,
+        paddingRight: 15,
+        borderRightWidth: 1,
+        borderRightColor: 'rgba(255,255,255,0.1)'
+    },
+    menuToggleText: { color: '#F5C518', fontSize: 13, fontWeight: '900' },
+    searchBox: { 
+        flex: 1, 
+        flexDirection: 'row', 
+        alignItems: 'center', 
+        backgroundColor: '#1A1A1A', 
+        borderRadius: 12, 
+        paddingHorizontal: 16, 
+        height: 48,
+        borderWidth: 1, 
+        borderColor: 'rgba(255,255,255,0.08)' 
+    },
+    searchInput: { flex: 1, color: '#fff', fontSize: 14 },
+    backdrop: { 
+        ...StyleSheet.absoluteFillObject, 
+        backgroundColor: 'rgba(0,0,0,0.7)', 
+        zIndex: 1500 
+    },
     loading: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingTop: 60, paddingBottom: 20, maxWidth: 1440, alignSelf: 'center', width: '100%' },
-    headerTitle: { color: '#fff', fontSize: 24, fontWeight: '900' },
-    searchWrap: { paddingHorizontal: 24, marginBottom: 15, maxWidth: 1440, alignSelf: 'center', width: '100%' },
-    searchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1A1A1A', borderRadius: 12, paddingHorizontal: 16, height: 50, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
-    searchInput: { flex: 1, color: '#fff', fontSize: 16 },
-    catList: { paddingHorizontal: 24, paddingBottom: 15, maxWidth: 1440, alignSelf: 'center' },
-    catPill: { paddingHorizontal: 18, paddingVertical: 10, borderRadius: 8, backgroundColor: '#1A1A1A', marginRight: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
-    catPillActive: { backgroundColor: '#F5C518', borderColor: '#F5C518' },
-    catText: { color: '#8E8E93', fontSize: 13, fontWeight: '800' },
-    catTextActive: { color: '#000' },
     list: { paddingHorizontal: 24, paddingBottom: 100 },
     columnWrapper: { justifyContent: 'flex-start', gap: 16 },
     card: { backgroundColor: '#1A1A1A', borderRadius: 16, marginBottom: 20, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
@@ -266,9 +379,10 @@ const s = StyleSheet.create({
     expBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(245,197,24,0.1)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6 },
     cardExp: { color: '#F5C518', fontSize: 12, fontWeight: '800' },
     empty: { alignItems: 'center', marginTop: 100 },
-    emptyTxt: { color: '#555', fontSize: 18, fontWeight: '700', marginTop: 15 },
+    emptyTxt: { color: '#555', fontSize: 16, fontWeight: '700', marginTop: 15, textAlign: 'center', paddingHorizontal: 40 },
     storeHeaderInline: { paddingHorizontal: 24, paddingVertical: 15, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'rgba(245,197,24,0.05)', borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },
     storeInfoRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     storeHeaderTitle: { color: '#fff', fontSize: 16, fontWeight: '800' },
     clearFilter: { color: '#F5C518', fontSize: 13, fontWeight: '700' },
 });
+

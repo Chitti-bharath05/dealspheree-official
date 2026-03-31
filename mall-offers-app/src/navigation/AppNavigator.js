@@ -27,6 +27,7 @@ import LegalScreen from '../screens/LegalScreen';
 import HelpSupportScreen from '../screens/HelpSupportScreen';
 import MapScreen from '../screens/MapScreen';
 import OffersScreen from '../screens/OffersScreen';
+import StoreOffersScreen from '../screens/StoreOffersScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -72,6 +73,7 @@ const ProfileStack = () => (
 const StoreOwnerStack = () => (
     <Stack.Navigator screenOptions={screenOptions}>
         <Stack.Screen name="Dashboard" component={StoreOwnerDashboardScreen} />
+        <Stack.Screen name="StoreOffers" component={StoreOffersScreen} />
         <Stack.Screen name="Map" component={MapScreen} />
         <Stack.Screen name="Profile" component={ProfileStack} />
         <Stack.Screen name="Home" component={CustomerStack} />
@@ -186,6 +188,7 @@ const AppNavigator = () => {
                     path: 'store',
                     screens: {
                         Dashboard: '',
+                        StoreOffers: ':storeId/offers',
                         Map: 'map',
                         Profile: {
                             path: 'profile',

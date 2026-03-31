@@ -58,22 +58,32 @@ export default function HomeScreen({ navigation }) {
 
     const contentWidth = isWeb ? Math.min(width, 1200) : width;
 
-    const filteredOffers = useMemo(() => {
-        let filtered = activeOffers;
+    const filteredStores = useMemo(() => {
+        let filtered = stores.filter(s => s.approved === true);
+        
+        // Radius filter: 50km
+        if (userLocation) {
+            filtered = filtered.filter(s => {
+                if (!s.lat || !s.lng) return false;
+                const dist = calculateDistance(userLocation.lat, userLocation.lng, s.lat, s.lng);
+                return dist <= 50;
+            });
+        }
+
         if (selectedCategory !== 'All') {
-            filtered = filtered.filter((o) => o?.category === selectedCategory);
+            filtered = filtered.filter((s) => s?.category === selectedCategory);
         }
         if (searchQuery.trim()) {
             const q = searchQuery.toLowerCase();
             filtered = filtered.filter(
-                (o) =>
-                    o?.title?.toLowerCase().includes(q) ||
-                    o?.description?.toLowerCase().includes(q) ||
-                    o?.storeId?.storeName?.toLowerCase().includes(q)
+                (s) =>
+                    s?.storeName?.toLowerCase().includes(q) ||
+                    s?.location?.toLowerCase().includes(q) ||
+                    s?.category?.toLowerCase().includes(q)
             );
         }
         return filtered;
-    }, [activeOffers, selectedCategory, searchQuery]);
+    }, [stores, userLocation, selectedCategory, searchQuery]);
 
     if (isLoading) {
         return (
@@ -146,51 +156,51 @@ export default function HomeScreen({ navigation }) {
                         })}
                     </View>
 
-                    {/* Exclusive Offers (Multi-Column Grid) */}
+                    {/* Exclusive Stores (Multi-Column Grid) */}
                     <View style={s.sectionHeader}>
                         <View style={s.sectionRow}>
                             <View style={s.accentBar} />
-                            <Text style={s.sectionTitle}>Prime <Text style={s.italicGold}>Deals</Text></Text>
+                            <Text style={s.sectionTitle}>Local <Text style={s.italicGold}>Exclusives</Text></Text>
                         </View>
-                        <TouchableOpacity onPress={() => navigation.navigate('Deals', { category: 'All' })}>
-                            <Text style={s.viewAll}>SEE ALL</Text>
-                        </TouchableOpacity>
                     </View>
-
+                    
                     <View style={[s.heroGrid, isWeb && s.heroGridWeb]}>
-                        {filteredOffers.length > 0 ? (
-                            filteredOffers.slice(0, isWeb ? 8 : 4).map((item) => {
-                                // Responsive card width: 4 per row on desktop (>1024), 2 per row on tablet/mobile (<1024)
-                                const cardWidth = width > 1024 ? '24%' : '48%';
-                                const cardHeight = width > 1024 ? 440 : 280;
-                                const discountSize = width > 1024 ? 32 : (width < 480 ? 24 : 28);
+                        {filteredStores.length > 0 ? (
+                            filteredStores.map((item) => {
+                                const cardWidth = width > 1024 ? '31%' : width > 768 ? '48%' : '100.5%';
+                                const cardHeight = width > 1024 ? 350 : 250;
                                 
+                                const dist = userLocation && item.lat && item.lng 
+                                    ? calculateDistance(userLocation.lat, userLocation.lng, item.lat, item.lng) 
+                                    : null;
+
                                 return (
                                     <TouchableOpacity 
                                         key={item._id || item.id} 
-                                        style={[s.heroCard, isWeb ? { width: cardWidth, height: cardHeight, marginBottom: 20 } : { width: width - 48 }]}
-                                        onPress={() => navigation.navigate('OfferDetails', { offerId: item._id || item.id })}
+                                        style={[s.heroCard, { width: cardWidth, height: cardHeight, marginBottom: 20 }]}
+                                        onPress={() => navigation.navigate('Deals', { storeId: item._id || item.id })}
                                     >
-                                        <Image source={{ uri: item.image || 'https://via.placeholder.com/600x400' }} style={s.heroImg} />
+                                        <Image source={{ uri: item.bannerUrl || 'https://via.placeholder.com/600x400' }} style={s.heroImg} />
                                         <LinearGradient 
                                             colors={['transparent', 'rgba(0,0,0,0.95)']} 
                                             style={s.heroOverlay}
                                         >
                                             <View style={s.heroBadge}>
-                                                <Text style={s.heroBadgeTxt}>AMAZING DEAL</Text>
+                                                <Text style={s.heroBadgeTxt}>{item.category.toUpperCase()}</Text>
                                             </View>
-                                            {userLocation && item.storeId?.lat && item.storeId?.lng && (
+                                            {dist !== null && (
                                                 <View style={s.distIndicator}>
                                                     <Ionicons name="location" size={10} color="#000" />
-                                                    <Text style={s.distIndicatorTxt}>
-                                                        {calculateDistance(userLocation.lat, userLocation.lng, item.storeId.lat, item.storeId.lng).toFixed(1)} km
-                                                    </Text>
+                                                    <Text style={s.distIndicatorTxt}>{dist.toFixed(1)} km</Text>
                                                 </View>
                                             )}
                                             <View style={s.heroContent}>
-                                                <Text style={[s.offerText, { fontSize: discountSize }]}>{item.discount}% OFF</Text>
-                                                <Text style={[s.storeText, { fontSize: width > 1024 ? 18 : 15 }]} numberOfLines={1}>{item.storeId?.storeName || 'Premium Store'}</Text>
-                                                <Text style={s.descText} numberOfLines={1}>{item.title}</Text>
+                                                <Text style={s.storeText} numberOfLines={1}>{item.storeName}</Text>
+                                                <Text style={s.descText} numberOfLines={1}>{item.location}</Text>
+                                                <View style={s.ratingMini}>
+                                                    <Ionicons name="star" size={12} color="#F5C518" />
+                                                    <Text style={s.ratingMiniTxt}>{item.rating?.toFixed(1) || '0.0'}</Text>
+                                                </View>
                                             </View>
                                         </LinearGradient>
                                     </TouchableOpacity>
@@ -199,44 +209,43 @@ export default function HomeScreen({ navigation }) {
                         ) : (
                             <View style={s.emptyState}>
                                 <Ionicons name="storefront-outline" size={48} color="#333" />
-                                <Text style={s.emptyTxt}>No stores available in {selectedCategory} yet.</Text>
+                                <Text style={s.emptyTxt}>No approved stores found within 50km in {selectedCategory}.</Text>
                             </View>
                         )}
                     </View>
 
-                    {/* Deals Near You */}
+                    {/* Quick Store Links */}
                     <View style={s.sectionHeader}>
                         <View style={s.sectionRow}>
                             <View style={s.accentBar} />
-                            <Ionicons name="location" size={22} color="#F5C518" style={{ marginRight: 8 }} />
-                            <Text style={s.sectionTitle}>Deals Near <Text style={s.italicGold}>You</Text></Text>
+                            <Ionicons name="flash-outline" size={22} color="#F5C518" style={{ marginRight: 8 }} />
+                            <Text style={s.sectionTitle}>Popular <Text style={s.italicGold}>Nearby</Text></Text>
                         </View>
                     </View>
 
                     <View style={[s.nearList, isWeb && s.nearGridWeb]}>
-                        {filteredOffers.length > 4 ? (
-                            filteredOffers.slice(4, 12).map((item) => (
+                        {filteredStores.length > 3 ? (
+                            filteredStores.slice(3, 9).map((item) => (
                             <TouchableOpacity 
                                 key={item._id || item.id} 
                                 style={[s.nearCard, isWeb && { width: '48%' }]}
-                                onPress={() => navigation.navigate('OfferDetails', { offerId: item._id || item.id })}
+                                onPress={() => navigation.navigate('Deals', { storeId: item._id || item.id })}
                             >
-                                <Image source={{ uri: item.image || 'https://via.placeholder.com/100' }} style={s.nearImg} />
+                                <Image source={{ uri: item.bannerUrl || 'https://via.placeholder.com/100' }} style={s.nearImg} />
                                 <View style={s.nearInfo}>
                                     <View style={s.nearTitleRow}>
-                                        <Text style={s.nearStoreName} numberOfLines={1}>{item.storeId?.storeName || 'The Burger Lab'}</Text>
-                                        {userLocation && item.storeId?.lat && item.storeId?.lng && (
+                                        <Text style={s.nearStoreName} numberOfLines={1}>{item.storeName}</Text>
+                                        {userLocation && item.lat && item.lng && (
                                             <View style={s.distBadge}>
                                                 <Text style={s.distBadgeTxt}>
-                                                    {calculateDistance(userLocation.lat, userLocation.lng, item.storeId.lat, item.storeId.lng).toFixed(1)} km
+                                                    {calculateDistance(userLocation.lat, userLocation.lng, item.lat, item.lng).toFixed(1)} km
                                                 </Text>
                                             </View>
                                         )}
                                     </View>
-                                    <Text style={s.nearDesc} numberOfLines={2}>{item.title}</Text>
-                                    <View style={s.expiryRow}>
-                                        <Ionicons name="time-outline" size={14} color="#F5C518" />
-                                        <Text style={s.expiryText}>ACTIVE NOW</Text>
+                                    <Text style={s.nearDesc} numberOfLines={1}>{item.location}</Text>
+                                    <View style={[s.expiryRow, { backgroundColor: 'rgba(245,197,24,0.1)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 5, alignSelf: 'flex-start' }]}>
+                                        <Text style={s.expiryText}>{item.category.toUpperCase()}</Text>
                                     </View>
                                 </View>
                             </TouchableOpacity>
@@ -321,6 +330,9 @@ const s = StyleSheet.create({
     nearDesc: { color: '#8E8E93', fontSize: 14, fontWeight: '400', lineHeight: 20 },
     expiryRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
     expiryText: { color: '#F5C518', fontSize: 12, fontWeight: '700' },
+    ratingMini: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
+    ratingMiniTxt: { color: '#fff', fontSize: 12, fontWeight: '700' },
+
     emptyState: { 
         width: '100%', 
         paddingVertical: 60, 

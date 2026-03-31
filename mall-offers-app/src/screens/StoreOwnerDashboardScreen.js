@@ -40,17 +40,8 @@ const StoreOwnerDashboardScreen = () => {
     const [isSavingOffer, setIsSavingOffer] = useState(false);
 
     const allMyStores = useMemo(() => getStoresByOwner(user?._id || user?.id) || [], [stores, user]);
-    const myStores = useMemo(() => allMyStores.filter(s => s.approved === true), [allMyStores]);
-    const myStore = myStores[0] || {};
-    const hasPendingStores = useMemo(() => allMyStores.some(s => !s.approved), [allMyStores]);
-    const myOffers = useMemo(() => {
-        return myStores.flatMap(store => {
-            const storeId = store._id || store.id;
-            return (getOffersByStore(storeId) || []).map(o => ({ ...o, storeName: store.storeName }));
-        });
-    }, [offers, myStores]);
-
-    const hasApprovedStore = myStores.some(s => s.approved === true);
+    const myStores = useMemo(() => allMyStores, [allMyStores]); // Show all for management
+    const hasApprovedStore = useMemo(() => allMyStores.some(s => s.approved), [allMyStores]);
 
     const activeOffersCount = useMemo(() => {
         return myOffers.filter(offer => new Date(offer.expiryDate) > new Date()).length;
@@ -201,6 +192,20 @@ const StoreOwnerDashboardScreen = () => {
         );
     }
 
+    const renderEmptyState = () => (
+        <View style={s.emptyDashboard}>
+            <View style={s.emptyIconCircle}>
+                <Ionicons name="business-outline" size={80} color="#F5C518" />
+            </View>
+            <Text style={s.emptyTitle}>No Stores Registered</Text>
+            <Text style={s.emptySub}>Start your business journey on DealSphere by registering your physical store today.</Text>
+            <TouchableOpacity style={s.mainRegisterBtn} onPress={() => { resetForms(); setShowAddStore(true); }}>
+                <Ionicons name="add" size={24} color="#000" />
+                <Text style={s.mainRegisterBtnTxt}>Register Your Store</Text>
+            </TouchableOpacity>
+        </View>
+    );
+
     return (
         <View style={s.container}>
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
@@ -250,214 +255,99 @@ const StoreOwnerDashboardScreen = () => {
                     </View>
                 </View>
 
-                {/* Two Column Layout */}
-                <View style={s.layoutGrid}>
-                    
-                    {/* Left Column: My Stores */}
-                    <View style={s.gridColumn}>
-                        <View style={s.sectionHeader}>
-                            <Text style={s.sectionTitle}>My Stores</Text>
-                            <TouchableOpacity onPress={() => setActiveTab('stores')}>
-                                <Text style={s.viewAll}>View All</Text>
-                            </TouchableOpacity>
-                        </View>
-
-                        <TouchableOpacity style={s.gridAddBtn} onPress={() => { resetForms(); setShowAddStore(true); }}>
-                            <Ionicons name="add" size={20} color="#F5C518" />
-                            <Text style={s.gridAddBtnTxt}>Register Store</Text>
-                        </TouchableOpacity>
-
-                        {hasPendingStores && (
-                            <View style={s.pendingInfoCard}>
-                                <Ionicons name="time-outline" size={18} color="#F5C518" />
-                                <Text style={s.pendingInfoTxt}>
-                                    New stores will appear here once they are verified and accepted by the team dealsphere.
-                                </Text>
+                {allMyStores.length === 0 ? (
+                    renderEmptyState()
+                ) : (
+                    <View style={s.layoutGrid}>
+                        <View style={s.gridColumn}>
+                            <View style={s.sectionHeader}>
+                                <Text style={s.sectionTitle}>My Stores</Text>
+                                <TouchableOpacity style={s.smallAddBtn} onPress={() => { resetForms(); setShowAddStore(true); }}>
+                                    <Ionicons name="add" size={20} color="#F5C518" />
+                                    <Text style={s.smallAddBtnTxt}>Add New</Text>
+                                </TouchableOpacity>
                             </View>
-                        )}
 
-                        <View style={s.gridList}>
-                    {myStores.map((item) => (
-                        <View key={item._id || item.id} style={s.storeCard}>
-                            <View style={s.storeImgContainer}>
-                                <Image source={{ uri: item.bannerUrl || 'https://via.placeholder.com/600x300' }} style={s.storeImg} />
-                            </View>
-                            <View style={s.storeInfo}>
-                                <View style={s.storeTitleRow}>
-                                    <Text style={s.storeName}>{item.storeName}</Text>
-                                    <View style={s.ratingRow}>
-                                        <Ionicons name="star" size={14} color="#F5C518" />
-                                        <Text style={s.ratingTxt}>{item.rating?.toFixed(1) || '0.0'}</Text>
-                                    </View>
-                                </View>
-                                <View style={s.locationRow}>
-                                    <Ionicons name="location" size={14} color="#8E8E93" />
-                                    <Text style={s.locationTxt}>{item.location}</Text>
-                                </View>
-                                <View style={s.tagRow}>
-                                    <View style={s.storeTag}>
-                                        <Text style={s.storeTagTxt}>3 ACTIVE DEALS</Text>
-                                    </View>
-                                    <View style={s.storeTag}>
-                                        <Text style={s.storeTagTxt}>{item.category.toUpperCase()}</Text>
-                                    </View>
-                                </View>
-
-                                {/* Action Buttons */}
-                                <View style={s.actionRow}>
+                            <View style={s.gridList}>
+                                {allMyStores.map((item) => (
                                     <TouchableOpacity 
-                                        style={s.actionBtn} 
+                                        key={item._id || item.id} 
+                                        style={s.storeCard}
                                         onPress={() => {
-                                            setEditingStore(item);
-                                            setStoreName(item.storeName || '');
-                                            setLocation(item.location || '');
-                                            setCategory(item.category || (categories[0] || 'Fashion'));
-                                            setStoreImage(item.bannerUrl || null);
-                                            setStoreLocation({
-                                                lat: item.lat || null,
-                                                lng: item.lng || null,
-                                                address: item.address || ''
-                                            });
-                                            setShowAddStore(true);
-                                        }}
-                                    >
-                                        <Ionicons name="pencil" size={16} color="#000" />
-                                        <Text style={s.actionBtnTxt}>Edit Store</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity 
-                                        style={[s.actionBtn, s.deleteBtn]} 
-                                        onPress={() => {
-                                            if (Platform.OS === 'web') {
-                                                if(window.confirm('Are you sure you want to permanently delete this store and ALL its active offers?')) {
-                                                    deleteStore(item._id || item.id);
-                                                }
+                                            if (item.approved) {
+                                                navigation.navigate('StoreOffers', { storeId: item._id || item.id });
                                             } else {
-                                                Alert.alert('Delete Store', 'Are you sure you want to permanently delete this store and ALL its active offers?', [
-                                                    { text: 'Cancel', style: 'cancel' },
-                                                    { text: 'Delete', style: 'destructive', onPress: () => deleteStore(item._id || item.id) }
-                                                ]);
+                                                Alert.alert('Store Pending', 'Your store is currently under review by the DealSphere team. You can manage offers once it is approved.');
                                             }
                                         }}
                                     >
-                                        <Ionicons name="trash" size={16} color="#FFF" />
-                                        <Text style={s.deleteBtnTxt}>Delete</Text>
+                                        <View style={s.storeImgContainer}>
+                                            <Image source={{ uri: item.bannerUrl || 'https://via.placeholder.com/600x300' }} style={s.storeImg} />
+                                            {!item.approved && (
+                                                <View style={s.pendingOverlay}>
+                                                    <Ionicons name="time" size={24} color="#F5C518" />
+                                                    <Text style={s.pendingText}>PENDING APPROVAL</Text>
+                                                </View>
+                                            )}
+                                        </View>
+                                        <View style={s.storeInfo}>
+                                            <View style={s.storeTitleRow}>
+                                                <Text style={s.storeName}>{item.storeName}</Text>
+                                                {item.approved && (
+                                                    <View style={s.approvedBadge}>
+                                                        <Ionicons name="checkmark-circle" size={14} color="#F5C518" />
+                                                        <Text style={s.approvedBadgeTxt}>APPROVED</Text>
+                                                    </View>
+                                                )}
+                                            </View>
+                                            <View style={s.locationRow}>
+                                                <Ionicons name="location" size={14} color="#8E8E93" />
+                                                <Text style={s.locationTxt}>{item.location}</Text>
+                                            </View>
+                                            
+                                            <View style={s.actionRow}>
+                                                <TouchableOpacity 
+                                                    style={s.minimalBtn}
+                                                    onPress={(e) => {
+                                                        e.stopPropagation();
+                                                        setEditingStore(item);
+                                                        setStoreName(item.storeName);
+                                                        setLocation(item.location);
+                                                        setCategory(item.category);
+                                                        setStoreImage(item.bannerUrl);
+                                                        setStoreLocation({ lat: item.lat, lng: item.lng, address: item.address });
+                                                        setShowAddStore(true);
+                                                    }}
+                                                >
+                                                    <Ionicons name="settings-outline" size={16} color="#F5C518" />
+                                                    <Text style={s.minimalBtnTxt}>Edit Basics</Text>
+                                                </TouchableOpacity>
+                                                <TouchableOpacity 
+                                                    style={[s.minimalBtn, { borderColor: 'rgba(255,59,48,0.2)' }]}
+                                                    onPress={(e) => {
+                                                        e.stopPropagation();
+                                                        if (Platform.OS === 'web') {
+                                                            if(window.confirm('Delete store?')) deleteStore(item._id || item.id);
+                                                        } else {
+                                                            Alert.alert('Delete Store', 'All offers will be lost. Proceed?', [
+                                                                { text: 'Cancel', style: 'cancel' },
+                                                                { text: 'Delete', style: 'destructive', onPress: () => deleteStore(item._id || item.id) }
+                                                            ]);
+                                                        }
+                                                    }}
+                                                >
+                                                    <Ionicons name="trash-outline" size={16} color="#FF3B30" />
+                                                </TouchableOpacity>
+                                            </View>
+                                        </View>
                                     </TouchableOpacity>
-                                </View>
+                                ))}
                             </View>
-                        </View>
-                    ))}
                         </View>
                     </View>
-                    <View style={s.gridColumn}>
-                        <View style={s.sectionHeader}>
-                            <Text style={s.sectionTitle}>My Offers</Text>
-                            <TouchableOpacity onPress={() => setActiveTab('offers')}>
-                                <Text style={s.viewAll}>View All</Text>
-                            </TouchableOpacity>
-                        </View>
-
-                        <TouchableOpacity 
-                            style={[s.gridAddBtn, !hasApprovedStore && s.disabledBtn]} 
-                            onPress={() => {
-                                if (!hasApprovedStore && myStores.length > 0) {
-                                    Alert.alert('Store Pending', 'You cannot launch offers until your store is approved by an administrator.');
-                                    return;
-                                } else if (myStores.length === 0) {
-                                    Alert.alert('No Store', 'Please register a store first.');
-                                    return;
-                                }
-                                resetForms();
-                                setShowAddOffer(true);
-                            }}
-                        >
-                            <Ionicons name="add" size={20} color={hasApprovedStore ? "#F5C518" : "#8E8E93"} />
-                            <Text style={[s.gridAddBtnTxt, !hasApprovedStore && { color: '#8E8E93' }]}>Add Offer</Text>
-                        </TouchableOpacity>
-
-                        {!hasApprovedStore && myStores.length > 0 && (
-                            <Text style={s.pendingWarning}>
-                                Your store registration is pending review. Offers can only be added to approved stores.
-                            </Text>
-                        )}
-
-                        <View style={s.gridList}>
-                    {myOffers.length > 0 ? myOffers.map((item) => (
-                        <View key={item._id || item.id} style={s.storeCard}>
-                            <View style={[s.storeImgContainer, { height: 140 }]}>
-                                <Image source={{ uri: item.image || 'https://via.placeholder.com/600x300' }} style={s.storeImg} />
-                                <View style={s.discountBadge}>
-                                    <Ionicons name="flash" size={12} color="#000" />
-                                    <Text style={s.discountBadgeTxt}>{item.discount}% OFF</Text>
-                                </View>
-                            </View>
-                            <View style={s.storeInfo}>
-                                <View style={s.storeTitleRow}>
-                                    <Text style={s.storeName}>{item.title}</Text>
-                                </View>
-                                <View style={s.locationRow}>
-                                    <Ionicons name="pricetag" size={14} color="#8E8E93" />
-                                    <Text style={s.locationTxt} numberOfLines={1}>{item.storeName}</Text>
-                                    <Text style={[s.locationTxt, { marginLeft: 'auto', color: '#F5C518' }]}>
-                                        Ends: {new Date(item.expiryDate).toLocaleDateString()}
-                                    </Text>
-                                </View>
-
-                                {/* Action Buttons */}
-                                <View style={s.actionRow}>
-                                    <TouchableOpacity 
-                                        style={s.actionBtn} 
-                                        onPress={() => {
-                                            setEditingOffer(item);
-                                            setOfferTitle(item.title || '');
-                                            setOfferDesc(item.description || '');
-                                            setOfferDiscount(item.discount?.toString() || '');
-                                            setOfferOriginalPrice(item.originalPrice?.toString() || '');
-                                            if (item.expiryDate) {
-                                                const ex = new Date(item.expiryDate);
-                                                const d = String(ex.getDate()).padStart(2, '0');
-                                                const m = String(ex.getMonth() + 1).padStart(2, '0');
-                                                const y = ex.getFullYear();
-                                                setOfferExpiry(`${d}/${m}/${y}`);
-                                            } else {
-                                                setOfferExpiry('');
-                                            }
-                                            setSelectedStoreId(item.storeId?._id || item.storeId || '');
-                                            setShowAddOffer(true);
-                                        }}
-                                    >
-                                        <Ionicons name="pencil" size={16} color="#000" />
-                                        <Text style={s.actionBtnTxt}>Update Offer</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity 
-                                        style={[s.actionBtn, s.deleteBtn]} 
-                                        onPress={() => {
-                                            if (Platform.OS === 'web') {
-                                                if(window.confirm('Are you sure you want to delete this offer?')) {
-                                                    deleteOffer(item._id || item.id);
-                                                }
-                                            } else {
-                                                Alert.alert('Delete Offer', 'Are you sure you want to delete this offer?', [
-                                                    { text: 'Cancel', style: 'cancel' },
-                                                    { text: 'Delete', style: 'destructive', onPress: () => deleteOffer(item._id || item.id) }
-                                                ]);
-                                            }
-                                        }}
-                                    >
-                                        <Ionicons name="trash" size={16} color="#FFF" />
-                                        <Text style={s.deleteBtnTxt}>Delete</Text>
-                                    </TouchableOpacity>
-                                </View>
-
-                            </View>
-                        </View>
-                    )) : (
-                        <Text style={s.pendingWarning}>No active offers found. Added offers will appear here.</Text>
-                    )}
-                        </View>
-                    </View>
-                </View>
+                )}
             </ScrollView>
-            
+
             {/* Store Modal */}
             <Modal visible={showAddStore} animationType="slide" transparent>
                 <View style={s.modalOverlay}>
@@ -544,79 +434,6 @@ const StoreOwnerDashboardScreen = () => {
                     </View>
                 </View>
             </Modal>
-
-            {/* Offer Modal */}
-            <Modal visible={showAddOffer} animationType="slide" transparent>
-                <View style={s.modalOverlay}>
-                    <View style={s.modalContent}>
-                        <View style={s.modalHeader}>
-                            <Text style={s.modalTitle}>{editingOffer ? t('edit_offer') : t('add_new_offer')}</Text>
-                            <TouchableOpacity onPress={() => { setShowAddOffer(false); resetForms(); }}>
-                                <Ionicons name="close" size={24} color="#fff" />
-                            </TouchableOpacity>
-                        </View>
-                        <ScrollView>
-                            {/* Offer Image Picker */}
-                            <View style={s.imgPickerWrapper}>
-                                <TouchableOpacity style={s.imgPickerBox} onPress={handlePickOfferImage}>
-                                    {offerImage ? (
-                                        <Image source={{ uri: offerImage }} style={s.pickedImg} />
-                                    ) : (
-                                        <View style={{ alignItems: 'center' }}>
-                                            <Ionicons name="image-outline" size={36} color="#F5C518" />
-                                            <Text style={s.imgPickerTxt}>Tap to upload{`\n`}Offer Photo</Text>
-                                        </View>
-                                    )}
-                                </TouchableOpacity>
-                                {offerImage && (
-                                    <TouchableOpacity style={s.deleteImgBtn} onPress={() => setOfferImage(null)}>
-                                        <Ionicons name="trash-outline" size={14} color="#FF3B30" />
-                                        <Text style={s.deleteImgTxt}>Delete Photo</Text>
-                                    </TouchableOpacity>
-                                )}
-                            </View>
-                            <View style={s.inputGrp}>
-                                <Text style={s.label}>Store</Text>
-                                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
-                                    {myStores.filter(st => st.approved).map(st => (
-                                        <TouchableOpacity key={st._id || st.id} onPress={() => setSelectedStoreId(st._id || st.id)} style={[s.catChip, selectedStoreId === (st._id || st.id) && s.catChipAct]}>
-                                            <Text style={[s.catChipTxt, selectedStoreId === (st._id || st.id) && s.catChipTxtAct]}>{st.storeName}</Text>
-                                        </TouchableOpacity>
-                                    ))}
-                                    {myStores.filter(st => st.approved).length === 0 && (
-                                        <Text style={{ color: '#888', fontStyle: 'italic', marginLeft: 5 }}>No approved stores available.</Text>
-                                    )}
-                                </ScrollView>
-                            </View>
-                            <View style={s.inputGrp}>
-                                <Text style={s.label}>Offer Title</Text>
-                                <TextInput style={s.input} value={offerTitle} onChangeText={setOfferTitle} placeholder="e.g. 50% End of Season Sale" placeholderTextColor="#555" />
-                            </View>
-                            <View style={{ flexDirection: 'row', gap: 10 }}>
-                                <View style={[s.inputGrp, { flex: 1.2 }]}>
-                                    <Text style={s.label}>Orig. Price (₹)</Text>
-                                    <TextInput style={s.input} value={offerOriginalPrice} onChangeText={setOfferOriginalPrice} keyboardType="numeric" placeholder="e.g. 5000" placeholderTextColor="#555" />
-                                </View>
-                                <View style={[s.inputGrp, { flex: 1 }]}>
-                                    <Text style={s.label}>Discount %</Text>
-                                    <TextInput style={s.input} value={offerDiscount} onChangeText={setOfferDiscount} keyboardType="numeric" placeholder="e.g. 50" placeholderTextColor="#555" />
-                                </View>
-                                <View style={[s.inputGrp, { flex: 1.6 }]}>
-                                    <Text style={s.label}>Expires On (DD/MM/YYYY)</Text>
-                                    <TextInput style={s.input} value={offerExpiry} onChangeText={setOfferExpiry} placeholder="e.g. 25/12/2026" placeholderTextColor="#555" />
-                                </View>
-                            </View>
-                            <View style={s.inputGrp}>
-                                <Text style={s.label}>Description</Text>
-                                <TextInput style={[s.input, { height: 100, textAlignVertical: 'top', paddingTop: 15 }]} value={offerDesc} onChangeText={setOfferDesc} multiline placeholder="Tell customers about this exclusive offer..." placeholderTextColor="#555" />
-                            </View>
-                            <TouchableOpacity style={[s.submitBtn, isSavingOffer && { opacity: 0.7 }]} onPress={handleSaveOffer} disabled={isSavingOffer}>
-                                {isSavingOffer ? <ActivityIndicator color="#000" /> : <Text style={s.submitBtnTxt}>{editingOffer ? 'Update Offer' : 'Launch Offer'}</Text>}
-                            </TouchableOpacity>
-                        </ScrollView>
-                    </View>
-                </View>
-            </Modal>
         </View>
     );
 };
@@ -670,28 +487,22 @@ const s = StyleSheet.create({
     gridAddBtnTxt: { color: '#F5C518', fontSize: 14, fontWeight: '800', textTransform: 'uppercase' },
     disabledBtn: { borderColor: '#333' },
     pendingWarning: { color: '#F5C518', textAlign: 'center', marginTop: -5, marginBottom: 15, fontSize: 12, fontStyle: 'italic' },
-    sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 10 },
+    sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
     sectionTitle: { color: '#FFFFFF', fontSize: 22, fontWeight: '900' },
-    viewAll: { color: '#8E8E93', fontSize: 13, fontWeight: '700', marginBottom: 2 },
-    gridList: { marginTop: 15 },
-    pendingInfoCard: { 
-        flexDirection: 'row', 
-        backgroundColor: 'rgba(245,197,24,0.05)', 
-        padding: 12, 
-        borderRadius: 12, 
-        marginTop: 15, 
-        alignItems: 'center', 
-        gap: 10,
-        borderWidth: 1,
-        borderColor: 'rgba(245,197,24,0.1)'
-    },
-    pendingInfoTxt: { 
-        color: '#ccc', 
-        fontSize: 12, 
-        flex: 1, 
-        lineHeight: 18,
-        fontWeight: '500' 
-    },
+    smallAddBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(245,197,24,0.1)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(245,197,24,0.3)' },
+    smallAddBtnTxt: { color: '#F5C518', fontSize: 13, fontWeight: '800' },
+    emptyDashboard: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 100, paddingHorizontal: 40 },
+    emptyIconCircle: { width: 140, height: 140, borderRadius: 70, backgroundColor: 'rgba(245,197,24,0.03)', alignItems: 'center', justifyContent: 'center', marginBottom: 24, borderWidth: 1, borderColor: 'rgba(245,197,24,0.1)' },
+    emptyTitle: { color: '#fff', fontSize: 24, fontWeight: '900', marginBottom: 12 },
+    emptySub: { color: '#8E8E93', fontSize: 15, textAlign: 'center', lineHeight: 22, marginBottom: 30 },
+    mainRegisterBtn: { backgroundColor: '#F5C518', flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 30, paddingVertical: 18, borderRadius: 18 },
+    mainRegisterBtnTxt: { color: '#000', fontSize: 16, fontWeight: '900' },
+    pendingOverlay: { position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.8)', alignItems: 'center', justifyContent: 'center', gap: 10 },
+    pendingText: { color: '#F5C518', fontSize: 12, fontWeight: '900', letterSpacing: 1 },
+    approvedBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(245,197,24,0.1)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+    approvedBadgeTxt: { color: '#F5C518', fontSize: 9, fontWeight: '900' },
+    minimalBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+    minimalBtnTxt: { color: '#fff', fontSize: 12, fontWeight: '600' },
     storeCard: { 
         backgroundColor: '#1E1E1E', 
         borderRadius: 20, 
