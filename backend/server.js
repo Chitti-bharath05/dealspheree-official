@@ -12,6 +12,9 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// 🛡️ Enable Trust Proxy (Required for Render/Vercel rate-limiting)
+app.set('trust proxy', 1);
+
 // 🛡️ Security Check: Ensure critical secrets are present
 const REQUIRED_ENV = ['MONGO_URI', 'JWT_SECRET'];
 const missingEnv = REQUIRED_ENV.filter(e => !process.env[e]);
@@ -23,8 +26,13 @@ if (missingEnv.length > 0) {
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log('Connected to MongoDB'))
-  .catch((err) => console.error('MongoDB connection error:', err));
+  .then(() => console.log('✅ Connected to MongoDB Atlas'))
+  .catch((err) => {
+      console.error('❌ MongoDB connection error:', err.message);
+      if (err.name === 'MongoNetworkError') {
+          console.error('Check if your IP address is whitelisted in MongoDB Atlas.');
+      }
+  });
 
 // Middleware
 app.use(cors({
@@ -93,6 +101,21 @@ app.use('/api/notifications', require('./routes/notifications'));
 app.get('/api/categories', (req, res) => {
     const { CATEGORIES } = require('./data/mockData');
     res.json(CATEGORIES);
+});
+
+// 🛡️ Global Error Handler (MUST be the last middleware)
+app.use((err, req, res, next) => {
+    const statusCode = err.status || 500;
+    console.error(`💥 [${new Date().toISOString()}] ${req.method} ${req.url} - Error:`, err.message);
+    if (statusCode === 500) {
+        console.error(err.stack);
+    }
+    
+    res.status(statusCode).json({ 
+        success: false, 
+        message: statusCode === 500 ? 'Internal Server Error' : err.message,
+        path: req.originalUrl
+    });
 });
 
 const server = app.listen(PORT, '0.0.0.0', () => {

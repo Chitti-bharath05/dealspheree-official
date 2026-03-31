@@ -30,8 +30,9 @@ router.post('/login', validateRequest('login'), async (req, res) => {
         const user = await User.findOne({ email: email.toLowerCase() });
 
         if (user && (await user.matchPassword(password))) {
-            const accessToken = generateAccessToken(user._id);
-            const refreshToken = generateRefreshToken(user._id);
+            const userId = user._id.toString();
+            const accessToken = generateAccessToken(userId);
+            const refreshToken = generateRefreshToken(userId);
 
             // Store refresh token in DB
             user.refreshToken = refreshToken;
@@ -88,9 +89,10 @@ router.post('/register', validateRequest('register'), async (req, res) => {
         }
 
         const newUser = await User.create(newUserData);
+        const userId = newUser._id.toString();
 
-        const finalAccessToken = generateAccessToken(newUser._id);
-        const refreshToken = generateRefreshToken(newUser._id);
+        const finalAccessToken = generateAccessToken(userId);
+        const refreshToken = generateRefreshToken(userId);
 
         newUser.refreshToken = refreshToken;
         await newUser.save();
@@ -528,8 +530,9 @@ router.post('/social-login', async (req, res) => {
             }
         }
 
-        const accessToken = generateAccessToken(user._id);
-        const refreshToken = generateRefreshToken(user._id);
+        const userId = user._id.toString();
+        const accessToken = generateAccessToken(userId);
+        const refreshToken = generateRefreshToken(userId);
 
         user.refreshToken = refreshToken;
         await user.save();
