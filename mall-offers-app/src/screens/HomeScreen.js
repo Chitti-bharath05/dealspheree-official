@@ -47,7 +47,7 @@ const { width } = Dimensions.get('window');
 
 export default function HomeScreen({ navigation }) {
     const { user } = useAuth();
-    const { offers, categories, isLoading, getActiveOffers, userLocation, locationError, refreshLocation, calculateDistance } = useData();
+    const { stores, offers, categories, isLoading, getActiveOffers, userLocation, locationError, refreshLocation, calculateDistance } = useData();
     const { t } = useLanguage();
     const [selectedCategory, setSelectedCategory] = useState('All');
     const [searchQuery, setSearchQuery] = useState('');
