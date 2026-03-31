@@ -32,7 +32,7 @@ const catKeys = {
 };
 
 export default function OffersScreen({ route, navigation }) {
-    const { offers, categories, isLoading, getActiveOffers, userLocation, calculateDistance } = useData();
+    const { stores, offers, categories, isLoading, getActiveOffers, userLocation, calculateDistance } = useData();
     const { favorites, toggleFavorite } = useAuth();
     const { t } = useLanguage();
     
