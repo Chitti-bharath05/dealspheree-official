@@ -17,7 +17,7 @@ const StoreOffersScreen = ({ route, navigation }) => {
     const { t } = useLanguage();
     const { width } = useWindowDimensions();
 
-    const currentStore = useMemo(() => stores.find(s => (s._id || s.id) === storeId), [stores, storeId]);
+    const currentStore = useMemo(() => (stores || []).find(s => (s._id || s.id) === storeId), [stores, storeId]);
     const storeOffers = useMemo(() => getOffersByStore(storeId) || [], [offers, storeId]);
 
     // Form States

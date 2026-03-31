@@ -43,9 +43,24 @@ const StoreOwnerDashboardScreen = () => {
     const myStores = useMemo(() => allMyStores, [allMyStores]); // Show all for management
     const hasApprovedStore = useMemo(() => allMyStores.some(s => s.approved), [allMyStores]);
 
+    const stats = useMemo(() => {
+        const approved = allMyStores.filter(s => s.approved);
+        const totalLikes = approved.reduce((sum, s) => sum + (s.likes || 0), 0);
+        const totalRating = approved.reduce((sum, s) => sum + (s.rating || 0), 0);
+        const avgRating = approved.length > 0 ? totalRating / approved.length : 0;
+        return { totalLikes, avgRating };
+    }, [allMyStores]);
+
     const activeOffersCount = useMemo(() => {
+        // Since we don't have all offers globally filtered easily here, 
+        // we'll rely on the existing offers and filter them by the owner's store IDs
+        const myStoreIds = allMyStores.map(s => s._id || s.id);
+        const myOffers = (offers || []).filter(o => {
+            const oStoreId = o.storeId?._id || o.storeId;
+            return myStoreIds.includes(oStoreId);
+        });
         return myOffers.filter(offer => new Date(offer.expiryDate) > new Date()).length;
-    }, [myOffers]);
+    }, [offers, allMyStores]);
 
     const handlePickOfferImage = async () => {
         const result = await ImagePicker.launchImageLibraryAsync({
@@ -238,10 +253,10 @@ const StoreOwnerDashboardScreen = () => {
                             <Ionicons name="heart" size={20} color="#F5C518" />
                         </View>
                         <View>
-                            <Text style={s.statValue}>{myStore.likes || 0}</Text>
+                            <Text style={s.statValue}>{stats.totalLikes}</Text>
                             <Text style={s.statLabel}>{t('store_likes')}</Text>
                         </View>
-                        <Text style={[s.statLabel, { marginLeft: 'auto', alignSelf: 'flex-start' }]}>{t('store_favorites_label')}</Text>
+                        <Text style={[s.statLabel, { marginLeft: 'auto', alignSelf: 'flex-start' }]}>TOTAL LIKES</Text>
                     </View>
                     
                     <View style={s.statCardLine}>
@@ -249,9 +264,10 @@ const StoreOwnerDashboardScreen = () => {
                             <Ionicons name="star" size={20} color="#F5C518" />
                         </View>
                         <View>
-                            <Text style={s.statValue}>{myStore.rating?.toFixed(1) || '0.0'}</Text>
+                            <Text style={s.statValue}>{stats.avgRating.toFixed(1)}</Text>
                             <Text style={s.statLabel}>{t('store_rating')}</Text>
                         </View>
+                        <Text style={[s.statLabel, { marginLeft: 'auto', alignSelf: 'flex-start' }]}>AVG RATING</Text>
                     </View>
                 </View>
 

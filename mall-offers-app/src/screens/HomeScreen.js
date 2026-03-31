@@ -59,7 +59,7 @@ export default function HomeScreen({ navigation }) {
     const contentWidth = isWeb ? Math.min(width, 1200) : width;
 
     const filteredStores = useMemo(() => {
-        let filtered = stores.filter(s => s.approved === true);
+        let filtered = (stores || []).filter(s => s.approved === true);
         
         // Radius filter: 50km
         if (userLocation) {

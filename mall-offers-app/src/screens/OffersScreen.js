@@ -43,7 +43,7 @@ export default function OffersScreen({ route, navigation }) {
     const [menuAnim] = useState(new Animated.Value(-300)); // Hidden by default
 
     const storeId = route.params?.storeId;
-    const selectedStore = useMemo(() => storeId ? stores.find(s => (s._id || s.id) === storeId) : null, [storeId, stores]);
+    const selectedStore = useMemo(() => storeId ? (stores || []).find(s => (s._id || s.id) === storeId) : null, [storeId, stores]);
 
     const toggleMenu = () => {
         const toValue = isMenuOpen ? -300 : 0;

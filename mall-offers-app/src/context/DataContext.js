@@ -149,11 +149,11 @@ export const DataProvider = ({ children }) => {
     };
 
     const getPendingStores = () => {
-        return stores.filter((s) => !s.approved);
+        return (stores || []).filter((s) => !s.approved);
     };
 
     const getStoreById = (storeId) => {
-        return stores.find((s) => (s._id || s.id) === storeId);
+        return (stores || []).find((s) => (s._id || s.id) === storeId);
     };
 
     const incrementStoreViews = async (storeId) => {
