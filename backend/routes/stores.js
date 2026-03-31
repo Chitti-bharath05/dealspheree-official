@@ -45,7 +45,7 @@ router.get('/owner/:ownerId', async (req, res) => {
 // Create new store (Protected)
 router.post('/', protect, validateRequest('registerStore'), async (req, res) => {
     try {
-        const { storeName, ownerId, location, houseNo, street, area, pincode, city, address, category, logoUrl, bannerUrl, hasDeliveryPartner, lat, lng } = req.body;
+        const { storeName, ownerId, location, houseNo, street, area, pincode, city, address, category, logoUrl, bannerUrl, businessProofUrl, hasDeliveryPartner, lat, lng } = req.body;
         
         const newStore = await Store.create({
             storeName,
@@ -60,6 +60,7 @@ router.post('/', protect, validateRequest('registerStore'), async (req, res) => 
             category,
             logoUrl: logoUrl || null,
             bannerUrl: bannerUrl || null,
+            businessProofUrl: businessProofUrl || null,
             hasDeliveryPartner: !!hasDeliveryPartner,
             lat: lat || null,
             lng: lng || null,

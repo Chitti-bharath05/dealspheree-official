@@ -31,6 +31,7 @@ const StoreOwnerDashboardScreen = () => {
     const [selectedStoreId, setSelectedStoreId] = useState('');
     const [offerImage, setOfferImage] = useState(null);
     const [storeImage, setStoreImage] = useState(null);
+    const [businessProofImage, setBusinessProofImage] = useState(null);
     const [showAddOffer, setShowAddOffer] = useState(false);
     const [showAddStore, setShowAddStore] = useState(false);
     const [editingOffer, setEditingOffer] = useState(null);
@@ -73,8 +74,18 @@ const StoreOwnerDashboardScreen = () => {
         if (!result.canceled) setStoreImage(result.assets[0].uri);
     };
 
+    const handlePickBusinessProof = async () => {
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            aspect: [4, 3],
+            quality: 0.7,
+        });
+        if (!result.canceled) setBusinessProofImage(result.assets[0].uri);
+    };
+
     const resetForms = () => {
-        setStoreName(''); setLocation(''); setStoreLocation({ lat: null, lng: null }); setCategory(categories[0] || 'Fashion'); setStoreImage(null);
+        setStoreName(''); setLocation(''); setStoreLocation({ lat: null, lng: null }); setCategory(categories[0] || 'Fashion'); setStoreImage(null); setBusinessProofImage(null);
         setOfferTitle(''); setOfferDesc(''); setOfferDiscount(''); setOfferOriginalPrice(''); setOfferExpiry('');
         setOfferImage(null); setEditingOffer(null); setEditingStore(null);
     };
@@ -86,6 +97,12 @@ const StoreOwnerDashboardScreen = () => {
         if (!storeLocation?.lat || !storeLocation?.lng) {
             return Alert.alert('Location Required', 'Please use Auto Detect or Search to pin your exact location on the map.');
         }
+
+        // Security check for new registrations
+        if (!editingStore && !businessProofImage) {
+            return Alert.alert('Verification Required', 'Please upload a Business Proof (License, GST certificate, or Shop photo with sign) to register your store.');
+        }
+
         setIsSavingStore(true);
         try {
             if (editingStore) {
@@ -110,7 +127,8 @@ const StoreOwnerDashboardScreen = () => {
                     ownerId: user.id || user._id,
                     lat: storeLocation?.lat || null,
                     lng: storeLocation?.lng || null,
-                    bannerUrl: storeImage
+                    bannerUrl: storeImage,
+                    businessProofUrl: businessProofImage
                 };
                 if (storeLocation?.address) {
                     registerData.address = storeLocation.address;
@@ -479,8 +497,42 @@ const StoreOwnerDashboardScreen = () => {
                                     ))}
                                 </ScrollView>
                             </View>
+
+                            {/* Business Proof Section - Only for new registrations */}
+                            {!editingStore && (
+                                <View style={[s.inputGrp, { marginTop: 10 }]}>
+                                    <View style={s.sectionHeader}>
+                                        <Text style={s.label}>Security Verification</Text>
+                                        <View style={s.securityBadge}>
+                                            <Ionicons name="shield-checkmark" size={10} color="#F5C518" />
+                                            <Text style={s.securityBadgeTxt}>REQUIRED</Text>
+                                        </View>
+                                    </View>
+                                    <Text style={s.helpHeader}>Upload a proof of business (GST, Trade License, or Shop Photo with owner) to prevent unauthorized claims.</Text>
+                                    
+                                    <View style={s.imgPickerWrapper}>
+                                        <TouchableOpacity style={[s.imgPickerBox, !businessProofImage && { borderColor: 'rgba(255,59,48,0.3)' }]} onPress={handlePickBusinessProof}>
+                                            {businessProofImage ? (
+                                                <Image source={{ uri: businessProofImage }} style={s.pickedImg} />
+                                            ) : (
+                                                <View style={{ alignItems: 'center' }}>
+                                                    <Ionicons name="document-text-outline" size={36} color="#F5C518" />
+                                                    <Text style={s.imgPickerTxt}>Tap to upload{`\n`}Business Proof</Text>
+                                                </View>
+                                            )}
+                                        </TouchableOpacity>
+                                        {businessProofImage && (
+                                            <TouchableOpacity style={s.deleteImgBtn} onPress={() => setBusinessProofImage(null)}>
+                                                <Ionicons name="trash-outline" size={14} color="#FF3B30" />
+                                                <Text style={s.deleteImgTxt}>Delete Proof</Text>
+                                            </TouchableOpacity>
+                                        )}
+                                    </View>
+                                </View>
+                            )}
+
                             <TouchableOpacity style={[s.submitBtn, isSavingStore && { opacity: 0.7 }]} onPress={handleSaveStore} disabled={isSavingStore}>
-                                {isSavingStore ? <ActivityIndicator color="#000" /> : <Text style={s.submitBtnTxt}>{editingStore ? 'Update Store' : 'Add Store'}</Text>}
+                                {isSavingStore ? <ActivityIndicator color="#000" /> : <Text style={s.submitBtnTxt}>{editingStore ? 'Update Store' : 'Register Store'}</Text>}
                             </TouchableOpacity>
                         </ScrollView>
                     </View>
@@ -674,6 +726,9 @@ const s = StyleSheet.create({
     deleteImgTxt: { color: '#FF3B30', fontSize: 13, fontWeight: '700' },
     submitBtn: { backgroundColor: '#F5C518', height: 60, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginTop: 20, marginBottom: 40 },
     submitBtnTxt: { color: '#000', fontSize: 18, fontWeight: '900' },
+    securityBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(245,197,24,0.1)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+    securityBadgeTxt: { color: '#F5C518', fontSize: 9, fontWeight: '900', letterSpacing: 0.5 },
+    helpHeader: { color: '#8E8E93', fontSize: 13, marginBottom: 15, lineHeight: 18 },
 });
 
 export default StoreOwnerDashboardScreen;

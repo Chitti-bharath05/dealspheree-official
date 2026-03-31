@@ -194,6 +194,27 @@ const AdminDashboardScreen = () => {
                                     <Text style={s.listItemTitle}>{item.storeName}</Text>
                                     <Text style={s.listItemSub}>{item.location}</Text>
                                     <Text style={s.listItemSub}>Category: {item.category}</Text>
+                                    
+                                    {/* 🛡️ Ownership Proof Review */}
+                                    {item.businessProofUrl && (
+                                        <View style={s.proofContainer}>
+                                            <Text style={s.proofLabel}>OWNERSHIP PROOF:</Text>
+                                            <TouchableOpacity 
+                                                style={s.proofImageWrapper}
+                                                onPress={() => {
+                                                    // Simple web preview if possible, or just alert
+                                                    if (Platform.OS === 'web') window.open(item.businessProofUrl, '_blank');
+                                                    else Alert.alert('Proof URL', item.businessProofUrl);
+                                                }}
+                                            >
+                                                <Image source={{ uri: item.businessProofUrl }} style={s.proofImage} />
+                                                <View style={s.viewOverlay}>
+                                                    <Ionicons name="expand-outline" size={16} color="#fff" />
+                                                    <Text style={s.viewTxt}>VIEW FULL</Text>
+                                                </View>
+                                            </TouchableOpacity>
+                                        </View>
+                                    )}
                                 </View>
                                 <View style={s.listActions}>
                                     <TouchableOpacity style={s.approveBtn} onPress={() => handleApprove(item._id || item.id)}>
@@ -320,7 +341,13 @@ const s = StyleSheet.create({
     deleteBtn: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,59,48,0.2)' },
     roleBadge: { alignSelf: 'flex-start', backgroundColor: 'rgba(245,197,24,0.1)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, marginTop: 6 },
     roleText: { color: '#F5C518', fontSize: 10, fontWeight: '800' },
-    emptyMsg: { color: '#555', fontSize: 16, textAlign: 'center', marginTop: 40 }
+    emptyMsg: { color: '#555', fontSize: 16, textAlign: 'center', marginTop: 40 },
+    proofContainer: { marginTop: 15, padding: 12, backgroundColor: 'rgba(245,197,24,0.03)', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(245,197,24,0.1)' },
+    proofLabel: { color: '#F5C518', fontSize: 10, fontWeight: '900', letterSpacing: 1, marginBottom: 8 },
+    proofImageWrapper: { width: '100%', height: 120, borderRadius: 10, overflow: 'hidden', position: 'relative' },
+    proofImage: { width: '100%', height: '100%', resizeMode: 'cover' },
+    viewOverlay: { position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.3)', alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6 },
+    viewTxt: { color: '#fff', fontSize: 10, fontWeight: '900' },
 });
 
 export default AdminDashboardScreen;

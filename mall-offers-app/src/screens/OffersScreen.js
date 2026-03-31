@@ -119,7 +119,12 @@ export default function OffersScreen({ route, navigation }) {
                             <Ionicons name={isFavorite ? "heart" : "heart-outline"} size={22} color="#F5C518" />
                         </TouchableOpacity>
                     </View>
-                    <Text style={s.cardStore} numberOfLines={1}>{item.storeId?.storeName || 'Boutique'}</Text>
+                    <View style={s.storeNameRow}>
+                        <Text style={s.cardStore} numberOfLines={1}>{item.storeId?.storeName || 'Boutique'}</Text>
+                        {item.storeId?.approved && (
+                            <Ionicons name="checkmark-circle" size={14} color="#F5C518" style={{ marginTop: 6 }} />
+                        )}
+                    </View>
                     <View style={s.cardFooter}>
                         <View>
                             <Text style={s.cardPrice}>₹{(item.originalPrice * (1 - item.discount / 100)).toLocaleString()}</Text>
@@ -253,6 +258,7 @@ const s = StyleSheet.create({
     cardInfo: { padding: 18 },
     cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     cardTitle: { color: '#fff', fontSize: 20, fontWeight: '900', flex: 1, marginRight: 8 },
+    storeNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
     cardStore: { color: '#A0A0A0', fontSize: 15, marginTop: 6, fontWeight: '600' },
     cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 20 },
     cardPrice: { color: '#F5C518', fontSize: 26, fontWeight: '950' },

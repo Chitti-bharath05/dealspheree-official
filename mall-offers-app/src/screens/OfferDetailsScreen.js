@@ -392,7 +392,10 @@ const OfferDetailsScreen = ({ route, navigation }) => {
                                 </View>
                                 <View style={s.ratingCard}>
                                     <Text style={s.ratingHint}>
-                                        How was your experience at <Text style={{ color: '#F5C518' }}>{store?.storeName || 'this store'}</Text>?
+                                        How was your experience at <Text style={{ color: '#F5C518' }}>{store?.storeName || 'this store'}</Text>
+                                        {store?.approved && (
+                                            <Ionicons name="checkmark-circle" size={14} color="#F5C518" style={{ marginLeft: 4 }} />
+                                        )}?
                                     </Text>
                                     <RatingStars current={rating} onSelect={setRating} size={32} />
                                     <TextInput
@@ -420,13 +423,13 @@ const OfferDetailsScreen = ({ route, navigation }) => {
 
                             {/* ── VERIFIED DEAL STATUS ── */}
                             <View style={s.section}>
-                                <View style={s.verifiedCard}>
+                                <View style={[s.verifiedCard, store?.approved && { borderColor: 'rgba(245,197,24,0.3)', backgroundColor: 'rgba(245,197,24,0.02)' }]}>
                                     <View style={s.verifiedIcon}>
-                                        <Ionicons name="checkmark-circle" size={22} color="#F5C518" />
+                                        <Ionicons name={store?.approved ? "shield-checkmark" : "checkmark-circle"} size={22} color="#F5C518" />
                                     </View>
                                     <View style={{ flex: 1 }}>
-                                        <Text style={s.verifiedTitle}>{t('verified_deal')}</Text>
-                                        <Text style={s.verifiedSub}>{t('validated_by')}</Text>
+                                        <Text style={s.verifiedTitle}>{store?.approved ? "Verified Store & Deal" : t('verified_deal')}</Text>
+                                        <Text style={s.verifiedSub}>{store?.approved ? "This business has provided valid proof and is fully verified." : t('validated_by')}</Text>
                                     </View>
                                 </View>
                             </View>
