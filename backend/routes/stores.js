@@ -109,8 +109,8 @@ router.put('/:id/approve', protect, authorize('admin'), async (req, res) => {
                 if (store.ownerId && store.ownerId.email) {
                     await sendEmail({
                         email: store.ownerId.email,
-                        subject: 'Your Store is Approved!',
-                        message: `Congratulations! Your store "${store.storeName}" has been approved on DealSphere.\n\nYou can now log in and start adding exclusive offers for your customers.`
+                        subject: 'Your Store is Accepted!',
+                        message: `Congratulations! Your store "${store.storeName}" is accepted by the team dealsphere.\n\nYou can now log in and start adding exclusive offers for your customers.`
                     });
                 }
             } catch (emailErr) {

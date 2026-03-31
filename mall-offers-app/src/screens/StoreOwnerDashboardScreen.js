@@ -39,8 +39,10 @@ const StoreOwnerDashboardScreen = () => {
     const [isSavingStore, setIsSavingStore] = useState(false);
     const [isSavingOffer, setIsSavingOffer] = useState(false);
 
-    const myStores = useMemo(() => getStoresByOwner(user?._id || user?.id) || [], [stores, user]);
+    const allMyStores = useMemo(() => getStoresByOwner(user?._id || user?.id) || [], [stores, user]);
+    const myStores = useMemo(() => allMyStores.filter(s => s.approved === true), [allMyStores]);
     const myStore = myStores[0] || {};
+    const hasPendingStores = useMemo(() => allMyStores.some(s => !s.approved), [allMyStores]);
     const myOffers = useMemo(() => {
         return myStores.flatMap(store => {
             const storeId = store._id || store.id;
@@ -265,16 +267,20 @@ const StoreOwnerDashboardScreen = () => {
                             <Text style={s.gridAddBtnTxt}>Register Store</Text>
                         </TouchableOpacity>
 
+                        {hasPendingStores && (
+                            <View style={s.pendingInfoCard}>
+                                <Ionicons name="time-outline" size={18} color="#F5C518" />
+                                <Text style={s.pendingInfoTxt}>
+                                    New stores will appear here once they are verified and accepted by the team dealsphere.
+                                </Text>
+                            </View>
+                        )}
+
                         <View style={s.gridList}>
                     {myStores.map((item) => (
                         <View key={item._id || item.id} style={s.storeCard}>
                             <View style={s.storeImgContainer}>
                                 <Image source={{ uri: item.bannerUrl || 'https://via.placeholder.com/600x300' }} style={s.storeImg} />
-                                <View style={[s.activeBadge, !item.approved && { backgroundColor: 'rgba(245, 197, 24, 0.15)', borderColor: '#F5C518', borderWidth: 1 }]}>
-                                    <Text style={[s.activeBadgeTxt, !item.approved && { color: '#F5C518' }]}>
-                                        {item.approved ? 'ACTIVE' : 'PENDING'}
-                                    </Text>
-                                </View>
                             </View>
                             <View style={s.storeInfo}>
                                 <View style={s.storeTitleRow}>
@@ -667,8 +673,33 @@ const s = StyleSheet.create({
     sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 10 },
     sectionTitle: { color: '#FFFFFF', fontSize: 22, fontWeight: '900' },
     viewAll: { color: '#8E8E93', fontSize: 13, fontWeight: '700', marginBottom: 2 },
-    gridList: { gap: 20 },
-    storeCard: { backgroundColor: '#1A1A1A', borderRadius: 28, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' },
+    gridList: { marginTop: 15 },
+    pendingInfoCard: { 
+        flexDirection: 'row', 
+        backgroundColor: 'rgba(245,197,24,0.05)', 
+        padding: 12, 
+        borderRadius: 12, 
+        marginTop: 15, 
+        alignItems: 'center', 
+        gap: 10,
+        borderWidth: 1,
+        borderColor: 'rgba(245,197,24,0.1)'
+    },
+    pendingInfoTxt: { 
+        color: '#ccc', 
+        fontSize: 12, 
+        flex: 1, 
+        lineHeight: 18,
+        fontWeight: '500' 
+    },
+    storeCard: { 
+        backgroundColor: '#1E1E1E', 
+        borderRadius: 20, 
+        overflow: 'hidden', 
+        marginBottom: 20,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.05)'
+    },
     storeImgContainer: { width: '100%', height: 200 },
     storeImg: { width: '100%', height: '100%', resizeMode: 'cover' },
     activeBadge: { position: 'absolute', top: 20, right: 20, backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10 },
