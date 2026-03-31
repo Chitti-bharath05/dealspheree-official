@@ -38,6 +38,8 @@ export default function OffersScreen({ route, navigation }) {
     
     const [selectedCategory, setSelectedCategory] = useState(route.params?.category || 'All');
     const [searchQuery, setSearchQuery] = useState('');
+    const storeId = route.params?.storeId;
+    const selectedStore = useMemo(() => storeId ? stores.find(s => (s._id || s.id) === storeId) : null, [storeId, stores]);
 
     useEffect(() => {
         if (route.params?.category) {
@@ -56,6 +58,12 @@ export default function OffersScreen({ route, navigation }) {
 
     const filteredOffers = useMemo(() => {
         let filtered = activeOffers;
+        if (storeId) {
+            filtered = filtered.filter(o => {
+                const oStoreId = o.storeId?._id || o.storeId;
+                return oStoreId === storeId;
+            });
+        }
         if (selectedCategory !== 'All') {
             filtered = filtered.filter(o => o.category === selectedCategory);
         }
@@ -67,7 +75,7 @@ export default function OffersScreen({ route, navigation }) {
             );
         }
         return filtered;
-    }, [activeOffers, selectedCategory, searchQuery]);
+    }, [activeOffers, selectedCategory, searchQuery, storeId]);
 
     const renderOfferCard = ({ item }) => {
         const isFavorite = favorites.includes(item._id || item.id);
@@ -143,6 +151,19 @@ export default function OffersScreen({ route, navigation }) {
                 <View style={{ height: Platform.OS === 'web' ? 70 : 0 }} />
 
 
+                {/* Store Header if filtered */}
+                {selectedStore && (
+                    <View style={s.storeHeaderInline}>
+                        <View style={s.storeInfoRow}>
+                            <Ionicons name="storefront" size={20} color="#F5C518" />
+                            <Text style={s.storeHeaderTitle}>Offers at {selectedStore.storeName}</Text>
+                        </View>
+                        <TouchableOpacity onPress={() => navigation.setParams({ storeId: null })}>
+                            <Text style={s.clearFilter}>Show all stores</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
+
                 {/* Search Bar */}
                 <View style={s.searchWrap}>
                     <View style={s.searchBox}>
@@ -191,9 +212,11 @@ export default function OffersScreen({ route, navigation }) {
                         <View style={s.empty}>
                             <Ionicons name="pricetags-outline" size={60} color="#333" />
                             <Text style={s.emptyTxt}>
-                                {selectedCategory !== 'All' 
-                                    ? `No stores available in ${selectedCategory} yet.` 
-                                    : t('no_offers_found')}
+                                {storeId 
+                                    ? `No active offers found for this store.` 
+                                    : selectedCategory !== 'All' 
+                                        ? `No stores available in ${selectedCategory} yet.` 
+                                        : t('no_offers_found')}
                             </Text>
                         </View>
                     }
@@ -238,4 +261,8 @@ const s = StyleSheet.create({
     cardExp: { color: '#F5C518', fontSize: 12, fontWeight: '800' },
     empty: { alignItems: 'center', marginTop: 100 },
     emptyTxt: { color: '#555', fontSize: 18, fontWeight: '700', marginTop: 15 },
+    storeHeaderInline: { paddingHorizontal: 24, paddingVertical: 15, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'rgba(245,197,24,0.05)', borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },
+    storeInfoRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    storeHeaderTitle: { color: '#fff', fontSize: 16, fontWeight: '800' },
+    clearFilter: { color: '#F5C518', fontSize: 13, fontWeight: '700' },
 });

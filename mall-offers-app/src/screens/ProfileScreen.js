@@ -3,12 +3,15 @@ import { View, Text, TouchableOpacity, StyleSheet, Dimensions, Alert, ScrollView
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../context/AuthContext';
-
+import { useData } from '../context/DataContext';
 import { useLanguage } from '../context/LanguageContext';
 
 const ProfileScreen = ({ navigation }) => {
     const { user, logout, updateProfileImage, favorites } = useAuth();
+    const { getApprovedStores, userLocation, calculateDistance, isLoading } = useData();
     const { t } = useLanguage();
+
+    const nearbyStores = getApprovedStores();
 
     const pickImage = async () => {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -101,6 +104,44 @@ const ProfileScreen = ({ navigation }) => {
                         </View>
                     </View>
 
+                    {/* Stores Nearby Section */}
+                    {nearbyStores.length > 0 && (
+                        <View style={s.nearbySection}>
+                            <View style={s.sectionHeaderRow}>
+                                <Text style={s.sectionTitle}>Stores <Text style={s.goldTxt}>Nearby.</Text></Text>
+                                <View style={s.radiusBadge}>
+                                    <Text style={s.radiusText}>50KM RADIUS</Text>
+                                </View>
+                            </View>
+                            <ScrollView 
+                                horizontal 
+                                showsHorizontalScrollIndicator={false} 
+                                contentContainerStyle={s.nearbyList}
+                            >
+                                {nearbyStores.map((item) => {
+                                    const dist = userLocation ? calculateDistance(userLocation.lat, userLocation.lng, item.lat, item.lng) : 0;
+                                    return (
+                                        <TouchableOpacity 
+                                            key={item._id || item.id} 
+                                            style={s.storeMiniCard}
+                                            onPress={() => navigation.navigate('Deals', { storeId: item._id || item.id })}
+                                        >
+                                            <Image source={{ uri: item.bannerUrl || 'https://via.placeholder.com/600x300' }} style={s.storeMiniImg} />
+                                            <LinearGradient colors={['transparent', 'rgba(0,0,0,0.8)']} style={s.storeMiniOverlay} />
+                                            <View style={s.storeMiniInfo}>
+                                                <Text style={s.storeMiniName} numberOfLines={1}>{item.storeName}</Text>
+                                                <View style={s.storeMiniDist}>
+                                                    <Ionicons name="location" size={10} color="#F5C518" />
+                                                    <Text style={s.storeMiniDistTxt}>{dist.toFixed(1)} km away</Text>
+                                                </View>
+                                            </View>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </ScrollView>
+                        </View>
+                    )}
+
                     <View style={s.menuSection}>
                         {menuItems.map((item, i) => (
                             <TouchableOpacity key={i} style={s.menuItem} onPress={item.onPress}>
@@ -175,6 +216,20 @@ const s = StyleSheet.create({
     badgeTxt: { color: '#000', fontSize: 11, fontWeight: '900' },
     logoutBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, marginHorizontal: 24, marginTop: 40, height: 60, borderRadius: 24, borderWidth: 1.5, borderColor: 'rgba(255,107,107,0.3)' },
     logoutText: { color: '#FF6B6B', fontSize: 15, fontWeight: '800' },
+    nearbySection: { marginTop: 40 },
+    sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, marginBottom: 20 },
+    sectionTitle: { color: '#fff', fontSize: 20, fontWeight: '900' },
+    goldTxt: { color: '#F5C518', fontStyle: 'italic' },
+    radiusBadge: { backgroundColor: 'rgba(245,197,24,0.1)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+    radiusText: { color: '#F5C518', fontSize: 10, fontWeight: '950', letterSpacing: 1 },
+    nearbyList: { paddingHorizontal: 24, gap: 16 },
+    storeMiniCard: { width: 180, height: 120, borderRadius: 20, backgroundColor: '#1A1A1A', overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' },
+    storeMiniImg: { width: '100%', height: '100%' },
+    storeMiniOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, height: '60%' },
+    storeMiniInfo: { position: 'absolute', bottom: 12, left: 12, right: 12 },
+    storeMiniName: { color: '#fff', fontSize: 14, fontWeight: '800' },
+    storeMiniDist: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
+    storeMiniDistTxt: { color: '#F5C518', fontSize: 10, fontWeight: '700' },
 });
 
 export default ProfileScreen;
