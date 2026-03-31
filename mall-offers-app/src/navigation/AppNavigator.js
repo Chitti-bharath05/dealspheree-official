@@ -7,6 +7,8 @@ import { View, Text, StyleSheet, ActivityIndicator, Platform, ScrollView } from 
 import TopHeader from '../components/TopHeader';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
+import * as Linking from 'expo-linking';
+import { useEffect } from 'react';
 
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
@@ -97,7 +99,35 @@ const AuthStack = () => (
 );
 
 const AppNavigator = () => {
-    const { user, isLoading } = useAuth();
+    const { user, isLoading, setPendingDeepLink } = useAuth();
+
+    useEffect(() => {
+        const handleDeepLink = (event) => {
+            const data = Linking.parse(event.url);
+            if (data.path && data.path.includes('offer/') && !user) {
+                const offerId = data.path.split('offer/')[1]?.split('?')[0];
+                if (offerId) {
+                    console.log('Deep link detected while logged out. Saving offerId:', offerId);
+                    setPendingDeepLink(offerId);
+                }
+            }
+        };
+
+        const checkInitialUrl = async () => {
+            const initialUrl = await Linking.getInitialURL();
+            if (initialUrl && !user) {
+                handleDeepLink({ url: initialUrl });
+            }
+        };
+
+        checkInitialUrl();
+        const subscription = Linking.addEventListener('url', handleDeepLink);
+        
+        return () => {
+            if (subscription) subscription.remove();
+        };
+    }, [user, setPendingDeepLink]);
+
 
     if (isLoading) {
         return (

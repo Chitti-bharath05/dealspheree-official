@@ -108,10 +108,20 @@ const OfferDetailsScreen = ({ route, navigation }) => {
     const handleShare = async () => {
         try {
             const shareTitle = `${offer.discount}% OFF: ${offer.title} at ${store?.storeName}`;
-            const shareMessage = `Check out this amazing deal: ${offer.title} at ${store?.storeName}! ${offer.description}\n\nDownload Dealspheree Mall Offers to see more!`;
-            await Share.share({ title: shareTitle, message: shareMessage });
+            const shareUrl = `https://dealspheree.in/offer/${offerId}`;
+            const shareMessage = `Check out this amazing deal: ${offer.title} at ${store?.storeName}!\n\n🔥 ${offer.discount}% OFF\n\nClick here to view: ${shareUrl}\n\nDownload Dealspheree Mall Offers to see more!`;
+            
+            await Share.share({ 
+                title: shareTitle, 
+                message: Platform.OS === 'android' ? `${shareMessage}` : shareMessage,
+                url: shareUrl // URL field is mainly for iOS
+            });
         } catch (error) {
-            Alert.alert('Error', 'Could not share this offer.');
+            if (Platform.OS === 'web') {
+                window.alert('Could not share this offer.');
+            } else {
+                Alert.alert('Error', 'Could not share this offer.');
+            }
         }
     };
 
@@ -166,22 +176,31 @@ const OfferDetailsScreen = ({ route, navigation }) => {
     };
 
     const handleToggleLike = async () => {
-        if (!store) return;
+        if (!store || !user) {
+            showToast('Please login to like this store');
+            return;
+        }
         const storeId = store._id || store.id;
         try {
             const res = await likeStore(storeId);
             if (res.success) {
-                setStore(prev => ({
-                    ...prev,
-                    likes: res.likes,
-                    likedBy: res.isLiked
-                        ? [...(prev.likedBy || []), user?._id || user?.id]
-                        : (prev.likedBy || []).filter(id => id.toString() !== (user?._id || user?.id).toString())
-                }));
+                // The cache is already updated by DataContext.likeStore
+                // We update local state too for immediate visual feedback
+                setStore(prev => {
+                    if (!prev) return prev;
+                    const userId = user._id || user.id;
+                    return {
+                        ...prev,
+                        likes: res.likes,
+                        likedBy: res.isLiked
+                            ? [...(prev.likedBy || []).filter(id => id.toString() !== userId.toString()), userId]
+                            : (prev.likedBy || []).filter(id => id.toString() !== userId.toString())
+                    };
+                });
             }
         } catch (error) {
             console.error('Toggle like error:', error);
-            Alert.alert('Error', 'Failed to update like status.');
+            showToast('Failed to update like status.');
         }
     };
 
@@ -196,8 +215,15 @@ const OfferDetailsScreen = ({ route, navigation }) => {
         if (rating === 0) { showToast('Please select a star rating.'); return; }
         setIsSubmitting(true);
         try {
-            const response = await apiClient.post(`/stores/${store._id || store.id}/rate`, { score: rating, comment });
-            if (response.success) { showToast('Thank you for your review!'); refetchStores(); }
+            const response = await rateStore(store._id || store.id, rating, comment);
+            if (response.success) { 
+                showToast('Thank you for your review!'); 
+                // Local state will update via useEffect when 'store' prop changes if parent re-renders, 
+                // but since store is local state here, we update it from the response
+                if (response.store) {
+                    setStore(response.store);
+                }
+            }
         } catch (error) {
             showToast(error.response?.data?.message || 'Failed to submit rating.');
         } finally {

@@ -181,19 +181,36 @@ router.delete('/users/:id', protect, authorize('admin'), async (req, res) => {
 // Toggle Favorite
 router.post('/favorites/toggle/:offerId', protect, async (req, res) => {
     try {
-        const user = await User.findById(req.user._id);
+        const userId = req.user._id;
         const offerId = req.params.offerId;
+        const user = await User.findById(userId);
+        
+        if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
         const isFavorite = user.favorites.includes(offerId);
+        
         if (isFavorite) {
-            user.favorites = user.favorites.filter(id => id.toString() !== offerId);
+            // Remove from User favorites
+            user.favorites = user.favorites.filter(id => id.toString() !== offerId.toString());
+            // Update Offer: pull from likedBy and decrement likes
+            await Offer.findByIdAndUpdate(offerId, {
+                $pull: { likedBy: userId },
+                $inc: { likes: -1 }
+            });
         } else {
+            // Add to User favorites
             user.favorites.push(offerId);
+            // Update Offer: addToSet to likedBy and increment likes
+            await Offer.findByIdAndUpdate(offerId, {
+                $addToSet: { likedBy: userId },
+                $inc: { likes: 1 }
+            });
         }
 
         await user.save();
         res.json({ success: true, favorites: user.favorites });
     } catch (error) {
+        console.error('Toggle favorite error:', error);
         res.status(500).json({ success: false, message: 'Server error' });
     }
 });

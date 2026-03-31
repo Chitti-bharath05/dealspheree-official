@@ -169,6 +169,7 @@ router.put('/:id', protect, async (req, res) => {
         }
 
         // Build update object with only fields that are actually provided
+        // We explicitly EXCLUDE internal stats like likes, rating, views from being updated here
         const { storeName, location, houseNo, street, area, pincode, city, address, category, logoUrl, bannerUrl, hasDeliveryPartner, lat, lng } = req.body;
         const updateFields = {};
         if (storeName !== undefined) updateFields.storeName = storeName;
@@ -249,24 +250,30 @@ router.post('/:id/rate', protect, async (req, res) => {
             return res.status(400).json({ success: false, message: "Rating already submitted, can't be modified" });
         }
 
-        // Add new rating
         const newRating = {
             user: req.user._id,
             score,
             comment: comment || ''
         };
 
-        store.ratings.push(newRating);
+        // Atomic push and update
+        const updatedStore = await Store.findByIdAndUpdate(
+            storeId,
+            { $push: { ratings: newRating } },
+            { new: true }
+        );
 
         // Recalculate average rating
-        const totalScore = store.ratings.reduce((acc, curr) => acc + curr.score, 0);
-        store.averageRating = totalScore / store.ratings.length;
-        store.rating = store.averageRating;
+        const totalScore = updatedStore.ratings.reduce((acc, curr) => acc + curr.score, 0);
+        const averageRating = totalScore / updatedStore.ratings.length;
 
-        await store.save();
+        updatedStore.averageRating = averageRating;
+        updatedStore.rating = averageRating;
+        await updatedStore.save();
 
-        res.json({ success: true, store });
+        res.json({ success: true, store: updatedStore });
     } catch (error) {
+        console.error('Rating error:', error);
         res.status(500).json({ success: false, message: 'Server error' });
     }
 });
@@ -289,26 +296,50 @@ router.post('/:id/view', async (req, res) => {
 // Toggle store like (Protected: Customer only)
 router.post('/:id/like', protect, async (req, res) => {
     try {
-        const store = await Store.findById(req.params.id);
+        const storeId = req.params.id;
+        const userId = req.user._id;
+
+        const store = await Store.findById(storeId);
         if (!store) return res.status(404).json({ success: false, message: 'Store not found' });
 
-        const userId = req.user._id.toString();
-        const isLiked = store.likedBy.some(id => id.toString() === userId);
+        // Ensure store.likedBy exists
+        if (!store.likedBy) store.likedBy = [];
+        
+        const isLiked = store.likedBy.some(id => id.toString() === userId.toString());
 
+        let update;
         if (isLiked) {
-            // Unlike: Remove from likedBy and decrement likes
-            store.likedBy = store.likedBy.filter(id => id.toString() !== userId);
-            store.likes = Math.max(0, store.likes - 1);
+            update = {
+                $pull: { likedBy: userId },
+                $inc: { likes: -1 }
+            };
         } else {
-            // Like: Add to likedBy and increment likes
-            store.likedBy.push(req.user._id);
-            store.likes += 1;
+            update = {
+                $addToSet: { likedBy: userId },
+                $inc: { likes: 1 }
+            };
         }
 
-        await store.save();
-        res.json({ success: true, likes: store.likes, isLiked: !isLiked });
+        const updatedStore = await Store.findByIdAndUpdate(
+            storeId,
+            update,
+            { new: true }
+        );
+
+        // Ensure likes doesn't go below 0 due to concurrency edge cases
+        if (updatedStore.likes < 0) {
+            updatedStore.likes = 0;
+            await updatedStore.save();
+        }
+
+        res.json({ 
+            success: true, 
+            likes: updatedStore.likes, 
+            likedBy: updatedStore.likedBy, // Return full list or just status
+            isLiked: !isLiked 
+        });
     } catch (error) {
-        console.error('Like error:', error);
+        console.error('Store Like error:', error);
         res.status(500).json({ success: false, message: 'Server error' });
     }
 });

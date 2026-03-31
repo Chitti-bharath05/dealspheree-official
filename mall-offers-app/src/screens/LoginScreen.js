@@ -31,7 +31,7 @@ const LoginScreen = ({ navigation }) => {
     const [errorMsg, setErrorMsg] = useState('');
     const { width, height } = useWindowDimensions();
 
-    const { login, loginWithBiometrics } = useAuth();
+    const { login, loginWithBiometrics, pendingDeepLink, setPendingDeepLink } = useAuth();
 
     useEffect(() => {
         checkBiometrics();
@@ -62,7 +62,13 @@ const LoginScreen = ({ navigation }) => {
             setLoading(true);
             const loginRes = await loginWithBiometrics();
             setLoading(false);
-            if (!loginRes.success) {
+            if (loginRes.success) {
+                if (pendingDeepLink) {
+                    const offerId = pendingDeepLink;
+                    setPendingDeepLink(null);
+                    navigation.navigate('OfferDetails', { offerId });
+                }
+            } else {
                 showError(loginRes.message || 'Biometric login failed. Please use your password.');
             }
         }
@@ -89,7 +95,16 @@ const LoginScreen = ({ navigation }) => {
         setErrorMsg('');
         try {
             const result = await login(identifier.trim().toLowerCase(), password, rememberMe);
-            if (!result.success) {
+            if (result.success) {
+                if (pendingDeepLink) {
+                    const offerId = pendingDeepLink;
+                    setPendingDeepLink(null);
+                    // Small delay to ensure navigator has switched stacks
+                    setTimeout(() => {
+                        navigation.navigate('OfferDetails', { offerId });
+                    }, 500);
+                }
+            } else {
                 showError(result.message || 'Invalid credentials. Please try again.');
             }
         } catch (e) {

@@ -252,8 +252,10 @@ const StoreOwnerDashboardScreen = () => {
                         <View key={item._id || item.id} style={s.storeCard}>
                             <View style={s.storeImgContainer}>
                                 <Image source={{ uri: item.bannerUrl || 'https://via.placeholder.com/600x300' }} style={s.storeImg} />
-                                <View style={s.activeBadge}>
-                                    <Text style={s.activeBadgeTxt}>ACTIVE</Text>
+                                <View style={[s.activeBadge, !item.approved && { backgroundColor: 'rgba(245, 197, 24, 0.15)', borderColor: '#F5C518', borderWidth: 1 }]}>
+                                    <Text style={[s.activeBadgeTxt, !item.approved && { color: '#F5C518' }]}>
+                                        {item.approved ? 'ACTIVE' : 'PENDING'}
+                                    </Text>
                                 </View>
                             </View>
                             <View style={s.storeInfo}>
@@ -350,7 +352,7 @@ const StoreOwnerDashboardScreen = () => {
 
                         {!hasApprovedStore && myStores.length > 0 && (
                             <Text style={s.pendingWarning}>
-                                Your store registration is pending review.
+                                Your store registration is pending review. Offers can only be added to approved stores.
                             </Text>
                         )}
 
@@ -518,11 +520,14 @@ const StoreOwnerDashboardScreen = () => {
                             <View style={s.inputGrp}>
                                 <Text style={s.label}>Store</Text>
                                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
-                                    {myStores.map(st => (
+                                    {myStores.filter(st => st.approved).map(st => (
                                         <TouchableOpacity key={st._id || st.id} onPress={() => setSelectedStoreId(st._id || st.id)} style={[s.catChip, selectedStoreId === (st._id || st.id) && s.catChipAct]}>
                                             <Text style={[s.catChipTxt, selectedStoreId === (st._id || st.id) && s.catChipTxtAct]}>{st.storeName}</Text>
                                         </TouchableOpacity>
                                     ))}
+                                    {myStores.filter(st => st.approved).length === 0 && (
+                                        <Text style={{ color: '#888', fontStyle: 'italic', marginLeft: 5 }}>No approved stores available.</Text>
+                                    )}
                                 </ScrollView>
                             </View>
                             <View style={s.inputGrp}>

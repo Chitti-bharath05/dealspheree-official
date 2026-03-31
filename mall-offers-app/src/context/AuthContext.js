@@ -65,6 +65,7 @@ export const AuthProvider = ({ children }) => {
     const [users, setUsers] = useState([]);
     const [favorites, setFavorites] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [pendingDeepLink, setPendingDeepLink] = useState(null);
 
     useEffect(() => {
         loadUser();
@@ -364,6 +365,8 @@ export const AuthProvider = ({ children }) => {
                 loginWithBiometrics,
                 saveSecureCredentials,
                 clearSecureCredentials,
+                pendingDeepLink,
+                setPendingDeepLink,
             }}
         >
             {children}

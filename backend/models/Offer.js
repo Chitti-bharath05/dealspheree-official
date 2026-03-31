@@ -11,7 +11,9 @@ const offerSchema = new mongoose.Schema({
     originalPrice: { type: Number, required: true },
     isOnline: { type: Boolean, default: false },
     platformLink: { type: String, default: null },
-    views: { type: Number, default: 0 }
+    views: { type: Number, default: 0 },
+    likes: { type: Number, default: 0 },
+    likedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }]
 }, { timestamps: true });
 
 module.exports = mongoose.model('Offer', offerSchema);

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../services/apiClient';
 import { useAuth } from './AuthContext';
 
@@ -9,6 +9,7 @@ export const useData = () => useContext(DataContext);
 
 export const DataProvider = ({ children }) => {
     const { user } = useAuth();
+    const queryClient = useQueryClient();
     const [userLocation, setUserLocation] = useState(null);
     const [locationError, setLocationError] = useState(null);
 
@@ -169,10 +170,74 @@ export const DataProvider = ({ children }) => {
     const likeStore = async (storeId) => {
         try {
             const res = await apiClient.post(`/stores/${storeId}/like`);
-            refetchStores();
-            return res; // { success: true, likes: number, isLiked: boolean }
+            // Optimistically update the stores cache so the UI reflects instantly
+            queryClient.setQueryData(['stores'], (old) => {
+                if (!Array.isArray(old)) return old;
+                return old.map((s) => {
+                    if ((s._id || s.id)?.toString() !== storeId?.toString()) return s;
+                    const userId = user?._id || user?.id;
+                    return {
+                        ...s,
+                        likes: res.likes,
+                        likedBy: res.isLiked
+                            ? [...(s.likedBy || []), userId]
+                            : (s.likedBy || []).filter(id => id?.toString() !== userId?.toString()),
+                    };
+                });
+            });
+            return res; // { success, likes, isLiked }
         } catch (e) {
             console.error('Error liking store:', e);
+            throw e;
+        }
+    };
+
+    const likeOffer = async (offerId) => {
+        try {
+            const res = await apiClient.post(`/offers/${offerId}/like`);
+            // Optimistically update the offers cache
+            queryClient.setQueryData(['offers'], (old) => {
+                if (!Array.isArray(old)) return old;
+                return old.map((o) => {
+                    if ((o._id || o.id)?.toString() !== offerId?.toString()) return o;
+                    const userId = user?._id || user?.id;
+                    return {
+                        ...o,
+                        likes: res.likes,
+                        likedBy: res.isLiked
+                            ? [...(o.likedBy || []), userId]
+                            : (o.likedBy || []).filter(id => id?.toString() !== userId?.toString()),
+                    };
+                });
+            });
+            return res;
+        } catch (e) {
+            console.error('Error liking offer:', e);
+            throw e;
+        }
+    };
+
+    // ---- Offer operations ----
+    const rateStore = async (storeId, score, comment) => {
+        try {
+            const res = await apiClient.post(`/stores/${storeId}/rate`, { score, comment });
+            const updatedStore = res.store || res;
+            // Update cache to reflect new rating immediately
+            queryClient.setQueryData(['stores'], (old) => {
+                if (!Array.isArray(old)) return old;
+                return old.map((s) => {
+                    if ((s._id || s.id)?.toString() !== storeId?.toString()) return s;
+                    return {
+                        ...s,
+                        ratings: updatedStore.ratings ?? s.ratings,
+                        averageRating: updatedStore.averageRating ?? s.averageRating,
+                        rating: updatedStore.rating ?? s.rating,
+                    };
+                });
+            });
+            return res;
+        } catch (e) {
+            console.error('Error rating store:', e);
             throw e;
         }
     };
@@ -265,6 +330,8 @@ export const DataProvider = ({ children }) => {
                 getOfferById,
                 incrementStoreViews,
                 likeStore,
+                likeOffer,
+                rateStore,
                 getAdminStats: async () => {
                    const res = await apiClient.get('/admin/stats');
                    return res.stats;

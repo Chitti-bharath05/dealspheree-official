@@ -28,7 +28,7 @@ const RegisterScreen = ({ navigation }) => {
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
-    const { register } = useAuth();
+    const { register, pendingDeepLink, setPendingDeepLink } = useAuth();
     const { t } = useLanguage();
 
     const showError = (msg) => {
@@ -57,7 +57,16 @@ const RegisterScreen = ({ navigation }) => {
         setLoading(true);
         try {
             const result = await register(name.trim(), email.trim().toLowerCase(), password, role, mobileNumber.trim());
-            if (!result.success) {
+            if (result.success) {
+                if (pendingDeepLink) {
+                    const offerId = pendingDeepLink;
+                    setPendingDeepLink(null);
+                    // Small delay to ensure navigator has switched stacks
+                    setTimeout(() => {
+                        navigation.navigate('OfferDetails', { offerId });
+                    }, 500);
+                }
+            } else {
                 showError(result.message || 'Registration failed. Please try again.');
             }
         } catch (e) {

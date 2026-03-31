@@ -55,6 +55,18 @@ router.post('/', protect, authorize('store_owner', 'admin'), validateRequest('ad
     try {
         const { title, description, discount, originalPrice, storeId, expiryDate, category, isOnline, platformLink, image } = req.body;
         
+        // 🔒 Check if the store is approved before allowing offer creation
+        const store = await Store.findById(storeId);
+        if (!store) {
+            return res.status(404).json({ success: false, message: 'Store not found' });
+        }
+        if (!store.approved) {
+            return res.status(403).json({ 
+                success: false, 
+                message: 'Your store registration is pending review. Offers can only be added to approved stores.' 
+            });
+        }
+
         const newOffer = await Offer.create({
             title,
             description,
@@ -70,8 +82,7 @@ router.post('/', protect, authorize('store_owner', 'admin'), validateRequest('ad
 
         // Send push notification to all customers
         try {
-            const store = await Store.findById(storeId);
-            const storeName = store ? store.storeName : 'A store';
+            const storeName = store.storeName || 'A store';
             await sendPushNotificationToCustomers(
                 `🔥 New ${discount}% Off Deal!`,
                 `${title} at ${storeName}. Don't miss out!`,
@@ -90,7 +101,25 @@ router.post('/', protect, authorize('store_owner', 'admin'), validateRequest('ad
 // Update offer (Protected: Store Owner, Admin)
 router.put('/:id', protect, authorize('store_owner', 'admin'), validateRequest('updateOffer'), async (req, res) => {
     try {
-        const updatedOffer = await Offer.findByIdAndUpdate(req.params.id, req.body, { new: true });
+        // Exclude stats from being updated via this route
+        const { title, description, discount, originalPrice, storeId, expiryDate, category, isOnline, platformLink, image } = req.body;
+        const updateFields = {};
+        if (title !== undefined) updateFields.title = title;
+        if (description !== undefined) updateFields.description = description;
+        if (discount !== undefined) updateFields.discount = discount;
+        if (originalPrice !== undefined) updateFields.originalPrice = originalPrice;
+        if (storeId !== undefined) updateFields.storeId = storeId;
+        if (expiryDate !== undefined) updateFields.expiryDate = expiryDate;
+        if (category !== undefined) updateFields.category = category;
+        if (isOnline !== undefined) updateFields.isOnline = isOnline;
+        if (platformLink !== undefined) updateFields.platformLink = platformLink;
+        if (image !== undefined) updateFields.image = image;
+
+        const updatedOffer = await Offer.findByIdAndUpdate(
+            req.params.id, 
+            { $set: updateFields }, 
+            { new: true }
+        );
         
         if (updatedOffer) {
             res.json({ success: true, offer: updatedOffer });
@@ -98,6 +127,7 @@ router.put('/:id', protect, authorize('store_owner', 'admin'), validateRequest('
             res.status(404).json({ success: false, message: 'Offer not found' });
         }
     } catch (error) {
+        console.error('Update offer error:', error);
         res.status(500).json({ success: false, message: 'Server error' });
     }
 });
@@ -113,6 +143,55 @@ router.delete('/:id', protect, authorize('store_owner', 'admin'), async (req, re
             res.status(404).json({ success: false, message: 'Offer not found' });
         }
     } catch (error) {
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// Toggle offer like (Protected: Customer only)
+router.post('/:id/like', protect, async (req, res) => {
+    try {
+        const offerId = req.params.id;
+        const userId = req.user._id;
+
+        const offer = await Offer.findById(offerId);
+        if (!offer) return res.status(404).json({ success: false, message: 'Offer not found' });
+
+        // Ensure offer.likedBy exists
+        if (!offer.likedBy) offer.likedBy = [];
+
+        const isLiked = offer.likedBy.some(id => id.toString() === userId.toString());
+
+        let update;
+        if (isLiked) {
+            update = {
+                $pull: { likedBy: userId },
+                $inc: { likes: -1 }
+            };
+        } else {
+            update = {
+                $addToSet: { likedBy: userId },
+                $inc: { likes: 1 }
+            };
+        }
+
+        const updatedOffer = await Offer.findByIdAndUpdate(
+            offerId,
+            update,
+            { new: true }
+        );
+
+        if (updatedOffer.likes < 0) {
+            updatedOffer.likes = 0;
+            await updatedOffer.save();
+        }
+
+        res.json({ 
+            success: true, 
+            likes: updatedOffer.likes, 
+            isLiked: !isLiked 
+        });
+    } catch (error) {
+        console.error('Offer Like error:', error);
         res.status(500).json({ success: false, message: 'Server error' });
     }
 });
