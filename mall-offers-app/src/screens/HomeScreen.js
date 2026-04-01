@@ -66,6 +66,10 @@ export default function HomeScreen({ navigation }) {
         setIsMenuOpen(!isMenuOpen);
     };
 
+    const [searchQuery, setSearchQuery] = useState('');
+    const { width } = useWindowDimensions();
+    const isWeb = Platform.OS === 'web';
+
     const activeOffers = getActiveOffers() || [];
 
     const contentWidth = isWeb ? Math.min(width, 1200) : width;
