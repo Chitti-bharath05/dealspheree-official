@@ -27,74 +27,54 @@ const SplashScreen = ({ onFinish }) => {
     const subOpacity = useRef(new Animated.Value(0)).current;
     const subSlide = useRef(new Animated.Value(10)).current;
 
-    // Progress Bar + Exit
-    const progressFill = useRef(new Animated.Value(0)).current;
     const exitScale = useRef(new Animated.Value(1)).current;
     const exitOpacity = useRef(new Animated.Value(1)).current;
 
-    // Web Fallback injection for SVG drawing (since RNW doesn't fully support strokeDashoffset interpolated strings)
+    // Web Fallback injection for SVG drawing
     const isWeb = Platform.OS === 'web';
 
     useEffect(() => {
         // Master Sequence
-        Animated.parallel([
-            // 1. Progress Bar completely filling over 4.5 seconds
-            Animated.timing(progressFill, {
-                toValue: 1,
-                duration: 4500,
-                useNativeDriver: false, // width animation
-                easing: Easing.linear
-            }),
+        Animated.sequence([
+            // Triangle Sequence (~1.8s)
+            Animated.timing(leftDraw, { toValue: 0, duration: 600, useNativeDriver: false, easing: Easing.out(Easing.ease) }),
+            Animated.timing(rightDraw, { toValue: 0, duration: 600, useNativeDriver: false, easing: Easing.out(Easing.ease) }),
+            Animated.timing(bottomDraw, { toValue: 0, duration: 600, useNativeDriver: false, easing: Easing.out(Easing.ease) }),
             
-            // 2. Main Timeline Execution
-            Animated.sequence([
-                // Triangle Sequence (~1.8s)
-                Animated.timing(leftDraw, { toValue: 0, duration: 600, useNativeDriver: false, easing: Easing.out(Easing.ease) }),
-                Animated.timing(rightDraw, { toValue: 0, duration: 600, useNativeDriver: false, easing: Easing.out(Easing.ease) }),
-                Animated.timing(bottomDraw, { toValue: 0, duration: 600, useNativeDriver: false, easing: Easing.out(Easing.ease) }),
-                
-                // Icon Pop (~0.8s)
-                Animated.parallel([
-                    Animated.spring(iconScale, { toValue: 1, friction: 6, tension: 40, useNativeDriver: true }),
-                    Animated.timing(iconOpacity, { toValue: 1, duration: 800, useNativeDriver: true, easing: Easing.out(Easing.quad) })
-                ]),
+            // Icon Pop (~0.8s)
+            Animated.parallel([
+                Animated.spring(iconScale, { toValue: 1, friction: 6, tension: 40, useNativeDriver: true }),
+                Animated.timing(iconOpacity, { toValue: 1, duration: 800, useNativeDriver: true, easing: Easing.out(Easing.quad) })
+            ]),
 
-                // Title Reveal (~0.9s)
-                Animated.parallel([
-                    Animated.timing(titleOpacity, { toValue: 1, duration: 900, useNativeDriver: true }),
-                    Animated.timing(letterSpacing, { toValue: 4, duration: 900, useNativeDriver: false, easing: Easing.out(Easing.quad) }) 
-                    // Note: letterSpacing uses false driver
-                ]),
+            // Title Reveal (~0.9s)
+            Animated.parallel([
+                Animated.timing(titleOpacity, { toValue: 1, duration: 900, useNativeDriver: true }),
+                Animated.timing(letterSpacing, { toValue: 4, duration: 900, useNativeDriver: false, easing: Easing.out(Easing.quad) }) 
+            ]),
 
-                // Tagline Reveal (~0.5s)
-                Animated.parallel([
-                    Animated.timing(subOpacity, { toValue: 1, duration: 500, useNativeDriver: true }),
-                    Animated.timing(subSlide, { toValue: 0, duration: 500, useNativeDriver: true, easing: Easing.out(Easing.back(1.5)) })
-                ]),
+            // Tagline Reveal (~0.5s)
+            Animated.parallel([
+                Animated.timing(subOpacity, { toValue: 1, duration: 500, useNativeDriver: true }),
+                Animated.timing(subSlide, { toValue: 0, duration: 500, useNativeDriver: true, easing: Easing.out(Easing.back(1.5)) })
+            ]),
 
-                // Slight delay to admire, completing exactly to ~4.5s
-                Animated.delay(300),
+            // Hold on screen to admire the completed logo (2.0s duration)
+            Animated.delay(2000),
 
-                // Exit Animation
-                Animated.parallel([
-                    Animated.timing(exitScale, { toValue: 1.1, duration: 400, useNativeDriver: true }),
-                    Animated.timing(exitOpacity, { toValue: 0, duration: 400, useNativeDriver: true })
-                ])
+            // Exit Animation (~0.4s)
+            Animated.parallel([
+                Animated.timing(exitScale, { toValue: 1.1, duration: 400, useNativeDriver: true }),
+                Animated.timing(exitOpacity, { toValue: 0, duration: 400, useNativeDriver: true })
             ])
         ]).start();
 
-        // Hard unmount / callback redirect strictly at 4.5 seconds
+        // Hard unmount / callback redirect strictly at 6.5 seconds (gives fully time to exit gracefully)
         const timer = setTimeout(() => {
             if (onFinish) onFinish();
-        }, 4500);
+        }, 6500);
         return () => clearTimeout(timer);
     }, []);
-
-    // Width interpolation for bottom bar
-    const barWidth = progressFill.interpolate({
-        inputRange: [0, 1],
-        outputRange: ['0%', '100%']
-    });
 
     return (
         <Animated.View style={[s.container, { opacity: exitOpacity, transform: [{ scale: exitScale }] }]}>
@@ -172,11 +152,6 @@ const SplashScreen = ({ onFinish }) => {
                 </Animated.View>
 
             </View>
-
-            {/* Bottom Global Progress Bar */}
-            <View style={s.progressContainer}>
-                <Animated.View style={[s.progressBarFill, { width: barWidth }]} />
-            </View>
         </Animated.View>
     );
 };
@@ -234,18 +209,6 @@ const s = StyleSheet.create({
         letterSpacing: 3,
         fontWeight: '600',
         textTransform: 'lowercase',
-    },
-    progressContainer: {
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        height: 3,
-        backgroundColor: 'rgba(201, 168, 76, 0.1)',
-    },
-    progressBarFill: {
-        height: '100%',
-        backgroundColor: '#F5E27A',
     }
 });
 
