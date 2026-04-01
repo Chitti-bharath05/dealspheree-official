@@ -29,7 +29,12 @@ Notifications.setNotificationHandler({
 const queryClient = new QueryClient();
 
 export default function App() {
-  const [showSplash, setShowSplash] = React.useState(true);
+  // On web, Vercel rewrites ALL paths to index.html, causing App to remount
+  // on every navigation. We use sessionStorage to show splash only once per session.
+  const hasSeenSplash = Platform.OS === 'web'
+    ? (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('splashShown') === 'true')
+    : false;
+  const [showSplash, setShowSplash] = React.useState(!hasSeenSplash);
 
   useEffect(() => {
     async function onFetchUpdateAsync() {
@@ -60,7 +65,12 @@ export default function App() {
                     <View style={styles.appWrapper}>
                       <AppNavigator />
                     </View>
-                    {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
+                    {showSplash && <SplashScreen onFinish={() => {
+                      if (Platform.OS === 'web' && typeof sessionStorage !== 'undefined') {
+                        sessionStorage.setItem('splashShown', 'true');
+                      }
+                      setShowSplash(false);
+                    }} />}
                 </DataProvider>
               </AuthProvider>
             </LanguageProvider>
