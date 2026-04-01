@@ -212,4 +212,6 @@ const s = StyleSheet.create({
     }
 });
 
+// Styles added below intentionally at end to avoid conflict with existing styles
+
 export default SplashScreen;

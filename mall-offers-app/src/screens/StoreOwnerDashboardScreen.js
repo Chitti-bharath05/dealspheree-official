@@ -40,6 +40,9 @@ const StoreOwnerDashboardScreen = () => {
     const [isSavingOffer, setIsSavingOffer] = useState(false);
     const [proofError, setProofError] = useState(false);
 
+    // State for the inline store-offers view (avoids URL-based navigation that remounts app on web)
+    const [selectedStore, setSelectedStore] = useState(null);
+
     const allMyStores = useMemo(() => getStoresByOwner(user?._id || user?.id) || [], [stores, user]);
     const myStores = useMemo(() => allMyStores, [allMyStores]); // Show all for management
     const hasApprovedStore = useMemo(() => allMyStores.some(s => s.approved), [allMyStores]);
@@ -53,8 +56,6 @@ const StoreOwnerDashboardScreen = () => {
     }, [allMyStores]);
 
     const activeOffersCount = useMemo(() => {
-        // Since we don't have all offers globally filtered easily here, 
-        // we'll rely on the existing offers and filter them by the owner's store IDs
         const myStoreIds = allMyStores.map(s => s._id || s.id);
         const myOffers = (offers || []).filter(o => {
             const oStoreId = o.storeId?._id || o.storeId;
@@ -62,6 +63,12 @@ const StoreOwnerDashboardScreen = () => {
         });
         return myOffers.filter(offer => new Date(offer.expiryDate) > new Date()).length;
     }, [offers, allMyStores]);
+
+    // Offers for the currently selected store (for inline view)
+    const selectedStoreOffers = useMemo(() => {
+        if (!selectedStore) return [];
+        return getOffersByStore(selectedStore._id || selectedStore.id) || [];
+    }, [offers, selectedStore]);
 
     const handlePickOfferImage = async () => {
         const result = await ImagePicker.launchImageLibraryAsync({
@@ -225,6 +232,208 @@ const StoreOwnerDashboardScreen = () => {
         </View>
     );
 
+    // ── INLINE STORE OFFERS VIEW ─────────────────────────────────────────────
+    if (selectedStore) {
+        const sid = selectedStore._id || selectedStore.id;
+        return (
+            <View style={s.container}>
+                {/* Spacer for top header */}
+                <View style={{ height: Platform.OS === 'web' ? 70 : 0 }} />
+
+                {/* Sub-header */}
+                <View style={s.soHeader}>
+                    <TouchableOpacity onPress={() => { setSelectedStore(null); resetForms(); }} style={s.soBackBtn}>
+                        <Ionicons name="arrow-back" size={22} color="#F5C518" />
+                        <Text style={s.soBackTxt}>Dashboard</Text>
+                    </TouchableOpacity>
+                    <View style={{ flex: 1 }}>
+                        <Text style={s.soTitle} numberOfLines={1}>{selectedStore.storeName}</Text>
+                        <Text style={s.soSub}>{selectedStoreOffers.length} offer{selectedStoreOffers.length !== 1 ? 's' : ''} active</Text>
+                    </View>
+                    <TouchableOpacity
+                        style={s.soAddBtn}
+                        onPress={() => { resetForms(); setSelectedStoreId(sid); setShowAddOffer(true); }}
+                    >
+                        <Ionicons name="add" size={20} color="#000" />
+                        <Text style={s.soAddBtnTxt}>Add Offer</Text>
+                    </TouchableOpacity>
+                </View>
+
+                <ScrollView contentContainerStyle={[s.scroll, selectedStoreOffers.length === 0 && { flexGrow: 1 }]}>
+                    {selectedStoreOffers.length === 0 ? (
+                        <View style={s.emptyDashboard}>
+                            <View style={s.emptyIconCircle}>
+                                <Ionicons name="pricetag-outline" size={70} color="#333" />
+                            </View>
+                            <Text style={s.emptyTitle}>No Offers Yet</Text>
+                            <Text style={s.emptySub}>Launch your first deal for this store to attract customers.</Text>
+                            <TouchableOpacity
+                                style={s.mainRegisterBtn}
+                                onPress={() => { resetForms(); setSelectedStoreId(sid); setShowAddOffer(true); }}
+                            >
+                                <Ionicons name="add" size={22} color="#000" />
+                                <Text style={s.mainRegisterBtnTxt}>Launch First Offer</Text>
+                            </TouchableOpacity>
+                        </View>
+                    ) : (
+                        <View style={[s.gridList, { paddingHorizontal: 20, paddingTop: 16, gap: 14 }]}>
+                            {selectedStoreOffers.map(item => (
+                                <View key={item._id || item.id} style={s.offerCard}>
+                                    <Image
+                                        source={{ uri: item.image || 'https://via.placeholder.com/600x200/1a1a1a/888?text=No+Image' }}
+                                        style={s.offerCardImg}
+                                    />
+                                    <View style={s.offerCardBody}>
+                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                            <Text style={s.offerCardTitle} numberOfLines={1}>{item.title}</Text>
+                                            <View style={s.offerDiscBadge}>
+                                                <Text style={s.offerDiscTxt}>{item.discount}% OFF</Text>
+                                            </View>
+                                        </View>
+                                        {item.description ? <Text style={s.offerCardDesc} numberOfLines={2}>{item.description}</Text> : null}
+                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+                                            <View>
+                                                <Text style={s.offerPrice}>₹{(item.originalPrice * (1 - item.discount / 100)).toLocaleString()}</Text>
+                                                <Text style={s.offerOldPrice}>₹{(item.originalPrice || 0).toLocaleString()}</Text>
+                                            </View>
+                                            <View style={{ flexDirection: 'row', gap: 8 }}>
+                                                <TouchableOpacity
+                                                    style={s.iconBtn}
+                                                    onPress={() => {
+                                                        setEditingOffer(item);
+                                                        setOfferTitle(item.title);
+                                                        setOfferDesc(item.description);
+                                                        setOfferDiscount(item.discount.toString());
+                                                        setOfferOriginalPrice(item.originalPrice.toString());
+                                                        const ex = new Date(item.expiryDate);
+                                                        setOfferExpiry(`${String(ex.getDate()).padStart(2,'0')}/${String(ex.getMonth()+1).padStart(2,'0')}/${ex.getFullYear()}`);
+                                                        setOfferImage(item.image);
+                                                        setSelectedStoreId(sid);
+                                                        setShowAddOffer(true);
+                                                    }}
+                                                >
+                                                    <Ionicons name="pencil" size={18} color="#F5C518" />
+                                                </TouchableOpacity>
+                                                <TouchableOpacity
+                                                    style={[s.iconBtn, { borderColor: 'rgba(255,59,48,0.3)' }]}
+                                                    onPress={() => {
+                                                        if (Platform.OS === 'web') {
+                                                            if (window.confirm('Delete this offer?')) deleteOffer(item._id || item.id);
+                                                        } else {
+                                                            Alert.alert('Delete', 'Delete this offer?', [
+                                                                { text: 'Cancel', style: 'cancel' },
+                                                                { text: 'Delete', style: 'destructive', onPress: () => deleteOffer(item._id || item.id) }
+                                                            ]);
+                                                        }
+                                                    }}
+                                                >
+                                                    <Ionicons name="trash" size={18} color="#FF3B30" />
+                                                </TouchableOpacity>
+                                            </View>
+                                        </View>
+                                    </View>
+                                </View>
+                            ))}
+                        </View>
+                    )}
+                </ScrollView>
+
+                {/* Offer Add/Edit Modal — reused from dashboard */}
+                <Modal visible={showAddOffer} animationType="slide" transparent>
+                    <View style={s.modalOverlay}>
+                        <View style={s.modalContent}>
+                            <View style={s.modalHeader}>
+                                <Text style={s.modalTitle}>{editingOffer ? 'Update' : 'Launch'} Offer</Text>
+                                <TouchableOpacity onPress={() => { setShowAddOffer(false); resetForms(); setSelectedStoreId(sid); }}>
+                                    <Ionicons name="close" size={24} color="#fff" />
+                                </TouchableOpacity>
+                            </View>
+                            <ScrollView>
+                                <TouchableOpacity style={s.imgPickerBox} onPress={handlePickOfferImage}>
+                                    {offerImage
+                                        ? <Image source={{ uri: offerImage }} style={s.pickedImg} />
+                                        : <View style={{ alignItems: 'center' }}><Ionicons name="image-outline" size={36} color="#F5C518" /><Text style={s.imgPickerTxt}>Tap to upload photo</Text></View>
+                                    }
+                                </TouchableOpacity>
+                                <View style={s.inputGrp}>
+                                    <Text style={s.label}>Offer Title</Text>
+                                    <TextInput style={s.input} value={offerTitle} onChangeText={setOfferTitle} placeholder="e.g. 50% Off Everything" placeholderTextColor="#555" />
+                                </View>
+                                <View style={{ flexDirection: 'row', gap: 12 }}>
+                                    <View style={[s.inputGrp, { flex: 1 }]}>
+                                        <Text style={s.label}>Price (₹)</Text>
+                                        <TextInput style={s.input} value={offerOriginalPrice} onChangeText={setOfferOriginalPrice} keyboardType="numeric" placeholder="1000" placeholderTextColor="#555" />
+                                    </View>
+                                    <View style={[s.inputGrp, { flex: 0.8 }]}>
+                                        <Text style={s.label}>Discount %</Text>
+                                        <TextInput style={s.input} value={offerDiscount} onChangeText={setOfferDiscount} keyboardType="numeric" placeholder="50" placeholderTextColor="#555" />
+                                    </View>
+                                </View>
+                                <View style={s.inputGrp}>
+                                    <Text style={s.label}>Expires On (DD/MM/YYYY)</Text>
+                                    <TextInput style={s.input} value={offerExpiry} onChangeText={setOfferExpiry} placeholder="25/12/2026" placeholderTextColor="#555" />
+                                </View>
+                                <View style={s.inputGrp}>
+                                    <Text style={s.label}>Description</Text>
+                                    <TextInput style={[s.input, { height: 100, textAlignVertical: 'top', paddingTop: 10 }]} value={offerDesc} onChangeText={setOfferDesc} multiline placeholder="Describe your offer..." placeholderTextColor="#555" />
+                                </View>
+                                <TouchableOpacity
+                                    style={[s.submitBtn, isSavingOffer && { opacity: 0.7 }]}
+                                    onPress={async () => {
+                                        if (!offerTitle || !offerDiscount || !offerOriginalPrice || !sid || !offerExpiry) {
+                                            return Alert.alert('Error', 'Please fill in all required fields.');
+                                        }
+                                        setIsSavingOffer(true);
+                                        try {
+                                            let calculatedExpiry;
+                                            const parts = offerExpiry.split('/');
+                                            if (parts.length === 3) {
+                                                calculatedExpiry = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]), 23, 59, 59);
+                                            } else {
+                                                calculatedExpiry = new Date(offerExpiry);
+                                            }
+                                            if (isNaN(calculatedExpiry.getTime())) {
+                                                setIsSavingOffer(false);
+                                                return Alert.alert('Invalid Date', 'Use DD/MM/YYYY format.');
+                                            }
+                                            const offerData = {
+                                                title: offerTitle, description: offerDesc,
+                                                discount: parseInt(offerDiscount),
+                                                originalPrice: parseInt(offerOriginalPrice),
+                                                expiryDate: calculatedExpiry.toISOString(),
+                                                category: selectedStore.category || 'Fashion',
+                                                storeId: sid, image: offerImage
+                                            };
+                                            if (editingOffer) {
+                                                await updateOffer(editingOffer._id || editingOffer.id, offerData);
+                                            } else {
+                                                await addOffer(offerData);
+                                            }
+                                            setShowAddOffer(false);
+                                            resetForms();
+                                            setSelectedStoreId(sid);
+                                        } catch (e) {
+                                            Alert.alert('Error', 'Failed to save offer. Please try again.');
+                                        } finally {
+                                            setIsSavingOffer(false);
+                                        }
+                                    }}
+                                    disabled={isSavingOffer}
+                                >
+                                    {isSavingOffer
+                                        ? <ActivityIndicator color="#000" />
+                                        : <Text style={s.submitBtnTxt}>{editingOffer ? 'Update' : 'Launch'} Offer</Text>
+                                    }
+                                </TouchableOpacity>
+                            </ScrollView>
+                        </View>
+                    </View>
+                </Modal>
+            </View>
+        );
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     return (
         <View style={s.container}>
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
@@ -294,7 +503,9 @@ const StoreOwnerDashboardScreen = () => {
                                             style={s.storeCard}
                                             onPress={() => {
                                                 if (item.approved) {
-                                                    navigation.navigate('StoreOffers', { storeId: item._id || item.id });
+                                                    resetForms();
+                                                    setSelectedStoreId(item._id || item.id);
+                                                    setSelectedStore(item);
                                                 } else {
                                                     Alert.alert('Store Pending', "store not approved can't add offers/deals");
                                                 }
@@ -591,6 +802,41 @@ const s = StyleSheet.create({
     securityBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(245,197,24,0.1)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
     securityBadgeTxt: { color: '#F5C518', fontSize: 9, fontWeight: '900', letterSpacing: 0.5 },
     helpHeader: { color: '#8E8E93', fontSize: 13, marginBottom: 15, lineHeight: 18 },
+    // ── Inline Store Offers View styles ──────────────────────────────────────
+    soHeader: {
+        flexDirection: 'row', alignItems: 'center', gap: 12,
+        paddingHorizontal: 20, paddingVertical: 14,
+        backgroundColor: '#111', borderBottomWidth: 1,
+        borderBottomColor: 'rgba(255,255,255,0.06)',
+    },
+    soBackBtn: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    soBackTxt: { color: '#F5C518', fontSize: 13, fontWeight: '700' },
+    soTitle: { color: '#fff', fontSize: 17, fontWeight: '800' },
+    soSub: { color: '#8E8E93', fontSize: 12 },
+    soAddBtn: {
+        flexDirection: 'row', alignItems: 'center', gap: 6,
+        backgroundColor: '#F5C518', paddingHorizontal: 14,
+        paddingVertical: 8, borderRadius: 12,
+    },
+    soAddBtnTxt: { color: '#000', fontSize: 13, fontWeight: '900' },
+    offerCard: {
+        backgroundColor: '#1A1A1A', borderRadius: 16,
+        overflow: 'hidden', borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.06)',
+    },
+    offerCardImg: { width: '100%', height: 140, resizeMode: 'cover' },
+    offerCardBody: { padding: 14 },
+    offerCardTitle: { color: '#fff', fontSize: 15, fontWeight: '800', flex: 1, marginRight: 8 },
+    offerCardDesc: { color: '#8E8E93', fontSize: 13, marginTop: 4, lineHeight: 18 },
+    offerDiscBadge: { backgroundColor: '#F5C518', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
+    offerDiscTxt: { color: '#000', fontSize: 11, fontWeight: '900' },
+    offerPrice: { color: '#fff', fontSize: 16, fontWeight: '800' },
+    offerOldPrice: { color: '#555', fontSize: 12, textDecorationLine: 'line-through' },
+    iconBtn: {
+        width: 36, height: 36, borderRadius: 10,
+        borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
+        alignItems: 'center', justifyContent: 'center',
+    },
 });
 
 export default StoreOwnerDashboardScreen;
