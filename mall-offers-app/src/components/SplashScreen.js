@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, Dimensions, Easing, Platform } from 'react-native';
-import Svg, { Line, Circle, Rect, Defs, LinearGradient, Stop, G } from 'react-native-svg';
+import Svg, { Line, Circle, Rect, Defs, LinearGradient, Stop, G, Path, Text as SvgText } from 'react-native-svg';
 
 const { width } = Dimensions.get('window');
 const AnimatedLine = Animated.createAnimatedComponent(Line);
@@ -141,7 +141,7 @@ const SplashScreen = ({ onFinish }) => {
                             <G>
                                 {/* Dollar coin */}
                                 <Circle cx="85" cy="100" r="22" stroke="#C9A84C" strokeWidth="2" fill="none" />
-                                <Text x="85" y="106" fill="#C9A84C" fontSize="16" fontWeight="bold" textAnchor="middle" />
+                                <SvgText x="85" y="106" fill="#C9A84C" fontSize="16" fontWeight="bold" textAnchor="middle">$</SvgText>
                                 {/* Emulated SVG Text using pure path or native mapping is better, but since it's an icon: */}
                                 <Line x1="85" y1="85" x2="85" y2="115" stroke="#C9A84C" strokeWidth="2" />
                                 <Path d="M92 95 Q85 85 78 95 T85 105 T92 110 Q85 115 78 105" fill="none" stroke="#C9A84C" strokeWidth="2" />
