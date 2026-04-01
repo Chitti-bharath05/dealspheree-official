@@ -38,6 +38,7 @@ const StoreOwnerDashboardScreen = () => {
     const [editingStore, setEditingStore] = useState(null);
     const [isSavingStore, setIsSavingStore] = useState(false);
     const [isSavingOffer, setIsSavingOffer] = useState(false);
+    const [proofError, setProofError] = useState(false);
 
     const allMyStores = useMemo(() => getStoresByOwner(user?._id || user?.id) || [], [stores, user]);
     const myStores = useMemo(() => allMyStores, [allMyStores]); // Show all for management
@@ -96,6 +97,7 @@ const StoreOwnerDashboardScreen = () => {
         setStoreName(''); setLocation(''); setStoreLocation({ lat: null, lng: null }); setCategory(categories[0] || 'Fashion'); setStoreImage(null); setBusinessProofImage(null);
         setOfferTitle(''); setOfferDesc(''); setOfferDiscount(''); setOfferOriginalPrice(''); setOfferExpiry('');
         setOfferImage(null); setEditingOffer(null); setEditingStore(null);
+        setProofError(false);
     };
 
     const handleSaveStore = async () => {
@@ -108,8 +110,10 @@ const StoreOwnerDashboardScreen = () => {
 
         // Security check for new registrations
         if (!editingStore && !businessProofImage) {
+            setProofError(true);
             return Alert.alert('Verification Required', 'Please upload a Business Proof (License, GST certificate, or Shop photo with sign) to register your store.');
         }
+        setProofError(false);
 
         setIsSavingStore(true);
         try {
@@ -292,7 +296,7 @@ const StoreOwnerDashboardScreen = () => {
                                                 if (item.approved) {
                                                     navigation.navigate('StoreOffers', { storeId: item._id || item.id });
                                                 } else {
-                                                    Alert.alert('Store Pending', 'Your store is currently under review by the DealSphere team. You can manage offers once it is approved.');
+                                                    Alert.alert('Store Pending', "store not approved can't add offers/deals");
                                                 }
                                             }}
                                         >
@@ -423,7 +427,7 @@ const StoreOwnerDashboardScreen = () => {
                                     <Text style={s.helpHeader}>Upload a proof of business (GST, Trade License, or Shop Photo with owner) to prevent unauthorized claims.</Text>
                                     
                                     <View style={s.imgPickerWrapper}>
-                                        <TouchableOpacity style={[s.imgPickerBox, !businessProofImage && { borderColor: 'rgba(255,59,48,0.3)' }]} onPress={handlePickBusinessProof}>
+                                        <TouchableOpacity style={[s.imgPickerBox, !businessProofImage && { borderColor: proofError ? '#FF3B30' : 'rgba(255,59,48,0.3)', borderWidth: proofError ? 2 : 1 }]} onPress={() => { setProofError(false); handlePickBusinessProof(); }}>
                                             {businessProofImage ? (
                                                 <Image source={{ uri: businessProofImage }} style={s.pickedImg} />
                                             ) : (

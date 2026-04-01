@@ -19,16 +19,21 @@ const schemas = {
         storeName: Joi.string().min(2).max(100).required(),
         ownerId: Joi.string().length(24).hex().required(), 
         location: Joi.string().required(),
+        address: Joi.string().allow('', null).optional(),
         houseNo: Joi.string().allow('', null),
         street: Joi.string().allow('', null),
         area: Joi.string().allow('', null),
         pincode: Joi.string().allow('', null),
         city: Joi.string().allow('', null),
         category: Joi.string().required(),
+        businessProofUrl: Joi.string().allow('', null).optional(),
+        bannerUrl: Joi.string().allow('', null).optional(),
+        logoUrl: Joi.string().allow('', null).optional(),
         hasDeliveryPartner: Joi.boolean().default(false),
         lat: Joi.number().allow(null).optional(),
         lng: Joi.number().allow(null).optional(),
     }),
+
 
     // Offers
     addOffer: Joi.object({

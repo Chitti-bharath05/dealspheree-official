@@ -18,12 +18,14 @@ const SplashScreen = ({ onFinish }) => {
             Animated.parallel([
                 Animated.timing(fadeAnim, {
                     toValue: 1,
-                    duration: 1000,
+                    duration: 2500,
+                    easing: Easing.out(Easing.exp),
                     useNativeDriver: true,
                 }),
                 Animated.timing(scaleAnim, {
                     toValue: 1,
-                    duration: 1500,
+                    duration: 2500,
+                    easing: Easing.out(Easing.exp),
                     useNativeDriver: true,
                 }),
                 Animated.timing(glowAnim, {
@@ -62,15 +64,14 @@ const SplashScreen = ({ onFinish }) => {
                 
                 <Animated.View style={[s.content, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
                     <View style={s.logoWrapper}>
-                        <View style={s.imageBadge}>
-                            <Animated.Image 
-                                source={require('../../assets/official_logo.png')} 
-                                style={s.logoImage}
-                                resizeMode="contain"
-                            />
-                        </View>
-                        <Text style={s.title}>DEALSPHEREE</Text>
-                        <Text style={s.tagline}>PREMIUM MALL OFFERS</Text>
+                        <Animated.Image 
+                            source={require('../../assets/official_logo.png')} 
+                            style={{
+                                width: Math.min(width * 0.8, 400),
+                                height: Math.min(width * 0.8, 400),
+                            }}
+                            resizeMode="contain"
+                        />
                     </View>
                     
                     <View style={s.footer}>

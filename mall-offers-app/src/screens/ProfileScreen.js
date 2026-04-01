@@ -48,7 +48,11 @@ const ProfileScreen = ({ navigation }) => {
             badge: favorites?.length?.toString() || '0', 
             onPress: () => navigation.navigate('Favorites') 
         },
-        { icon: 'notifications-outline', label: t('push_notif') },
+        { 
+            icon: 'notifications-outline', 
+            label: t('push_notif'),
+            onPress: () => navigation.navigate('Settings') 
+        },
         { 
             icon: 'settings-outline', 
             label: t('settings'), 

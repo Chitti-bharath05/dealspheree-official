@@ -42,7 +42,7 @@ const authScreenOptions = {
 
 // Customer Home Stack
 const CustomerStack = () => (
-    <Stack.Navigator screenOptions={screenOptions}>
+    <Stack.Navigator screenOptions={screenOptions} initialRouteName="Profile">
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="Map" component={MapScreen} />
         <Stack.Screen name="Profile" component={ProfileStack} />
@@ -71,7 +71,7 @@ const ProfileStack = () => (
 
 // Store Owner Stack
 const StoreOwnerStack = () => (
-    <Stack.Navigator screenOptions={screenOptions}>
+    <Stack.Navigator screenOptions={screenOptions} initialRouteName="Profile">
         <Stack.Screen name="Dashboard" component={StoreOwnerDashboardScreen} />
         <Stack.Screen name="StoreOffers" component={StoreOffersScreen} />
         <Stack.Screen name="Map" component={MapScreen} />
@@ -82,13 +82,14 @@ const StoreOwnerStack = () => (
 
 // Admin Stack
 const AdminStack = () => (
-    <Stack.Navigator screenOptions={screenOptions}>
+    <Stack.Navigator screenOptions={screenOptions} initialRouteName="Profile">
         <Stack.Screen name="Dashboard" component={AdminDashboardScreen} />
         <Stack.Screen name="Map" component={MapScreen} />
         <Stack.Screen name="Profile" component={ProfileStack} />
         <Stack.Screen name="Home" component={CustomerStack} />
     </Stack.Navigator>
 );
+
 
 // Auth Stack
 const AuthStack = () => (
