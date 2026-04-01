@@ -12,6 +12,7 @@ import { useData } from '../context/DataContext';
 import { useLanguage } from '../context/LanguageContext';
 import StoreLocationPicker from '../components/StoreLocationPicker';
 import StoreLocationDisplay from '../components/StoreLocationDisplay';
+import { uploadImage } from '../services/uploadService';
 
 const StoreOwnerDashboardScreen = () => {
     const { user, logout } = useAuth();
@@ -40,6 +41,7 @@ const StoreOwnerDashboardScreen = () => {
     const [editingStore, setEditingStore] = useState(null);
     const [isSavingStore, setIsSavingStore] = useState(false);
     const [isSavingOffer, setIsSavingOffer] = useState(false);
+    const [loadingMessage, setLoadingMessage] = useState('');
     const [proofError, setProofError] = useState(false);
 
     // State for the inline store-offers view (avoids URL-based navigation that remounts app on web)
@@ -110,60 +112,95 @@ const StoreOwnerDashboardScreen = () => {
     };
 
     const handleSaveStore = async () => {
-        if (!storeName.trim() || !location.trim()) {
-            return Alert.alert('Error', 'Store name and location are required.');
+        const sName = (storeName || '').trim();
+        const sLoc = (location || '').trim();
+
+        if (!sName) {
+            return Alert.alert('Missing Name', 'Please enter your store name.');
         }
-        if (!storeLocation?.lat || !storeLocation?.lng) {
-            return Alert.alert('Location Required', 'Please use Auto Detect or Search to pin your exact location on the map.');
+        if (!sLoc) {
+            return Alert.alert('Missing Location', 'Please provide a location description or address.');
+        }
+        if (storeLocation?.lat === null || storeLocation?.lng === null) {
+            return Alert.alert('Map Location Needed', 'Please use the map search or "Auto Detect" to set your store coordinates on the map.');
         }
 
         // Security check for new registrations
         if (!editingStore && !businessProofImage) {
             setProofError(true);
-            return Alert.alert('Verification Required', 'Please upload a Business Proof (License, GST certificate, or Shop photo with sign) to register your store.');
+            return Alert.alert('Verification Required', 'Please upload a Business Proof photo to register your store.');
         }
         setProofError(false);
 
         setIsSavingStore(true);
+        setLoadingMessage('Uploading store images...');
         try {
+            const userId = (user?.id || user?._id)?.toString();
+            
+            if (!userId) {
+                console.error('[Dashboard] Auth error: No User ID found');
+                setIsSavingStore(false);
+                return Alert.alert('Session Error', 'Please log out and log in again.');
+            }
+
+            // 1. Upload Store Banner if it's a local URI
+            let finalBannerUrl = storeImage;
+            if (storeImage && !storeImage.startsWith('http')) {
+                setLoadingMessage('Uploading banner...');
+                finalBannerUrl = await uploadImage(storeImage);
+            }
+
+            // 2. Upload Business Proof if it's a local URI
+            let finalProofUrl = businessProofImage;
+            if (businessProofImage && !businessProofImage.startsWith('http')) {
+                setLoadingMessage('Uploading verification proof...');
+                finalProofUrl = await uploadImage(businessProofImage);
+            }
+
             if (editingStore) {
+                const storeId = (editingStore._id || editingStore.id).toString();
                 const updateData = {
-                    storeName: storeName.trim(),
-                    location: location.trim(),
+                    storeName: sName,
+                    location: sLoc,
                     category,
                     lat: storeLocation?.lat || null,
                     lng: storeLocation?.lng || null,
-                    bannerUrl: storeImage
+                    bannerUrl: finalBannerUrl
                 };
                 if (storeLocation?.address) {
                     updateData.address = storeLocation.address;
                 }
-                await updateStore(editingStore._id || editingStore.id, updateData);
-                Alert.alert('Success', 'Store updated successfully!');
+                setLoadingMessage('Updating store details...');
+                await updateStore(storeId, updateData);
+                setShowAddStore(false);
+                resetForms();
+                Alert.alert('Success', 'Store details updated.');
             } else {
+                setLoadingMessage('Submitting registration...');
                 const registerData = {
-                    storeName: storeName.trim(),
-                    location: location.trim(),
+                    storeName: sName,
+                    location: sLoc,
                     category,
-                    ownerId: user.id || user._id,
+                    ownerId: userId,
                     lat: storeLocation?.lat || null,
                     lng: storeLocation?.lng || null,
-                    bannerUrl: storeImage,
-                    businessProofUrl: businessProofImage
+                    bannerUrl: finalBannerUrl,
+                    businessProofUrl: finalProofUrl
                 };
-                if (storeLocation?.address) {
-                    registerData.address = storeLocation.address;
-                }
+                if (storeLocation?.address) registerData.address = storeLocation.address;
+                
                 await registerStore(registerData);
-                Alert.alert('Success', 'Store registered! It will be reviewed shortly.');
+                setShowAddStore(false);
+                resetForms();
+                Alert.alert('Success', 'Store registered! Pending admin review.');
             }
-            setShowAddStore(false);
-            resetForms();
         } catch (e) {
-            console.error('handleSaveStore error:', e);
-            Alert.alert('Failed to update store', e?.message || 'Please try again.');
+            console.error('[Dashboard] saveStore error:', e);
+            const errMsg = e.response?.data?.message || e.message || 'Server connection failed.';
+            Alert.alert('Registration Failed', errMsg);
         } finally {
             setIsSavingStore(false);
+            setLoadingMessage('');
         }
     };
 
@@ -172,8 +209,9 @@ const StoreOwnerDashboardScreen = () => {
             return Alert.alert('Error', 'Missing required fields');
         }
         setIsSavingOffer(true);
+        setLoadingMessage('Uploading offer image...');
         try {
-            const selectedStore = myStores.find(s => (s._id || s.id) === selectedStoreId);
+            const selectedStore = myStores.find(s => (s._id || s.id).toString() === selectedStoreId.toString());
             const offerCategory = selectedStore ? selectedStore.category : (categories[0] || 'Fashion');
             
             let calculatedExpiry;
@@ -185,7 +223,14 @@ const StoreOwnerDashboardScreen = () => {
             }
             if (isNaN(calculatedExpiry.getTime())) {
                 setIsSavingOffer(false);
+                setLoadingMessage('');
                 return Alert.alert('Invalid Date', 'Please type the expiry date in DD/MM/YYYY format.');
+            }
+
+            // Upload Offer Image if it's a local URI
+            let finalOfferImage = offerImage;
+            if (offerImage && !offerImage.startsWith('http')) {
+                finalOfferImage = await uploadImage(offerImage);
             }
 
             const offerData = { 
@@ -196,11 +241,14 @@ const StoreOwnerDashboardScreen = () => {
                 expiryDate: calculatedExpiry.toISOString(), 
                 category: offerCategory,
                 storeId: selectedStoreId, 
-                image: offerImage 
+                image: finalOfferImage 
             };
+            
             if (editingOffer) {
+                setLoadingMessage('Updating offer...');
                 await updateOffer(editingOffer._id || editingOffer.id, offerData);
             } else {
+                setLoadingMessage('Publishing offer...');
                 await addOffer(offerData);
             }
             setShowAddOffer(false);
@@ -209,6 +257,7 @@ const StoreOwnerDashboardScreen = () => {
             Alert.alert('Error', 'Failed to save offer');
         } finally {
             setIsSavingOffer(false);
+            setLoadingMessage('');
         }
     };
 
@@ -432,10 +481,14 @@ const StoreOwnerDashboardScreen = () => {
                                     }}
                                     disabled={isSavingOffer}
                                 >
-                                    {isSavingOffer
-                                        ? <ActivityIndicator color="#000" />
-                                        : <Text style={s.submitBtnTxt}>{editingOffer ? 'Update' : 'Launch'} Offer</Text>
-                                    }
+                                    {isSavingOffer ? (
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                                            <ActivityIndicator color="#000" />
+                                            <Text style={[s.submitBtnTxt, { fontSize: 13 }]}>{loadingMessage || 'Publishing...'}</Text>
+                                        </View>
+                                    ) : (
+                                        <Text style={s.submitBtnTxt}>{editingOffer ? 'Update Offer' : 'Publish Offer'}</Text>
+                                    )}
                                 </TouchableOpacity>
                             </ScrollView>
                         </View>
@@ -673,8 +726,15 @@ const StoreOwnerDashboardScreen = () => {
                                 </View>
                             )}
 
-                            <TouchableOpacity style={[s.submitBtn, isSavingStore && { opacity: 0.7 }]} onPress={handleSaveStore} disabled={isSavingStore}>
-                                {isSavingStore ? <ActivityIndicator color="#000" /> : <Text style={s.submitBtnTxt}>{editingStore ? 'Update Store' : 'Register Store'}</Text>}
+                            <TouchableOpacity style={[s.submitBtn, (isSavingStore || isSavingOffer) && { opacity: 0.7 }]} onPress={handleSaveStore} disabled={isSavingStore || isSavingOffer}>
+                                {isSavingStore || isSavingOffer ? (
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                                        <ActivityIndicator color="#000" />
+                                        <Text style={[s.submitBtnTxt, { fontSize: 13 }]}>{loadingMessage || 'Please wait...'}</Text>
+                                    </View>
+                                ) : (
+                                    <Text style={s.submitBtnTxt}>{editingStore ? 'Update Store' : 'Register Store'}</Text>
+                                )}
                             </TouchableOpacity>
                         </ScrollView>
                     </View>

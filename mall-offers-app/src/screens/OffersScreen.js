@@ -94,7 +94,8 @@ export default function OffersScreen({ route, navigation }) {
     }, [activeOffers, selectedCategory, searchQuery, storeId]);
 
     const renderOfferCard = ({ item }) => {
-        const isFavorite = favorites.includes(item._id || item.id);
+        const offerId = (item._id || item.id)?.toString();
+        const isFavorite = (favorites || []).some(id => id?.toString() === offerId);
         const expiryDate = item.expiryDate ? new Date(item.expiryDate) : new Date();
         const daysLeft = Math.max(0, Math.ceil((expiryDate - new Date()) / (1000 * 60 * 60 * 24)));
 

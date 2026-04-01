@@ -173,17 +173,15 @@ export const DataProvider = ({ children }) => {
             // Optimistically update the stores cache so the UI reflects instantly
             queryClient.setQueryData(['stores'], (old) => {
                 if (!Array.isArray(old)) return old;
-                return old.map((s) => {
-                    if ((s._id || s.id)?.toString() !== storeId?.toString()) return s;
-                    const userId = user?._id || user?.id;
-                    return {
-                        ...s,
-                        likes: res.likes,
-                        likedBy: res.isLiked
-                            ? [...(s.likedBy || []), userId]
-                            : (s.likedBy || []).filter(id => id?.toString() !== userId?.toString()),
-                    };
-                });
+                const userId = (user?._id || user?.id)?.toString();
+                if (!userId) return old;
+                return old.map(s => (s._id || s.id) === storeId ? {
+                    ...s,
+                    likes: res.likes,
+                    likedBy: res.isLiked
+                        ? [...(s.likedBy || []).filter(id => id?.toString() !== userId), userId]
+                        : (s.likedBy || []).filter(id => id?.toString() !== userId)
+                } : s);
             });
             return res; // { success, likes, isLiked }
         } catch (e) {
@@ -198,17 +196,15 @@ export const DataProvider = ({ children }) => {
             // Optimistically update the offers cache
             queryClient.setQueryData(['offers'], (old) => {
                 if (!Array.isArray(old)) return old;
-                return old.map((o) => {
-                    if ((o._id || o.id)?.toString() !== offerId?.toString()) return o;
-                    const userId = user?._id || user?.id;
-                    return {
-                        ...o,
-                        likes: res.likes,
-                        likedBy: res.isLiked
-                            ? [...(o.likedBy || []), userId]
-                            : (o.likedBy || []).filter(id => id?.toString() !== userId?.toString()),
-                    };
-                });
+                const userId = (user?._id || user?.id)?.toString();
+                if (!userId) return old;
+                return old.map(o => (o._id || o.id) === offerId ? {
+                    ...o,
+                    likes: res.likes,
+                    likedBy: res.isLiked
+                        ? [...(o.likedBy || []).filter(id => id?.toString() !== userId), userId]
+                        : (o.likedBy || []).filter(id => id?.toString() !== userId)
+                } : o);
             });
             return res;
         } catch (e) {

@@ -184,17 +184,16 @@ const OfferDetailsScreen = ({ route, navigation }) => {
         try {
             const res = await likeStore(storeId);
             if (res.success) {
-                // The cache is already updated by DataContext.likeStore
-                // We update local state too for immediate visual feedback
+                // Update local state with explicit string ID for consistency
                 setStore(prev => {
                     if (!prev) return prev;
-                    const userId = user._id || user.id;
+                    const userId = (user._id || user.id).toString();
                     return {
                         ...prev,
                         likes: res.likes,
                         likedBy: res.isLiked
-                            ? [...(prev.likedBy || []).filter(id => id.toString() !== userId.toString()), userId]
-                            : (prev.likedBy || []).filter(id => id.toString() !== userId.toString())
+                            ? [...(prev.likedBy || []).filter(id => id.toString() !== userId), userId]
+                            : (prev.likedBy || []).filter(id => id.toString() !== userId)
                     };
                 });
             }
@@ -207,7 +206,7 @@ const OfferDetailsScreen = ({ route, navigation }) => {
     const isStoreLiked = useMemo(() => {
         if (!store || !user) return false;
         const userId = (user._id || user.id).toString();
-        return (store.likedBy || []).some(id => id.toString() === userId);
+        return (store.likedBy || []).some(id => id?.toString() === userId);
     }, [store, user]);
 
     const submitRating = async () => {

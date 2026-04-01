@@ -47,6 +47,21 @@ router.post('/', protect, validateRequest('registerStore'), async (req, res) => 
     try {
         const { storeName, ownerId, location, houseNo, street, area, pincode, city, address, category, logoUrl, bannerUrl, businessProofUrl, hasDeliveryPartner, lat, lng } = req.body;
         
+        // 🔒 Security check: OwnerId must match authenticated user
+        if (ownerId.toString() !== req.user.id.toString()) {
+            return res.status(403).json({ success: false, message: 'You can only register stores for your own account.' });
+        }
+
+        // 🛡️ Prevent duplicate store names for the same owner
+        const existingStore = await Store.findOne({ 
+            storeName: { $regex: new RegExp(`^${storeName.trim()}$`, 'i') }, 
+            ownerId: req.user.id 
+        });
+        
+        if (existingStore) {
+            return res.status(400).json({ success: false, message: 'You already have a store registered with this name.' });
+        }
+
         const newStore = await Store.create({
             storeName,
             ownerId, 
@@ -58,37 +73,41 @@ router.post('/', protect, validateRequest('registerStore'), async (req, res) => 
             city: city || '',
             address: address || '',
             category,
-            logoUrl: logoUrl || null,
-            bannerUrl: bannerUrl || null,
-            businessProofUrl: businessProofUrl || null,
-            hasDeliveryPartner: !!hasDeliveryPartner,
+            logoUrl: logoUrl || '',
+            bannerUrl: bannerUrl || '',
+            businessProofUrl: businessProofUrl || '',
+            hasDeliveryPartner: hasDeliveryPartner || false,
             lat: lat || null,
             lng: lng || null,
             approved: false 
         });
 
-        // 🚀 Trigger Admin Notifications (Push & Email)
+        // 📧 Notify Admins (Non-blocking but optimized)
         try {
-            const owner = await User.findById(ownerId);
-            const ownerName = owner ? owner.name : 'Unknown User';
-            
-            const message = `🏢 New Store Registration Alert!\n\nStore: ${storeName}\nOwner: ${ownerName}\nLocation: ${location}\n\nPlease log in to the admin panel to review.`;
-
-            // 1. Send Push Notification to all admins
-            await sendPushNotificationToAdmins(
-                "New Store Registration",
-                `${storeName} by ${ownerName} is waiting for approval.`,
-                { storeId: newStore._id.toString(), type: 'new_store' }
-            );
-
-            // 2. Send Emails to all admins
             const admins = await User.find({ role: 'admin' }).select('email');
-            for (const admin of admins) {
-                await sendEmail({
-                    email: admin.email,
-                    subject: "Action Required: New Store Registered",
-                    message: message
-                });
+            const owner = await User.findById(ownerId);
+            
+            if (admins && admins.length > 0) {
+                const message = `A new store "${storeName}" has been registered by ${owner?.name || 'a store owner'} and is waiting for your approval.\n\nView and manage at: https://dealspheree.in/admin`;
+                
+                // Use Promise.all for faster execution
+                await Promise.all([
+                    sendPushNotificationToAdmins(
+                        "New Store Registration",
+                        `${storeName} by ${owner?.name || 'a store owner'} is waiting for approval.`,
+                        { storeId: newStore._id.toString(), type: 'new_store' }
+                    ),
+                    ...admins.map(admin => 
+                        sendEmail({
+                            email: admin.email,
+                            subject: "🔔 ACTION REQUIRED: New Store Registered on DealSpheree",
+                            message: message
+                        })
+                    )
+                ]);
+                console.log(`[Stores] Notifications sent to ${admins.length} admins.`);
+            } else {
+                console.warn('[Stores] No admins found to notify about new store registration.');
             }
         } catch (notifError) {
             console.error('Admin notification error (non-blocking):', notifError);
@@ -135,8 +154,8 @@ router.put('/:id/reject', protect, authorize('admin'), async (req, res) => {
                 if (deletedStore.ownerId && deletedStore.ownerId.email) {
                     await sendEmail({
                         email: deletedStore.ownerId.email,
-                        subject: 'Store Registration Update',
-                        message: `Hello, we regret to inform you that your store registration for "${deletedStore.storeName}" has been rejected.\n\nFor more information on listing rules, please contact DealSphere support.`
+                        subject: '🚨 Store Registration Status: Rejected',
+                        message: `Hello,\n\nWe regret to inform you that your store registration for "${deletedStore.storeName}" has been declined by the DealSpheree administration.\n\nCommon reasons for rejection include:\n- Invalid business proof\n- Missing storefront photos\n- Inaccurate location details\n\nYou can re-register your store with the correct details anytime. If you have any questions, please contact our support team.\n\nBest regards,\nDealSpheree Administration`
                     });
                 }
             } catch (emailErr) {
