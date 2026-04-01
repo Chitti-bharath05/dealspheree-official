@@ -278,64 +278,74 @@ const StoreOwnerDashboardScreen = () => {
                             </TouchableOpacity>
                         </View>
                     ) : (
-                        <View style={[s.gridList, { paddingHorizontal: 20, paddingTop: 16, gap: 14 }]}>
-                            {selectedStoreOffers.map(item => (
-                                <View key={item._id || item.id} style={s.offerCard}>
-                                    <Image
-                                        source={{ uri: item.image || 'https://via.placeholder.com/600x200/1a1a1a/888?text=No+Image' }}
-                                        style={s.offerCardImg}
-                                    />
-                                    <View style={s.offerCardBody}>
-                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                            <Text style={s.offerCardTitle} numberOfLines={1}>{item.title}</Text>
-                                            <View style={s.offerDiscBadge}>
-                                                <Text style={s.offerDiscTxt}>{item.discount}% OFF</Text>
+                        <View style={s.offerHeroGrid}>
+                            {selectedStoreOffers.map(item => {
+                                const cardW = screenWidth > 1024 ? '31%' : screenWidth > 700 ? '48%' : '100%';
+                                const cardH = screenWidth > 1024 ? 260 : screenWidth > 700 ? 220 : 180;
+                                return (
+                                    <View key={item._id || item.id} style={[s.heroOfferCard, { width: cardW, height: cardH }]}>
+                                        <Image
+                                            source={{ uri: item.image || 'https://via.placeholder.com/600x400/1a1a1a/888?text=No+Image' }}
+                                            style={s.heroOfferImg}
+                                        />
+                                        <LinearGradient colors={['transparent', 'rgba(0,0,0,0.95)']} style={s.heroOfferGrad}>
+                                            <View style={s.heroTopRow}>
+                                                <View style={s.offerHeroBadge}>
+                                                    <Text style={s.offerHeroBadgeTxt}>{item.discount}% OFF</Text>
+                                                </View>
                                             </View>
-                                        </View>
-                                        {item.description ? <Text style={s.offerCardDesc} numberOfLines={2}>{item.description}</Text> : null}
-                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-                                            <View>
-                                                <Text style={s.offerPrice}>₹{(item.originalPrice * (1 - item.discount / 100)).toLocaleString()}</Text>
-                                                <Text style={s.offerOldPrice}>₹{(item.originalPrice || 0).toLocaleString()}</Text>
+
+                                            <View style={s.heroOfferInfo}>
+                                                <Text style={s.heroOfferTitle} numberOfLines={1}>{item.title}</Text>
+                                                {item.description ? <Text style={s.heroOfferDesc} numberOfLines={1}>{item.description}</Text> : null}
+                                                
+                                                <View style={s.heroOfferBottomRow}>
+                                                    <View>
+                                                        <Text style={s.heroOfferPrice}>₹{(item.originalPrice * (1 - item.discount / 100)).toLocaleString()}</Text>
+                                                        <Text style={s.heroOfferOldPrice}>₹{(item.originalPrice || 0).toLocaleString()}</Text>
+                                                    </View>
+                                                    
+                                                    <View style={s.heroOfferActions}>
+                                                        <TouchableOpacity
+                                                            style={s.heroOfferEditBtn}
+                                                            onPress={() => {
+                                                                setEditingOffer(item);
+                                                                setOfferTitle(item.title);
+                                                                setOfferDesc(item.description);
+                                                                setOfferDiscount(item.discount.toString());
+                                                                setOfferOriginalPrice(item.originalPrice.toString());
+                                                                const ex = new Date(item.expiryDate);
+                                                                setOfferExpiry(`${String(ex.getDate()).padStart(2,'0')}/${String(ex.getMonth()+1).padStart(2,'0')}/${ex.getFullYear()}`);
+                                                                setOfferImage(item.image);
+                                                                setSelectedStoreId(sid);
+                                                                setShowAddOffer(true);
+                                                            }}
+                                                        >
+                                                            <Ionicons name="pencil" size={14} color="#000" />
+                                                            <Text style={s.heroOfferEditBtnTxt}>Edit</Text>
+                                                        </TouchableOpacity>
+                                                        <TouchableOpacity
+                                                            style={s.heroOfferDeleteBtn}
+                                                            onPress={() => {
+                                                                if (Platform.OS === 'web') {
+                                                                    if (window.confirm('Delete this offer?')) deleteOffer(item._id || item.id);
+                                                                } else {
+                                                                    Alert.alert('Delete', 'Delete this offer?', [
+                                                                        { text: 'Cancel', style: 'cancel' },
+                                                                        { text: 'Delete', style: 'destructive', onPress: () => deleteOffer(item._id || item.id) }
+                                                                    ]);
+                                                                }
+                                                            }}
+                                                        >
+                                                            <Ionicons name="trash" size={14} color="#FF3B30" />
+                                                        </TouchableOpacity>
+                                                    </View>
+                                                </View>
                                             </View>
-                                            <View style={{ flexDirection: 'row', gap: 8 }}>
-                                                <TouchableOpacity
-                                                    style={s.iconBtn}
-                                                    onPress={() => {
-                                                        setEditingOffer(item);
-                                                        setOfferTitle(item.title);
-                                                        setOfferDesc(item.description);
-                                                        setOfferDiscount(item.discount.toString());
-                                                        setOfferOriginalPrice(item.originalPrice.toString());
-                                                        const ex = new Date(item.expiryDate);
-                                                        setOfferExpiry(`${String(ex.getDate()).padStart(2,'0')}/${String(ex.getMonth()+1).padStart(2,'0')}/${ex.getFullYear()}`);
-                                                        setOfferImage(item.image);
-                                                        setSelectedStoreId(sid);
-                                                        setShowAddOffer(true);
-                                                    }}
-                                                >
-                                                    <Ionicons name="pencil" size={18} color="#F5C518" />
-                                                </TouchableOpacity>
-                                                <TouchableOpacity
-                                                    style={[s.iconBtn, { borderColor: 'rgba(255,59,48,0.3)' }]}
-                                                    onPress={() => {
-                                                        if (Platform.OS === 'web') {
-                                                            if (window.confirm('Delete this offer?')) deleteOffer(item._id || item.id);
-                                                        } else {
-                                                            Alert.alert('Delete', 'Delete this offer?', [
-                                                                { text: 'Cancel', style: 'cancel' },
-                                                                { text: 'Delete', style: 'destructive', onPress: () => deleteOffer(item._id || item.id) }
-                                                            ]);
-                                                        }
-                                                    }}
-                                                >
-                                                    <Ionicons name="trash" size={18} color="#FF3B30" />
-                                                </TouchableOpacity>
-                                            </View>
-                                        </View>
+                                        </LinearGradient>
                                     </View>
-                                </View>
-                            ))}
+                                );
+                            })}
                         </View>
                     )}
                 </ScrollView>
@@ -913,6 +923,96 @@ const s = StyleSheet.create({
     heroDeleteBtn: {
         width: 30,
         height: 30,
+        borderRadius: 8,
+        backgroundColor: 'rgba(255,59,48,0.15)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,59,48,0.3)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    // ── Hero Grid Offer Cards ────────────────────────────────────────────────
+    offerHeroGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 14,
+        paddingHorizontal: 20,
+        paddingTop: 16,
+    },
+    heroOfferCard: {
+        borderRadius: 18,
+        overflow: 'hidden',
+        position: 'relative',
+        backgroundColor: '#111',
+    },
+    heroOfferImg: {
+        ...StyleSheet.absoluteFillObject,
+        resizeMode: 'cover',
+    },
+    heroOfferGrad: {
+        ...StyleSheet.absoluteFillObject,
+        justifyContent: 'space-between',
+        padding: 12,
+    },
+    offerHeroBadge: {
+        backgroundColor: '#F5C518',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 8,
+    },
+    offerHeroBadgeTxt: {
+        color: '#000',
+        fontSize: 10,
+        fontWeight: '900',
+    },
+    heroOfferInfo: {
+        gap: 2,
+    },
+    heroOfferTitle: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '900',
+    },
+    heroOfferDesc: {
+        color: 'rgba(255,255,255,0.6)',
+        fontSize: 11,
+    },
+    heroOfferBottomRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-end',
+        marginTop: 6,
+    },
+    heroOfferPrice: {
+        color: '#fff',
+        fontSize: 15,
+        fontWeight: '800',
+    },
+    heroOfferOldPrice: {
+        color: 'rgba(255,255,255,0.4)',
+        fontSize: 11,
+        textDecorationLine: 'line-through',
+    },
+    heroOfferActions: {
+        flexDirection: 'row',
+        gap: 6,
+    },
+    heroOfferEditBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        backgroundColor: '#F5C518',
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 8,
+    },
+    heroOfferEditBtnTxt: {
+        color: '#000',
+        fontSize: 11,
+        fontWeight: '900',
+    },
+    heroOfferDeleteBtn: {
+        width: 28,
+        height: 28,
         borderRadius: 8,
         backgroundColor: 'rgba(255,59,48,0.15)',
         borderWidth: 1,
