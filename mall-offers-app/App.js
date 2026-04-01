@@ -7,6 +7,7 @@ import { DataProvider } from './src/context/DataContext';
 import { LanguageProvider } from './src/context/LanguageContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import ErrorBoundary from './ErrorBoundary';
+import SplashScreen from './src/components/SplashScreen';
 import * as WebBrowser from 'expo-web-browser';
 import { StatusBar } from 'expo-status-bar';
 import { View, StyleSheet, Platform } from 'react-native';
@@ -28,6 +29,8 @@ Notifications.setNotificationHandler({
 const queryClient = new QueryClient();
 
 export default function App() {
+  const [showSplash, setShowSplash] = React.useState(true);
+
   useEffect(() => {
     async function onFetchUpdateAsync() {
       if (__DEV__ || Platform.OS === 'web') return; // Skip in dev and on web
@@ -54,9 +57,10 @@ export default function App() {
                 <DataProvider>
                   <StatusBar style="light" />
                   {/* Clean, Full-Width Layout Inspired by Amazon (Responsive) */}
-                  <View style={styles.appWrapper}>
-                    <AppNavigator />
-                  </View>
+                    <View style={styles.appWrapper}>
+                      <AppNavigator />
+                    </View>
+                    {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
                 </DataProvider>
               </AuthProvider>
             </LanguageProvider>
