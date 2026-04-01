@@ -2,8 +2,9 @@ import React, { useState, useMemo } from 'react';
 import { 
     View, Text, StyleSheet, ScrollView, TouchableOpacity, 
     FlatList, Modal, TextInput, Alert, Image, ActivityIndicator, 
-    Dimensions, Platform 
+    Dimensions, Platform, useWindowDimensions
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../context/AuthContext';
@@ -16,6 +17,7 @@ const StoreOwnerDashboardScreen = () => {
     const { user, logout } = useAuth();
     const { stores, offers, getStoresByOwner, getOffersByStore, addOffer, updateOffer, updateStore, deleteStore, deleteOffer, registerStore, categories, isLoading } = useData();
     const { t } = useLanguage();
+    const { width: screenWidth } = useWindowDimensions(); // Read once at top level
     const [activeTab, setActiveTab] = useState('stores');
     
     // State management for refactored forms
@@ -496,83 +498,86 @@ const StoreOwnerDashboardScreen = () => {
                                     </TouchableOpacity>
                                 </View>
 
-                                <View style={s.gridList}>
-                                    {allMyStores.map((item) => (
+                                <View style={s.storeHeroGrid}>
+                                 {allMyStores.map((item) => {
+                                        const cardW = screenWidth > 1024 ? '31%' : screenWidth > 700 ? '48%' : '100%';
+                                        const cardH = screenWidth > 1024 ? 260 : screenWidth > 700 ? 220 : 180;
+                                        const sid = item._id || item.id;
+                                        return (
                                         <TouchableOpacity 
-                                            key={item._id || item.id} 
-                                            style={s.storeCard}
+                                            key={sid}
+                                            style={[s.heroStoreCard, { width: cardW, height: cardH }]}
                                             onPress={() => {
                                                 if (item.approved) {
                                                     resetForms();
-                                                    setSelectedStoreId(item._id || item.id);
+                                                    setSelectedStoreId(sid);
                                                     setSelectedStore(item);
                                                 } else {
-                                                    Alert.alert('Store Pending', "store not approved can't add offers/deals");
+                                                    Alert.alert('Store Pending', "Not approved yet — offers can't be added.");
                                                 }
                                             }}
                                         >
-                                        <View style={s.storeImgContainer}>
-                                            <Image source={{ uri: item.bannerUrl || 'https://via.placeholder.com/600x300' }} style={s.storeImg} />
-                                            {!item.approved && (
-                                                <View style={s.pendingOverlay}>
-                                                    <Ionicons name="time" size={24} color="#F5C518" />
-                                                    <Text style={s.pendingText}>PENDING APPROVAL</Text>
-                                                </View>
-                                            )}
-                                        </View>
-                                        <View style={s.storeInfo}>
-                                            <View style={s.storeTitleRow}>
-                                                <Text style={s.storeName}>{item.storeName}</Text>
-                                                {item.approved && (
-                                                    <View style={s.approvedBadge}>
-                                                        <Ionicons name="checkmark-circle" size={14} color="#F5C518" />
-                                                        <Text style={s.approvedBadgeTxt}>APPROVED</Text>
+                                            <Image source={{ uri: item.bannerUrl || 'https://via.placeholder.com/600x400/111/333?text=No+Image' }} style={s.heroStoreImg} />
+                                            <LinearGradient colors={['transparent', 'rgba(0,0,0,0.96)']} style={s.heroStoreGrad}>
+                                                {/* Top badges */}
+                                                <View style={s.heroTopRow}>
+                                                    <View style={[s.heroCatBadge, { backgroundColor: item.approved ? 'rgba(245,197,24,0.9)' : 'rgba(120,120,120,0.85)' }]}>
+                                                        <Text style={[s.heroCatBadgeTxt, { color: item.approved ? '#000' : '#fff' }]}>
+                                                            {item.approved ? item.category?.toUpperCase() : 'PENDING'}
+                                                        </Text>
                                                     </View>
-                                                )}
-                                            </View>
-                                            <View style={s.locationRow}>
-                                                <Ionicons name="location" size={14} color="#8E8E93" />
-                                                <Text style={s.locationTxt}>{item.location}</Text>
-                                            </View>
-                                            
-                                            <View style={s.actionRow}>
-                                                <TouchableOpacity 
-                                                    style={s.minimalBtn}
-                                                    onPress={(e) => {
-                                                        e.stopPropagation();
-                                                        setEditingStore(item);
-                                                        setStoreName(item.storeName);
-                                                        setLocation(item.location);
-                                                        setCategory(item.category);
-                                                        setStoreImage(item.bannerUrl);
-                                                        setStoreLocation({ lat: item.lat, lng: item.lng, address: item.address });
-                                                        setShowAddStore(true);
-                                                    }}
-                                                >
-                                                    <Ionicons name="settings-outline" size={16} color="#F5C518" />
-                                                    <Text style={s.minimalBtnTxt}>Edit Basics</Text>
-                                                </TouchableOpacity>
-                                                <TouchableOpacity 
-                                                    style={[s.minimalBtn, { borderColor: 'rgba(255,59,48,0.2)' }]}
-                                                    onPress={(e) => {
-                                                        e.stopPropagation();
-                                                        if (Platform.OS === 'web') {
-                                                            if(window.confirm('Delete store?')) deleteStore(item._id || item.id);
-                                                        } else {
-                                                            Alert.alert('Delete Store', 'All offers will be lost. Proceed?', [
-                                                                { text: 'Cancel', style: 'cancel' },
-                                                                { text: 'Delete', style: 'destructive', onPress: () => deleteStore(item._id || item.id) }
-                                                            ]);
-                                                        }
-                                                    }}
-                                                >
-                                                    <Ionicons name="trash-outline" size={16} color="#FF3B30" />
-                                                </TouchableOpacity>
-                                            </View>
-                                        </View>
-                                    </TouchableOpacity>
-                                    ))}
-                                </View>
+                                                    {item.approved && (
+                                                        <View style={s.approvedDot}>
+                                                            <Ionicons name="checkmark-circle" size={14} color="#F5C518" />
+                                                            <Text style={s.approvedDotTxt}>APPROVED</Text>
+                                                        </View>
+                                                    )}
+                                                </View>
+                                                {/* Bottom info */}
+                                                <View style={s.heroStoreInfo}>
+                                                    <Text style={s.heroStoreName} numberOfLines={1}>{item.storeName}</Text>
+                                                    <Text style={s.heroStoreLocation} numberOfLines={1}>{item.location}</Text>
+                                                    {/* Action row */}
+                                                    <View style={s.heroActionRow}>
+                                                        <TouchableOpacity
+                                                            style={s.heroEditBtn}
+                                                            onPress={(e) => {
+                                                                e.stopPropagation();
+                                                                setEditingStore(item);
+                                                                setStoreName(item.storeName);
+                                                                setLocation(item.location);
+                                                                setCategory(item.category);
+                                                                setStoreImage(item.bannerUrl);
+                                                                setStoreLocation({ lat: item.lat, lng: item.lng, address: item.address });
+                                                                setShowAddStore(true);
+                                                            }}
+                                                        >
+                                                            <Ionicons name="settings-outline" size={14} color="#000" />
+                                                            <Text style={s.heroEditBtnTxt}>Edit</Text>
+                                                        </TouchableOpacity>
+                                                        <TouchableOpacity
+                                                            style={s.heroDeleteBtn}
+                                                            onPress={(e) => {
+                                                                e.stopPropagation();
+                                                                if (Platform.OS === 'web') {
+                                                                    if (window.confirm('Delete store? All offers will be lost.')) deleteStore(sid);
+                                                                } else {
+                                                                    Alert.alert('Delete Store', 'All offers will be lost. Proceed?', [
+                                                                        { text: 'Cancel', style: 'cancel' },
+                                                                        { text: 'Delete', style: 'destructive', onPress: () => deleteStore(sid) }
+                                                                    ]);
+                                                                }
+                                                            }}
+                                                        >
+                                                            <Ionicons name="trash-outline" size={14} color="#FF3B30" />
+                                                        </TouchableOpacity>
+                                                    </View>
+                                                </View>
+                                            </LinearGradient>
+                                        </TouchableOpacity>
+                                        );
+                                    })}
+                                </View> {/* storeHeroGrid */}
                             </View>
                         </View>
                     </>
@@ -836,6 +841,84 @@ const s = StyleSheet.create({
         width: 36, height: 36, borderRadius: 10,
         borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
         alignItems: 'center', justifyContent: 'center',
+    },
+    // ── Hero Grid Store Cards (matching HomeScreen style) ─────────────────────
+    storeHeroGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 14,
+        paddingHorizontal: 24,
+        paddingTop: 8,
+    },
+    heroStoreCard: {
+        borderRadius: 18,
+        overflow: 'hidden',
+        position: 'relative',
+        backgroundColor: '#111',
+    },
+    heroStoreImg: {
+        ...StyleSheet.absoluteFillObject,
+        resizeMode: 'cover',
+    },
+    heroStoreGrad: {
+        ...StyleSheet.absoluteFillObject,
+        justifyContent: 'space-between',
+        padding: 12,
+    },
+    heroTopRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+    },
+    heroCatBadge: {
+        paddingHorizontal: 9,
+        paddingVertical: 4,
+        borderRadius: 8,
+    },
+    heroCatBadgeTxt: {
+        fontSize: 9,
+        fontWeight: '900',
+        letterSpacing: 0.8,
+    },
+    approvedDot: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        backgroundColor: 'rgba(0,0,0,0.55)',
+        paddingHorizontal: 7,
+        paddingVertical: 3,
+        borderRadius: 8,
+    },
+    approvedDotTxt: { color: '#F5C518', fontSize: 9, fontWeight: '900' },
+    heroStoreInfo: {
+        gap: 2,
+    },
+    heroStoreName: { color: '#fff', fontSize: 16, fontWeight: '900' },
+    heroStoreLocation: { color: 'rgba(255,255,255,0.6)', fontSize: 11 },
+    heroActionRow: {
+        flexDirection: 'row',
+        gap: 8,
+        marginTop: 8,
+    },
+    heroEditBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 5,
+        backgroundColor: '#F5C518',
+        paddingHorizontal: 12,
+        paddingVertical: 5,
+        borderRadius: 8,
+    },
+    heroEditBtnTxt: { color: '#000', fontSize: 12, fontWeight: '900' },
+    heroDeleteBtn: {
+        width: 30,
+        height: 30,
+        borderRadius: 8,
+        backgroundColor: 'rgba(255,59,48,0.15)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,59,48,0.3)',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
 });
 
