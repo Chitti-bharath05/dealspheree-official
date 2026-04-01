@@ -156,14 +156,20 @@ const SplashScreen = ({ onFinish }) => {
                         ] 
                     }]} />
                     
-                    {/* Core Logo Image (scaled internally to avoid drawing the outer triangle again if present) */}
+                    {/* Core Logo Image Extracted (Cropping the outer PNG triangle to rely solely on our dynamic lines) */}
                     <Animated.View style={[s.coreLogoWrapper, {
                         opacity: coreLogoFade,
                         transform: [{ scale: coreLogoScale }]
                     }]}>
                         <Image 
                             source={require('../../assets/official_logo.png')}
-                            style={{ width: '100%', height: '100%' }}
+                            style={{ 
+                                width: 260, 
+                                height: 260, 
+                                position: 'absolute', 
+                                left: -85, 
+                                top: -85 
+                            }}
                             resizeMode="contain"
                         />
                     </Animated.View>
@@ -203,12 +209,15 @@ const s = StyleSheet.create({
     },
     coreLogoWrapper: {
         position: 'absolute',
-        top: '15%',
-        left: '15%',
-        width: '70%',
-        height: '70%',
+        top: 41.6, // Centered vertically in 173.2 height
+        left: 55,  // Centered horizontally out of 200
+        width: 90,
+        height: 90,
+        borderRadius: 45,
+        overflow: 'hidden',
         alignItems: 'center',
         justifyContent: 'center',
+        backgroundColor: 'transparent',
     },
     textContainer: {
         alignItems: 'center',
