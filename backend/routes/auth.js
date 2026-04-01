@@ -23,42 +23,50 @@ const generateRefreshToken = (id) => {
 
 // Login Route
 router.post('/login', validateRequest('login'), async (req, res) => {
+    const startTime = Date.now();
     try {
         const { email, password } = req.body;
-        console.log(`Login attempt for: ${email}`);
+        console.log(`[LOGIN] Attempt: ${email} at ${new Date().toISOString()}`);
 
+        console.time(`[DB] Find User: ${email}`);
         const user = await User.findOne({ email: email.toLowerCase() });
+        console.timeEnd(`[DB] Find User: ${email}`);
 
-        if (user && (await user.matchPassword(password))) {
-            const userId = user._id.toString();
-            const accessToken = generateAccessToken(userId);
-            const refreshToken = generateRefreshToken(userId);
+        if (user) {
+            console.time(`[AUTH] Match Password: ${email}`);
+            const isMatch = await user.matchPassword(password);
+            console.timeEnd(`[AUTH] Match Password: ${email}`);
 
-            // Store refresh token in DB
-            user.refreshToken = refreshToken;
-            await user.save();
+            if (isMatch) {
+                const userId = user._id.toString();
+                const accessToken = generateAccessToken(userId);
+                const refreshToken = generateRefreshToken(userId);
 
-            console.log(`Login successful for: ${email}`);
-            return res.json({
-                success: true,
-                user: {
-                    id: user._id,
-                    name: user.name,
-                    email: user.email,
-                    role: user.role,
-                    mobileNumber: user.mobileNumber,
-                    city: user.city,
-                    profileImage: user.profileImage || null,
-                    token: accessToken,
-                    refreshToken: refreshToken
-                }
-            });
-        } else {
-            console.log(`Login failed for: ${email}`);
-            return res.status(401).json({ success: false, message: 'Invalid credentials' });
+                user.refreshToken = refreshToken;
+                await user.save();
+
+                console.log(`[LOGIN] Success: ${email} (Total Time: ${Date.now() - startTime}ms)`);
+                return res.json({
+                    success: true,
+                    user: {
+                        id: user._id,
+                        name: user.name,
+                        email: user.email,
+                        role: user.role,
+                        mobileNumber: user.mobileNumber,
+                        city: user.city,
+                        profileImage: user.profileImage || null,
+                        token: accessToken,
+                        refreshToken: refreshToken
+                    }
+                });
+            }
         }
+        
+        console.log(`[LOGIN] Invalid credentials: ${email} (Total Time: ${Date.now() - startTime}ms)`);
+        return res.status(401).json({ success: false, message: 'Invalid credentials' });
     } catch (error) {
-        console.error('API Error in POST /api/auth/login:', error);
+        console.error(`💥 [LOGIN] ERROR: ${req.body?.email} -`, error.stack);
         res.status(500).json({ success: false, message: 'Server error' });
     }
 });

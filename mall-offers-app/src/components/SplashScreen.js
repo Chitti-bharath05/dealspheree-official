@@ -62,8 +62,12 @@ const SplashScreen = ({ onFinish }) => {
                 
                 <Animated.View style={[s.content, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
                     <View style={s.logoWrapper}>
-                        <View style={s.iconCircle}>
-                            <Ionicons name="flash" size={60} color="#F5C518" />
+                        <View style={s.imageBadge}>
+                            <Animated.Image 
+                                source={require('../../assets/official_logo.png')} 
+                                style={s.logoImage}
+                                resizeMode="contain"
+                            />
                         </View>
                         <Text style={s.title}>DEALSPHEREE</Text>
                         <Text style={s.tagline}>PREMIUM MALL OFFERS</Text>
@@ -121,20 +125,25 @@ const s = StyleSheet.create({
     logoWrapper: {
         alignItems: 'center',
     },
-    iconCircle: {
-        width: 120,
-        height: 120,
-        borderRadius: 60,
-        backgroundColor: 'rgba(245,197,24,0.05)',
+    imageBadge: {
+        width: 140,
+        height: 140,
+        borderRadius: 70,
+        backgroundColor: 'rgba(255,255,255,0.02)',
         borderWidth: 1,
-        borderColor: 'rgba(245,197,24,0.2)',
+        borderColor: 'rgba(245,197,24,0.15)',
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: 20,
+        marginBottom: 25,
         shadowColor: '#F5C518',
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.2,
-        shadowRadius: 15,
+        shadowOffset: { width: 0, height: 15 },
+        shadowOpacity: 0.15,
+        shadowRadius: 20,
+        padding: 20,
+    },
+    logoImage: {
+        width: '100%',
+        height: '100%',
     },
     title: {
         color: '#F5C518',

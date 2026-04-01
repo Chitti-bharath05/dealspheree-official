@@ -25,7 +25,11 @@ if (missingEnv.length > 0) {
 }
 
 // Connect to MongoDB
-mongoose.connect(process.env.MONGO_URI)
+mongoose.connect(process.env.MONGO_URI, {
+    serverSelectionTimeoutMS: 5000, // Fail after 5s if replica set not found
+    connectTimeoutMS: 10000,        // Give 10s for initial connection
+    socketTimeoutMS: 45000,         // Close sockets after 45s of inactivity
+})
   .then(() => console.log('✅ Connected to MongoDB Atlas'))
   .catch((err) => {
       console.error('❌ MongoDB connection error:', err.message);
