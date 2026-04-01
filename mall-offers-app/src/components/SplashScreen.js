@@ -1,91 +1,183 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, Dimensions, Platform, Easing } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, StyleSheet, Animated, Dimensions, Platform, Easing, Image } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
 
 const SplashScreen = ({ onFinish }) => {
-    const fadeAnim = useRef(new Animated.Value(0)).current;
-    const scaleAnim = useRef(new Animated.Value(0.8)).current;
-    const glowAnim = useRef(new Animated.Value(0)).current;
+    // Stage 1: Triangle Assembly
+    const leftSlide = useRef(new Animated.Value(0)).current;
+    const rightSlide = useRef(new Animated.Value(0)).current;
+    const bottomSlide = useRef(new Animated.Value(0)).current;
+    
+    // Stage 2: Logo and Text Reveal
+    const coreLogoFade = useRef(new Animated.Value(0)).current;
+    const coreLogoScale = useRef(new Animated.Value(0.9)).current;
+    
+    const textFade = useRef(new Animated.Value(0)).current;
+    const textSlide = useRef(new Animated.Value(20)).current;
+    
+    // Stage 3: Fade out app
     const finalFade = useRef(new Animated.Value(1)).current;
 
+    const L = 200; // Side length of the equilateral triangle
+    const H = L * 0.866; // Height of the triangle
+
     useEffect(() => {
-        // Sequence: Glow -> Reveal -> Scale -> Fade Out
+        // Build the sequence
         Animated.sequence([
-            // 1. Initial Glow & Slow Reveal
+            // 1. Lower two parts slide in (Left and Right diagonals)
             Animated.parallel([
-                Animated.timing(fadeAnim, {
+                Animated.timing(leftSlide, {
                     toValue: 1,
-                    duration: 2500,
+                    duration: 800,
                     easing: Easing.out(Easing.exp),
                     useNativeDriver: true,
                 }),
-                Animated.timing(scaleAnim, {
+                Animated.timing(rightSlide, {
                     toValue: 1,
-                    duration: 2500,
+                    duration: 800,
                     easing: Easing.out(Easing.exp),
                     useNativeDriver: true,
+                })
+            ]),
+            // 2. Top part attaches. In our math, the bottom line completes the framework!
+            Animated.timing(bottomSlide, {
+                toValue: 1,
+                duration: 600,
+                easing: Easing.out(Easing.exp),
+                useNativeDriver: true,
+            }),
+            // 3. Middle Logo and Text simultaneous reveal
+            Animated.parallel([
+                Animated.timing(coreLogoFade, {
+                    toValue: 1,
+                    duration: 1200,
+                    useNativeDriver: true,
                 }),
-                Animated.timing(glowAnim, {
+                Animated.timing(coreLogoScale, {
+                    toValue: 1,
+                    duration: 1200,
+                    easing: Easing.out(Easing.circ),
+                    useNativeDriver: true,
+                }),
+                Animated.timing(textFade, {
                     toValue: 1,
                     duration: 1000,
                     useNativeDriver: true,
                 }),
+                Animated.timing(textSlide, {
+                    toValue: 0,
+                    duration: 1000,
+                    easing: Easing.out(Easing.back(1.5)),
+                    useNativeDriver: true,
+                })
             ]),
-            // 2. Hold for a bit
-            Animated.delay(1000),
-            // 3. Final Fade Out of the entire splash
+            // Hold for visual admiration
+            Animated.delay(1200),
+            // 4. Fade entire screen out
             Animated.timing(finalFade, {
                 toValue: 0,
-                duration: 600,
+                duration: 500,
                 useNativeDriver: true,
-            }),
+            })
         ]).start(() => {
             if (onFinish) onFinish();
         });
     }, []);
 
+    // Interpolations for the assembly
+    // Left line slides from -150 to exact position
+    const leftLineTransX = leftSlide.interpolate({
+        inputRange: [0, 1],
+        outputRange: [-150, -L/4] // -50 for L=200
+    });
+    const leftLineOpacity = leftSlide.interpolate({
+        inputRange: [0, 0.5, 1],
+        outputRange: [0, 1, 1]
+    });
+
+    // Right line slides from +150 to exact position
+    const rightLineTransX = rightSlide.interpolate({
+        inputRange: [0, 1],
+        outputRange: [150, L/4] // 50 for L=200
+    });
+    const rightLineOpacity = rightSlide.interpolate({
+        inputRange: [0, 0.5, 1],
+        outputRange: [0, 1, 1]
+    });
+
+    // Bottom line reveals itself
+    const bottomLineTransY = bottomSlide.interpolate({
+        inputRange: [0, 1],
+        outputRange: [50, 0]
+    });
+    const bottomLineOpacity = bottomSlide.interpolate({
+        inputRange: [0, 0.8, 1],
+        outputRange: [0, 1, 1]
+    });
+
     return (
         <Animated.View style={[s.container, { opacity: finalFade }]}>
-            <View style={s.background}>
-                {/* Subtle Gold Background Radial Glow */}
-                <Animated.View style={[s.glowCircle, { 
-                    opacity: glowAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [0, 0.15]
-                    }),
-                    transform: [{ scale: glowAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [0.5, 2]
-                    }) }]
-                }]} />
+            {/* The main triangle wrapper */}
+            <View style={{ width: L, height: H + 80, alignItems: 'center', justifyContent: 'center' }}>
                 
-                <Animated.View style={[s.content, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
-                    <View style={s.logoWrapper}>
-                        <Animated.Image 
-                            source={require('../../assets/official_logo.png')} 
-                            style={{
-                                width: Math.min(width * 0.8, 400),
-                                height: Math.min(width * 0.8, 400),
-                            }}
+                {/* Mathematical Hollow Triangle */}
+                <View style={{ width: L, height: H, position: 'relative' }}>
+                    
+                    {/* Left Line */}
+                    <Animated.View style={[s.triangleLine, { 
+                        width: L, 
+                        opacity: leftLineOpacity,
+                        transform: [
+                            { translateX: leftLineTransX },
+                            { translateY: -H/2 },
+                            { rotate: '-60deg' }
+                        ] 
+                    }]} />
+
+                    {/* Right Line */}
+                    <Animated.View style={[s.triangleLine, { 
+                        width: L, 
+                        opacity: rightLineOpacity,
+                        transform: [
+                            { translateX: rightLineTransX },
+                            { translateY: -H/2 },
+                            { rotate: '60deg' }
+                        ] 
+                    }]} />
+
+                    {/* Bottom Line */}
+                    <Animated.View style={[s.triangleLine, { 
+                        width: L,
+                        bottom: 0,
+                        opacity: bottomLineOpacity,
+                        transform: [
+                            { translateY: bottomLineTransY }
+                        ] 
+                    }]} />
+                    
+                    {/* Core Logo Image (scaled internally to avoid drawing the outer triangle again if present) */}
+                    <Animated.View style={[s.coreLogoWrapper, {
+                        opacity: coreLogoFade,
+                        transform: [{ scale: coreLogoScale }]
+                    }]}>
+                        <Image 
+                            source={require('../../assets/official_logo.png')}
+                            style={{ width: '100%', height: '100%' }}
                             resizeMode="contain"
                         />
-                    </View>
-                    
-                    <View style={s.footer}>
-                        <View style={s.loadingBarContainer}>
-                            <Animated.View style={[s.loadingBar, {
-                                width: glowAnim.interpolate({
-                                    inputRange: [0, 1],
-                                    outputRange: ['0%', '100%']
-                                })
-                            }]} />
-                        </View>
-                        <Text style={s.version}>v2.0.4 • SECURE ACCESS</Text>
-                    </View>
+                    </Animated.View>
+                </View>
+
+                {/* DEALSPHEREE Text Area */}
+                <Animated.View style={[s.textContainer, {
+                    opacity: textFade,
+                    transform: [{ translateY: textSlide }]
+                }]}>
+                    <Text style={s.brandTitle}>DEALSPHEREE</Text>
+                    <View style={s.brandUnderline} />
                 </Animated.View>
+
             </View>
         </Animated.View>
     );
@@ -94,97 +186,47 @@ const SplashScreen = ({ onFinish }) => {
 const s = StyleSheet.create({
     container: {
         ...StyleSheet.absoluteFillObject,
-        backgroundColor: '#000',
+        backgroundColor: '#000000',
         zIndex: 9999,
         justifyContent: 'center',
         alignItems: 'center',
     },
-    background: {
-        flex: 1,
-        width: '100%',
-        backgroundColor: '#0D0D0D',
-        justifyContent: 'center',
-        alignItems: 'center',
-        overflow: 'hidden',
-    },
-    glowCircle: {
+    triangleLine: {
         position: 'absolute',
-        width: 300,
-        height: 300,
-        borderRadius: 150,
-        backgroundColor: '#F5C518',
+        height: 2,
+        backgroundColor: '#D4AF37', // Premium Gold
         shadowColor: '#F5C518',
         shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 1,
-        shadowRadius: 100,
-        elevation: 20,
+        shadowOpacity: 0.8,
+        shadowRadius: 5,
+        elevation: 10,
     },
-    content: {
+    coreLogoWrapper: {
+        position: 'absolute',
+        top: '15%',
+        left: '15%',
+        width: '70%',
+        height: '70%',
         alignItems: 'center',
         justifyContent: 'center',
     },
-    logoWrapper: {
+    textContainer: {
         alignItems: 'center',
+        marginTop: 30,
     },
-    imageBadge: {
-        width: 140,
-        height: 140,
-        borderRadius: 70,
-        backgroundColor: 'rgba(255,255,255,0.02)',
-        borderWidth: 1,
-        borderColor: 'rgba(245,197,24,0.15)',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 25,
-        shadowColor: '#F5C518',
-        shadowOffset: { width: 0, height: 15 },
-        shadowOpacity: 0.15,
-        shadowRadius: 20,
-        padding: 20,
-    },
-    logoImage: {
-        width: '100%',
-        height: '100%',
-    },
-    title: {
-        color: '#F5C518',
-        fontSize: 32,
-        fontWeight: '900',
-        letterSpacing: 8,
-        textShadowColor: 'rgba(245,197,24,0.3)',
-        textShadowOffset: { width: 0, height: 0 },
-        textShadowRadius: 10,
-    },
-    tagline: {
-        color: '#8E8E93',
-        fontSize: 12,
+    brandTitle: {
+        color: '#D4AF37',
+        fontSize: 22,
         fontWeight: '700',
         letterSpacing: 4,
+        textTransform: 'uppercase',
+    },
+    brandUnderline: {
+        width: '80%',
+        height: 1,
+        backgroundColor: '#D4AF37',
         marginTop: 10,
-    },
-    footer: {
-        position: 'absolute',
-        bottom: Platform.OS === 'web' ? -height * 0.3 : -200,
-        alignItems: 'center',
-        width: 300,
-    },
-    loadingBarContainer: {
-        width: '100%',
-        height: 2,
-        backgroundColor: 'rgba(255,255,255,0.05)',
-        borderRadius: 1,
-        overflow: 'hidden',
-        marginBottom: 12,
-    },
-    loadingBar: {
-        height: '100%',
-        backgroundColor: '#F5C518',
-    },
-    version: {
-        color: '#333',
-        fontSize: 10,
-        fontWeight: '800',
-        letterSpacing: 1,
+        opacity: 0.5,
     }
 });
 
