@@ -13,7 +13,9 @@ import {
     Dimensions,
     ActivityIndicator,
     Alert,
-    useWindowDimensions
+    useWindowDimensions,
+    Animated,
+    Easing
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
