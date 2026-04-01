@@ -356,7 +356,12 @@ const OfferDetailsScreen = ({ route, navigation }) => {
                             <View style={s.statsRow}>
                                 <View style={s.statBox}>
                                     <Text style={s.statLabel}>EXCLUSIVE{'\n'}PRICE</Text>
-                                    <Text style={s.statValue}>₹{discountedPrice > 0 ? discountedPrice.toLocaleString() : '—'}</Text>
+                                    <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
+                                        <Text style={s.statValue}>₹{discountedPrice > 0 ? discountedPrice.toLocaleString() : '—'}</Text>
+                                        {offer.originalPrice > discountedPrice && (
+                                            <Text style={s.oldPriceStat}>₹{offer.originalPrice.toLocaleString()}</Text>
+                                        )}
+                                    </View>
                                 </View>
                                 {store?.averageRating > 0 && (
                                     <View style={s.statBox}>
@@ -654,7 +659,8 @@ const s = StyleSheet.create({
         textTransform: 'uppercase',
         marginBottom: 4,
     },
-    statValue: { color: '#FFFFFF', fontSize: 20, fontWeight: '900' },
+    statValue: { color: '#FFFFFF', fontSize: 18, fontWeight: '900' },
+    oldPriceStat: { color: '#555', fontSize: 12, textDecorationLine: 'line-through', fontWeight: '600' },
 
     // Sections
     section: { marginBottom: 24 },

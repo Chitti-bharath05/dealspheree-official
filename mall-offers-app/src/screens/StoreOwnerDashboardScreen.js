@@ -212,7 +212,7 @@ const StoreOwnerDashboardScreen = () => {
             <View style={s.emptyIconCircle}>
                 <Ionicons name="business-outline" size={80} color="#F5C518" />
             </View>
-            <Text style={s.emptyTitle}>No Stores Registered</Text>
+            <Text style={s.emptyTitle}>no stores registered yet</Text>
             <Text style={s.emptySub}>Start your business journey on DealSphere by registering your physical store today.</Text>
             <TouchableOpacity style={s.mainRegisterBtn} onPress={() => { resetForms(); setShowAddStore(true); }}>
                 <Ionicons name="add" size={24} color="#000" />
@@ -234,69 +234,68 @@ const StoreOwnerDashboardScreen = () => {
                     <Text style={s.subTitle}>Manage your business performance and offers.</Text>
                 </View>
 
-                {/* Stats Cards Stack */}
-                <View style={s.statsStack}>
-                    <View style={s.statCardLine}>
-                        <View>
-                            <Text style={s.statLabel}>MY ACTIVE OFFERS</Text>
-                            <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8 }}>
-                                <Text style={s.statValue}>{activeOffersCount}</Text>
-                                <Text style={s.statTrend}>+2 this week</Text>
-                            </View>
-                        </View>
-                        <Ionicons name="pricetag" size={40} color="rgba(255,255,255,0.05)" style={s.statIconBg} />
-                    </View>
-
-
-                    <View style={s.statCardLine}>
-                        <View style={s.heartIconCircle}>
-                            <Ionicons name="heart" size={20} color="#F5C518" />
-                        </View>
-                        <View>
-                            <Text style={s.statValue}>{stats.totalLikes}</Text>
-                            <Text style={s.statLabel}>{t('store_likes')}</Text>
-                        </View>
-                        <Text style={[s.statLabel, { marginLeft: 'auto', alignSelf: 'flex-start' }]}>TOTAL LIKES</Text>
-                    </View>
-                    
-                    <View style={s.statCardLine}>
-                        <View style={[s.heartIconCircle, { backgroundColor: 'rgba(245,197,24,0.1)' }]}>
-                            <Ionicons name="star" size={20} color="#F5C518" />
-                        </View>
-                        <View>
-                            <Text style={s.statValue}>{stats.avgRating.toFixed(1)}</Text>
-                            <Text style={s.statLabel}>{t('store_rating')}</Text>
-                        </View>
-                        <Text style={[s.statLabel, { marginLeft: 'auto', alignSelf: 'flex-start' }]}>AVG RATING</Text>
-                    </View>
-                </View>
-
                 {allMyStores.length === 0 ? (
                     renderEmptyState()
                 ) : (
-                    <View style={s.layoutGrid}>
-                        <View style={s.gridColumn}>
-                            <View style={s.sectionHeader}>
-                                <Text style={s.sectionTitle}>My Stores</Text>
-                                <TouchableOpacity style={s.smallAddBtn} onPress={() => { resetForms(); setShowAddStore(true); }}>
-                                    <Ionicons name="add" size={20} color="#F5C518" />
-                                    <Text style={s.smallAddBtnTxt}>Add New</Text>
-                                </TouchableOpacity>
+                    <>
+                        {/* Stats Cards Stack */}
+                        <View style={s.statsStack}>
+                            <View style={s.statCardLine}>
+                                <View>
+                                    <Text style={s.statLabel}>MY ACTIVE OFFERS</Text>
+                                    <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8 }}>
+                                        <Text style={s.statValue}>{activeOffersCount}</Text>
+                                    </View>
+                                </View>
+                                <Ionicons name="pricetag" size={40} color="rgba(255,255,255,0.05)" style={s.statIconBg} />
                             </View>
 
-                            <View style={s.gridList}>
-                                {allMyStores.map((item) => (
-                                    <TouchableOpacity 
-                                        key={item._id || item.id} 
-                                        style={s.storeCard}
-                                        onPress={() => {
-                                            if (item.approved) {
-                                                navigation.navigate('StoreOffers', { storeId: item._id || item.id });
-                                            } else {
-                                                Alert.alert('Store Pending', 'Your store is currently under review by the DealSphere team. You can manage offers once it is approved.');
-                                            }
-                                        }}
-                                    >
+                            <View style={s.statCardLine}>
+                                <View style={s.heartIconCircle}>
+                                    <Ionicons name="heart" size={20} color="#F5C518" />
+                                </View>
+                                <View>
+                                    <Text style={s.statValue}>{stats.totalLikes}</Text>
+                                    <Text style={s.statLabel}>{t('store_likes')}</Text>
+                                </View>
+                                <Text style={[s.statLabel, { marginLeft: 'auto', alignSelf: 'flex-start' }]}>TOTAL LIKES</Text>
+                            </View>
+                            
+                            <View style={s.statCardLine}>
+                                <View style={[s.heartIconCircle, { backgroundColor: 'rgba(245,197,24,0.1)' }]}>
+                                    <Ionicons name="star" size={20} color="#F5C518" />
+                                </View>
+                                <View>
+                                    <Text style={s.statValue}>{stats.avgRating.toFixed(1)}</Text>
+                                    <Text style={s.statLabel}>{t('store_rating')}</Text>
+                                </View>
+                                <Text style={[s.statLabel, { marginLeft: 'auto', alignSelf: 'flex-start' }]}>AVG RATING</Text>
+                            </View>
+                        </View>
+
+                        <View style={s.layoutGrid}>
+                            <View style={s.gridColumn}>
+                                <View style={s.sectionHeader}>
+                                    <Text style={s.sectionTitle}>My Managed Stores</Text>
+                                    <TouchableOpacity style={s.smallAddBtn} onPress={() => { resetForms(); setShowAddStore(true); }}>
+                                        <Ionicons name="add" size={20} color="#F5C518" />
+                                        <Text style={s.smallAddBtnTxt}>Register New</Text>
+                                    </TouchableOpacity>
+                                </View>
+
+                                <View style={s.gridList}>
+                                    {allMyStores.map((item) => (
+                                        <TouchableOpacity 
+                                            key={item._id || item.id} 
+                                            style={s.storeCard}
+                                            onPress={() => {
+                                                if (item.approved) {
+                                                    navigation.navigate('StoreOffers', { storeId: item._id || item.id });
+                                                } else {
+                                                    Alert.alert('Store Pending', 'Your store is currently under review by the DealSphere team. You can manage offers once it is approved.');
+                                                }
+                                            }}
+                                        >
                                         <View style={s.storeImgContainer}>
                                             <Image source={{ uri: item.bannerUrl || 'https://via.placeholder.com/600x300' }} style={s.storeImg} />
                                             {!item.approved && (
@@ -357,10 +356,11 @@ const StoreOwnerDashboardScreen = () => {
                                             </View>
                                         </View>
                                     </TouchableOpacity>
-                                ))}
+                                    ))}
+                                </View>
                             </View>
                         </View>
-                    </View>
+                    </>
                 )}
             </ScrollView>
 

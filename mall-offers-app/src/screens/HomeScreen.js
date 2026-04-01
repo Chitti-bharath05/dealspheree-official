@@ -50,10 +50,20 @@ export default function HomeScreen({ navigation }) {
     const { stores, offers, categories, isLoading, getActiveOffers, userLocation, locationError, refreshLocation, calculateDistance } = useData();
     const { t } = useLanguage();
     const [selectedCategory, setSelectedCategory] = useState('All');
-    const [searchQuery, setSearchQuery] = useState('');
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [menuAnim] = useState(new Animated.Value(-300)); // Hidden to the left
 
-    const { width } = useWindowDimensions();
-    const isWeb = Platform.OS === 'web';
+    const toggleMenu = () => {
+        const toValue = isMenuOpen ? -300 : 0;
+        Animated.timing(menuAnim, {
+            toValue,
+            duration: 300,
+            easing: Easing.out(Easing.quad),
+            useNativeDriver: Platform.OS !== 'web'
+        }).start();
+        setIsMenuOpen(!isMenuOpen);
+    };
+
     const activeOffers = getActiveOffers() || [];
 
     const contentWidth = isWeb ? Math.min(width, 1200) : width;
@@ -117,7 +127,12 @@ export default function HomeScreen({ navigation }) {
 
                     <View style={s.searchSection}>
                         <View style={s.searchBar}>
-                            <Ionicons name="search" size={20} color="#555" style={{ marginRight: 12 }} />
+                            <TouchableOpacity onPress={toggleMenu} style={s.menuBtn}>
+                                <Ionicons name="menu" size={24} color="#F5C518" />
+                                <Text style={s.menuBtnTxt}>CATEGORIES</Text>
+                            </TouchableOpacity>
+                            <View style={s.divider} />
+                            <Ionicons name="search" size={20} color="#555" style={{ marginLeft: 12, marginRight: 12 }} />
                             <TextInput 
                                 placeholder={isWeb ? "Search for local deals, malls, and shops..." : "Search for local deals..."}
                                 placeholderTextColor="#555" 
@@ -128,33 +143,6 @@ export default function HomeScreen({ navigation }) {
                         </View>
                     </View>
 
-                    {/* Categories Grid (Amazon-Style Tile View) */}
-                    <View style={s.sectionHeader}>
-                        <View style={s.sectionRow}>
-                            <View style={s.accentBar} />
-                            <Text style={s.sectionTitle}>Shop by <Text style={s.italicGold}>Category</Text></Text>
-                        </View>
-                    </View>
-                    
-                    <View style={[s.catContainer, isWeb && s.catGridWeb]}>
-                        {['Fashion', 'Electronics', 'Beauty', 'Food', 'Home', 'Footwear', 'Watches & Accessories', 'Sports'].map((cat) => {
-                            const catWidth = width < 768 ? '21%' : '11%'; // 4 per row on mobile, 8 on desktop
-                            return (
-                                <TouchableOpacity 
-                                    key={cat} 
-                                    style={[s.catTile, isWeb && { width: catWidth }]}
-                                    onPress={() => setSelectedCategory(cat)}
-                                >
-                                    <View style={[s.catIconBox, selectedCategory === cat && s.catIconBoxActive]}>
-                                        <Ionicons name={catIcons[cat] || 'apps'} size={(isWeb && width > 768) ? 28 : 22} color={selectedCategory === cat ? "#000" : "#fff"} />
-                                    </View>
-                                    <Text style={[s.catLabel, selectedCategory === cat && s.catLabelActive]}>
-                                        {cat.toUpperCase()}
-                                    </Text>
-                                </TouchableOpacity>
-                            );
-                        })}
-                    </View>
 
                     {/* Exclusive Stores (Multi-Column Grid) */}
                     <View style={s.sectionHeader}>
@@ -272,6 +260,36 @@ export default function HomeScreen({ navigation }) {
                     </View>
                 </View>
             )}
+            {/* Categories Sidebar */}
+            <Animated.View style={[s.sidebar, { left: menuAnim }]}>
+                <View style={s.sidebarHeader}>
+                    <Text style={s.sidebarTitle}>EXPLORE CATEGORIES</Text>
+                    <TouchableOpacity onPress={toggleMenu}>
+                        <Ionicons name="close" size={24} color="#F5C518" />
+                    </TouchableOpacity>
+                </View>
+                <ScrollView contentContainerStyle={s.sidebarScroll}>
+                    {['All', 'Fashion', 'Electronics', 'Beauty', 'Food', 'Home', 'Footwear', 'Watches & Accessories', 'Sports'].map((cat) => (
+                        <TouchableOpacity 
+                            key={cat} 
+                            style={[s.sidebarItem, selectedCategory === cat && s.sidebarItemActive]}
+                            onPress={() => {
+                                setSelectedCategory(cat);
+                                toggleMenu();
+                            }}
+                        >
+                            <Ionicons name={catIcons[cat] || 'apps'} size={20} color={selectedCategory === cat ? "#000" : "#8E8E93"} />
+                            <Text style={[s.sidebarItemText, selectedCategory === cat && s.sidebarItemTextActive]}>
+                                {cat.toUpperCase()}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
+                </ScrollView>
+            </Animated.View>
+
+            {isMenuOpen && (
+                <TouchableOpacity style={s.backdrop} activeOpacity={1} onPress={toggleMenu} />
+            )}
         </View>
     );
 }
@@ -291,8 +309,19 @@ const s = StyleSheet.create({
     bellBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
     searchSection: { paddingHorizontal: 24, marginBottom: 24 },
     searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1A1A1A', borderRadius: 24, paddingHorizontal: 20, height: 56, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
-    searchInput: { flex: 1, color: '#FFFFFF', fontSize: 16 },
-    catContainer: { flexDirection: 'row', paddingHorizontal: 24, marginBottom: 32, flexWrap: 'wrap', gap: 16 },
+    menuBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingRight: 12 },
+    menuBtnTxt: { color: '#F5C518', fontSize: 13, fontWeight: '900' },
+    divider: { height: '60%', width: 1, backgroundColor: 'rgba(255,255,255,0.1)' },
+    searchInput: { flex: 1, color: '#FFFFFF', fontSize: 16, marginLeft: 10 },
+    sidebar: { position: 'absolute', top: 0, bottom: 0, width: 280, backgroundColor: '#111', zIndex: 2000, borderRightWidth: 1, borderRightColor: 'rgba(255,255,255,0.05)' },
+    sidebarHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 24, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)', paddingTop: Platform.OS === 'web' ? 40 : 60 },
+    sidebarTitle: { color: '#F5C518', fontSize: 14, fontWeight: '900', letterSpacing: 1 },
+    sidebarScroll: { paddingVertical: 20 },
+    sidebarItem: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 18, gap: 12 },
+    sidebarItemActive: { backgroundColor: 'rgba(245,197,24,0.1)' },
+    sidebarItemText: { color: '#8E8E93', fontSize: 14, fontWeight: '800' },
+    sidebarItemTextActive: { color: '#F5C518' },
+    backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 1900 },
     catGridWeb: { justifyContent: 'space-between', gap: 32 },
     catTile: { alignItems: 'center', gap: 8 },
     catIconBox: { width: 64, height: 64, borderRadius: 12, backgroundColor: '#1A1A1A', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' },

@@ -118,7 +118,7 @@ const StoreOffersScreen = ({ route, navigation }) => {
                 </View>
             </View>
 
-            <ScrollView contentContainerStyle={s.scroll}>
+            <ScrollView contentContainerStyle={[s.scroll, storeOffers.length === 0 && { flexGrow: 1, justifyContent: 'center' }]}>
                 {storeOffers.length === 0 ? (
                     <View style={s.emptyContainer}>
                         <View style={s.emptyIconCircle}>
@@ -258,12 +258,12 @@ const s = StyleSheet.create({
     headerTitle: { color: '#fff', fontSize: 20, fontWeight: '900' },
     headerSub: { color: '#8E8E93', fontSize: 13, fontWeight: '500' },
     scroll: { padding: 24, paddingBottom: 100 },
-    emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 100 },
+    emptyContainer: { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 },
     emptyIconCircle: { width: 160, height: 160, borderRadius: 80, backgroundColor: 'rgba(245,197,24,0.03)', alignItems: 'center', justifyContent: 'center', marginBottom: 30, borderWidth: 1, borderColor: 'rgba(245,197,24,0.1)' },
     emptyTitle: { color: '#fff', fontSize: 28, fontWeight: '900', marginBottom: 12 },
-    emptyDesc: { color: '#8E8E93', fontSize: 16, textAlign: 'center', lineHeight: 24, paddingHorizontal: 40, marginBottom: 32 },
-    centerAddBtn: { backgroundColor: '#F5C518', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 32, paddingVertical: 18, borderRadius: 20, gap: 10 },
-    centerAddBtnTxt: { color: '#000', fontSize: 16, fontWeight: '900' },
+    emptyDesc: { color: '#8E8E93', fontSize: 16, textAlign: 'center', lineHeight: 24, paddingHorizontal: 20, marginBottom: 32 },
+    centerAddBtn: { backgroundColor: '#F5C518', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 40, paddingVertical: 20, borderRadius: 20, gap: 10, shadowColor: '#F5C518', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.3, shadowRadius: 20, elevation: 10 },
+    centerAddBtnTxt: { color: '#000', fontSize: 18, fontWeight: '900' },
     offerGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
     offerCard: { backgroundColor: '#111', borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
     offerImg: { width: '100%', height: 180, resizeMode: 'cover' },
