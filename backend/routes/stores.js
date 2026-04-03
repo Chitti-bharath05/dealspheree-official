@@ -3,6 +3,7 @@ const router = express.Router();
 const Store = require('../models/Store');
 const User = require('../models/User');
 const Offer = require('../models/Offer');
+const SystemLog = require('../models/SystemLog');
 const { protect, authorize } = require('../middleware/authMiddleware');
 const validateRequest = require('../middleware/validation');
 const { sendPushNotificationToAdmins } = require('../utils/notificationService');
@@ -138,6 +139,15 @@ router.put('/:id/approve', protect, authorize('admin'), async (req, res) => {
             } catch (emailErr) {
                 console.error('Email notification failed to send on approval:', emailErr);
             }
+
+            // Create System Alert
+            await SystemLog.create({
+                type: 'success',
+                title: 'New Partner Verified',
+                message: `${store.storeName} was approved and is now live.`,
+                color: '#F5C518'
+            });
+
             res.json({ success: true, store });
         } else {
             res.status(404).json({ success: false, message: 'Store not found' });
@@ -150,21 +160,31 @@ router.put('/:id/approve', protect, authorize('admin'), async (req, res) => {
 // Reject/Delete store (Protected: Admin only)
 router.put('/:id/reject', protect, authorize('admin'), async (req, res) => {
     try {
-        // Here rejection behaves as deletion for now, mimicking previous behavior
-        const deletedStore = await Store.findByIdAndDelete(req.params.id).populate('ownerId', 'email name');
-        if (deletedStore) {
+        const store = await Store.findById(req.params.id).populate('ownerId', 'email name');
+        if (store) {
             try {
-                if (deletedStore.ownerId && deletedStore.ownerId.email) {
+                if (store.ownerId && store.ownerId.email) {
                     await sendEmail({
-                        email: deletedStore.ownerId.email,
+                        email: store.ownerId.email,
                         subject: '🚨 Store Registration Status: Rejected',
-                        message: `Hello,\n\nWe regret to inform you that your store registration for "${deletedStore.storeName}" has been declined by the DealSpheree administration.\n\nCommon reasons for rejection include:\n- Invalid business proof\n- Missing storefront photos\n- Inaccurate location details\n\nYou can re-register your store with the correct details anytime. If you have any questions, please contact our support team.\n\nBest regards,\nDealSpheree Administration`
+                        message: `Hello,\n\nWe regret to inform you that your store registration for "${store.storeName}" has been declined by the DealSpheree administration.\n\nCommon reasons for rejection include:\n- Invalid business proof\n- Missing storefront photos\n- Inaccurate location details\n\nYou can re-register your store with the correct details anytime. If you have any questions, please contact our support team.\n\nBest regards,\nDealSpheree Administration`
                     });
                 }
             } catch (emailErr) {
                 console.error('Email notification failed to send on rejection:', emailErr);
             }
-            res.json({ success: true, message: 'Store rejected' });
+            
+            await Store.findByIdAndDelete(req.params.id);
+
+            // Create System Alert
+            await SystemLog.create({
+                type: 'warning',
+                title: 'Store Registration Rejected',
+                message: `${store.storeName}'s application was rejected and removed.`,
+                color: '#FF3B30'
+            });
+
+            res.json({ success: true, message: 'Store rejected and removed' });
         } else {
             res.status(404).json({ success: false, message: 'Store not found' });
         }

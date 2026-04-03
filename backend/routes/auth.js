@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const Offer = require('../models/Offer');
+const SystemLog = require('../models/SystemLog');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { protect, authorize } = require('../middleware/authMiddleware');
@@ -104,6 +105,14 @@ router.post('/register', validateRequest('register'), async (req, res) => {
 
         newUser.refreshToken = refreshToken;
         await newUser.save();
+
+        // Create System Alert
+        await SystemLog.create({
+            type: 'info',
+            title: 'New User Registered',
+            message: `${newUser.name} (${newUser.role}) joined the platform.`,
+            color: '#8E8E93'
+        });
 
         console.log(`Registration successful for: ${email}`);
         return res.status(201).json({

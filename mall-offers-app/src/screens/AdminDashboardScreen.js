@@ -12,13 +12,21 @@ const AdminDashboardScreen = () => {
     const { t } = useLanguage();
     const [activeTab, setActiveTab] = useState('overview');
     const [adminStats, setAdminStats] = useState(null);
+    const [systemAlerts, setSystemAlerts] = useState([]);
 
     React.useEffect(() => {
-        if (getAdminStats) {
-            getAdminStats().then(setAdminStats).catch(console.error);
+        if (user && user.role === 'admin') {
+            if (getAdminStats) {
+                getAdminStats().then(setAdminStats).catch(console.error);
+            }
+            if (fetchUsers) fetchUsers();
+            
+            // Fetch real system alerts
+            apiClient.get('/admin/alerts')
+                .then(res => { if (res.success) setSystemAlerts(res.logs); })
+                .catch(console.error);
         }
-        if (fetchUsers) fetchUsers();
-    }, [getAdminStats, fetchUsers]);
+    }, [getAdminStats, fetchUsers, user]);
 
     const isLoading = authLoading || dataLoading;
 
@@ -149,12 +157,17 @@ const AdminDashboardScreen = () => {
                             </View>
                             
                             <View style={s.chartArea}>
-                                {[40, 60, 50, 100, 45, 55, 65].map((h, i) => (
-                                    <View key={i} style={s.chartCol}>
-                                        <View style={[s.chartBar, { height: h }, i === 3 && { backgroundColor: '#F5C518' }]} />
-                                        <Text style={s.chartDay}>{['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'][i]}</Text>
-                                    </View>
-                                ))}
+                                {(adminStats?.chartData || [0,0,0,0,0,0,0]).map((item, i) => {
+                                    // Calculate height (max is 100 for simplicity)
+                                    const maxCount = Math.max(...(adminStats?.chartData?.map(d => d.count) || [1]));
+                                    const height = maxCount > 0 ? (item.count / maxCount) * 100 : 2;
+                                    return (
+                                        <View key={i} style={s.chartCol}>
+                                            <View style={[s.chartBar, { height: Math.max(height, 5) }, i === 6 && { backgroundColor: '#F5C518' }]} />
+                                            <Text style={s.chartDay}>{item.day || ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'][i]}</Text>
+                                        </View>
+                                    );
+                                })}
                             </View>
                         </View>
 
@@ -166,20 +179,17 @@ const AdminDashboardScreen = () => {
                             </View>
                             
                             <View style={s.alertList}>
-                                {[
-                                    { color: '#FF3B30', title: 'High Load Detected', sub: 'Database cluster 02 at 85% capacity.', time: '2 MINS AGO' },
-                                    { color: '#F5C518', title: 'New Partner Verified', sub: 'TechHaven store profile was approved.', time: '45 MINS AGO' },
-                                    { color: '#555555', title: 'Maintenance Scheduled', sub: 'Global deployment at 02:00 AM UTC.', time: '3 HOURS AGO' }
-                                ].map((alert, i) => (
-                                    <View key={i} style={s.alertItem}>
-                                        <View style={[s.alertDot, { backgroundColor: alert.color }]} />
+                                {systemAlerts.map((alert, i) => (
+                                    <View key={alert._id || i} style={s.alertItem}>
+                                        <View style={[s.alertDot, { backgroundColor: alert.color || '#F5C518' }]} />
                                         <View style={{ flex: 1 }}>
                                             <Text style={s.alertTitle}>{alert.title}</Text>
-                                            <Text style={s.alertSub}>{alert.sub}</Text>
-                                            <Text style={s.alertTime}>{alert.time}</Text>
+                                            <Text style={s.alertSub}>{alert.message}</Text>
+                                            <Text style={s.alertTime}>{new Date(alert.createdAt).toLocaleString()}</Text>
                                         </View>
                                     </View>
                                 ))}
+                                {systemAlerts.length === 0 && <Text style={s.emptyMsg}>No system alerts at this time.</Text>}
                             </View>
                         </View>
                     </>

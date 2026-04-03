@@ -69,7 +69,7 @@ export const AuthProvider = ({ children }) => {
 
     useEffect(() => {
         loadUser();
-        fetchUsers();
+        // Removed unconditional fetchUsers() to avoid 401/429 loops before login
         // Safety net: never let the app stay loading forever
         const timeout = setTimeout(() => setIsLoading(false), 8000);
         return () => clearTimeout(timeout);
@@ -137,6 +137,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     const fetchUsers = async () => {
+        if (!user || user.role !== 'admin') return;
         try {
             const response = await apiClient.get('/auth/users');
             if (Array.isArray(response)) {
