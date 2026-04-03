@@ -32,9 +32,6 @@ const BASE_URL = getBaseUrl();
 
 const apiClient = axios.create({
     baseURL: BASE_URL,
-    headers: {
-        'Content-Type': 'application/json',
-    },
     timeout: 60000, // Increased to 60s for Render free-tier cold starts
 });
 
