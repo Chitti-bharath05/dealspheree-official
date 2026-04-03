@@ -48,14 +48,17 @@ router.post('/', protect, validateRequest('registerStore'), async (req, res) => 
         const { storeName, ownerId, location, houseNo, street, area, pincode, city, address, category, logoUrl, bannerUrl, businessProofUrl, hasDeliveryPartner, lat, lng } = req.body;
         
         // 🔒 Security check: OwnerId must match authenticated user
-        if (ownerId.toString() !== req.user.id.toString()) {
+        // 🔒 Security check: OwnerId must match authenticated user
+        const authenticatedUserId = req.user._id.toString();
+        if (ownerId.toString() !== authenticatedUserId) {
+            console.error(`[Stores] Security Breach attempt: ${req.user.email} tried to register for ${ownerId}`);
             return res.status(403).json({ success: false, message: 'You can only register stores for your own account.' });
         }
 
         // 🛡️ Prevent duplicate store names for the same owner
         const existingStore = await Store.findOne({ 
             storeName: { $regex: new RegExp(`^${storeName.trim()}$`, 'i') }, 
-            ownerId: req.user.id 
+            ownerId: authenticatedUserId
         });
         
         if (existingStore) {

@@ -133,8 +133,9 @@ export const DataProvider = ({ children }) => {
     const getStoresByOwner = (ownerId) => {
         if (!Array.isArray(stores)) return [];
         return stores.filter((s) => {
-            const sOwnerId = s?.ownerId?._id || s?.ownerId;
-            return sOwnerId === ownerId;
+            const sOwnerId = (s?.ownerId?._id || s?.ownerId)?.toString();
+            const targetId = ownerId?.toString();
+            return sOwnerId === targetId;
         });
     };
 
