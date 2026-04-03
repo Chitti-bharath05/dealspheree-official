@@ -8,12 +8,18 @@ cloudinary.config({
     api_secret: process.env.CLOUDINARY_API_SECRET || 'placeholder_secret'
 });
 
-const storage = CloudinaryStorage({
+const storage = new CloudinaryStorage({
     cloudinary: cloudinary,
-    folder: 'mall_offers',
-    allowedFormats: ['jpg', 'png', 'jpeg', 'webp'],
+    params: {
+        folder: 'mall_offers',
+        allowed_formats: ['jpg', 'png', 'jpeg', 'webp'],
+        transformation: [{ width: 1000, height: 1000, crop: 'limit' }] // Optimize for storage/speed
+    }
 });
 
-const upload = multer({ storage: storage });
+const upload = multer({ 
+    storage: storage,
+    limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+});
 
 module.exports = { cloudinary, upload };

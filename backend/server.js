@@ -76,7 +76,8 @@ const authLimiter = rateLimit({
 app.use('/api/', globalLimiter);
 app.use('/api/auth/', authLimiter);
 
-app.use(express.json({ limit: '10kb' })); // Limit body size to prevent DoS
+app.use(express.json({ limit: '10mb' })); // Increased for image base64 if needed
+app.use(express.urlencoded({ extended: true, limit: '10mb' })); 
 
 // Simple Logger
 app.use((req, res, next) => {
