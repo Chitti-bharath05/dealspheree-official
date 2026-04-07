@@ -24,7 +24,7 @@ import { useLanguage } from '../context/LanguageContext';
 
 const OfferDetailsScreen = ({ route, navigation }) => {
     const { offerId } = route.params;
-    const { getOfferById, refetchStores, incrementStoreViews, likeStore } = useData();
+    const { getOfferById, refetchStores, incrementStoreViews, likeStore, rateStore } = useData();
     const { favorites, toggleFavorite, user } = useAuth();
     const { t } = useLanguage();
 

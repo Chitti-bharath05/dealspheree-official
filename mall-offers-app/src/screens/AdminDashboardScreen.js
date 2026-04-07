@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import { useLanguage } from '../context/LanguageContext';
+import apiClient from '../services/apiClient';
 
 const AdminDashboardScreen = () => {
     const { user, users, deleteUser, logout, fetchUsers, isLoading: authLoading } = useAuth();
