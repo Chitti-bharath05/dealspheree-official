@@ -38,7 +38,7 @@ export const DataProvider = ({ children }) => {
             }
 
             const pos = await Location.getCurrentPositionAsync({
-                accuracy: Location.Accuracy.Balanced, // Balanced is usually faster and very accurate for 50km
+                accuracy: Location.Accuracy.Balanced,
             });
             
             if (pos && pos.coords) {
@@ -52,7 +52,44 @@ export const DataProvider = ({ children }) => {
     };
 
     useEffect(() => {
-        fetchUserLocation();
+        let subscription;
+
+        const startWatching = async () => {
+            try {
+                const { status } = await Location.requestForegroundPermissionsAsync();
+                if (status !== 'granted') {
+                    setLocationError('Permission to access location was denied');
+                    return;
+                }
+
+                // Initial fetch
+                await fetchUserLocation();
+
+                // Watch for changes (updates only when user moves significantly to save battery)
+                subscription = await Location.watchPositionAsync(
+                    {
+                        accuracy: Location.Accuracy.Balanced,
+                        distanceInterval: 500, // Update every 500 meters
+                    },
+                    (pos) => {
+                        if (pos && pos.coords) {
+                            setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+                            setLocationError(null);
+                        }
+                    }
+                );
+            } catch (err) {
+                console.warn('Error starting location watcher:', err);
+            }
+        };
+
+        startWatching();
+
+        return () => {
+            if (subscription) {
+                subscription.remove();
+            }
+        };
     }, []);
 
     // --- Data Fetching with React Query ---
