@@ -25,7 +25,8 @@ export const DataProvider = ({ children }) => {
                   Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
                   Math.sin(dLon / 2) * Math.sin(dLon / 2);
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return R * c;
+        const airDistance = R * c;
+        return airDistance * 1.28; // Standard 1.28x multiplier to approximate Road Distance for free
     };
 
     const fetchUserLocation = async () => {
