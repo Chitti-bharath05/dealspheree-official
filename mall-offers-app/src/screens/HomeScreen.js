@@ -75,16 +75,18 @@ export default function HomeScreen({ navigation }) {
     const contentWidth = isWeb ? Math.min(width, 1200) : width;
 
     const filteredStores = useMemo(() => {
+        // 1. Return empty if location is unknown (Strict rule)
+        if (!userLocation) return [];
+
+        // 2. Start with approved stores
         let filtered = (stores || []).filter(s => s.approved === true);
         
-        // Radius filter: 50km
-        if (userLocation) {
-            filtered = filtered.filter(s => {
-                if (!s.lat || !s.lng) return false;
-                const dist = calculateDistance(userLocation.lat, userLocation.lng, s.lat, s.lng);
-                return dist <= 50;
-            });
-        }
+        // 3. Radius filter: 50km
+        filtered = filtered.filter(s => {
+            if (!s.lat || !s.lng) return false;
+            const dist = calculateDistance(userLocation.lat, userLocation.lng, s.lat, s.lng);
+            return dist <= 50;
+        });
 
         if (selectedCategory !== 'All') {
             filtered = filtered.filter((s) => s?.category === selectedCategory);

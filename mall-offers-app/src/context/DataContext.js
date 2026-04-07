@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import * as Location from 'expo-location';
+import { Platform } from 'react-native';
 import apiClient from '../services/apiClient';
 import { useAuth } from './AuthContext';
 
@@ -26,21 +28,25 @@ export const DataProvider = ({ children }) => {
         return R * c;
     };
 
-    const fetchUserLocation = () => {
-        if (typeof window !== 'undefined' && 'geolocation' in navigator) {
-            navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                    setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-                    setLocationError(null);
-                },
-                (err) => {
-                    console.warn('Geolocation failed:', err);
-                    setLocationError(err.message);
-                },
-                { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
-            );
-        } else {
-            setLocationError('Geolocation not supported');
+    const fetchUserLocation = async () => {
+        try {
+            const { status } = await Location.requestForegroundPermissionsAsync();
+            if (status !== 'granted') {
+                setLocationError('Permission to access location was denied');
+                return;
+            }
+
+            const pos = await Location.getCurrentPositionAsync({
+                accuracy: Location.Accuracy.Balanced, // Balanced is usually faster and very accurate for 50km
+            });
+            
+            if (pos && pos.coords) {
+                setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+                setLocationError(null);
+            }
+        } catch (err) {
+            console.warn('Geolocation failed:', err);
+            setLocationError(err.message || 'Error fetching location');
         }
     };
 
