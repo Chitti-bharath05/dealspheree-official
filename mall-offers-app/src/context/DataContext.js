@@ -382,7 +382,10 @@ export const DataProvider = ({ children }) => {
                 userLocation,
                 locationError,
                 refreshLocation: fetchUserLocation,
-                calculateDistance
+                calculateDistance,
+                verifyStoreProof: async (storeId) => {
+                    return await apiClient.post(`/admin/verify-proof/${storeId}`);
+                }
             }}
         >
             {children}

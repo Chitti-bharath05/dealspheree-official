@@ -9,11 +9,30 @@ import apiClient from '../services/apiClient';
 
 const AdminDashboardScreen = () => {
     const { user, users, deleteUser, logout, fetchUsers, isLoading: authLoading } = useAuth();
-    const { stores, offers, getPendingStores, approveStore, rejectStore, deleteOffer, getAdminStats, isLoading: dataLoading } = useData();
+    const { stores, offers, getPendingStores, approveStore, rejectStore, deleteOffer, getAdminStats, verifyStoreProof, isLoading: dataLoading } = useData();
     const { t } = useLanguage();
     const [activeTab, setActiveTab] = useState('overview');
     const [adminStats, setAdminStats] = useState(null);
     const [systemAlerts, setSystemAlerts] = useState([]);
+    
+    // 🛡️ AI Verification State
+    const [scanResults, setScanResults] = useState({});
+    const [scanningId, setScanningId] = useState(null);
+
+    const handleRunScan = async (storeId) => {
+        setScanningId(storeId);
+        try {
+            const res = await verifyStoreProof(storeId);
+            if (res.success) {
+                setScanResults(prev => ({ ...prev, [storeId]: res.analysis }));
+            }
+        } catch (e) {
+            console.error('Scan error:', e);
+            Alert.alert('Scan Failed', 'The AI Verifier engine is currently under maintenance or offline.');
+        } finally {
+            setScanningId(null);
+        }
+    };
 
     React.useEffect(() => {
         if (user && user.role === 'admin') {
@@ -213,7 +232,6 @@ const AdminDashboardScreen = () => {
                                             <TouchableOpacity 
                                                 style={s.proofImageWrapper}
                                                 onPress={() => {
-                                                    // Simple web preview if possible, or just alert
                                                     if (Platform.OS === 'web') window.open(item.businessProofUrl, '_blank');
                                                     else Alert.alert('Proof URL', item.businessProofUrl);
                                                 }}
@@ -225,6 +243,52 @@ const AdminDashboardScreen = () => {
                                                 </View>
                                             </TouchableOpacity>
                                         </View>
+                                    )}
+
+                                    {/* 🛡️ AI VERIFICATION SCAN RESULTS */}
+                                    {scanResults[item._id || item.id] ? (
+                                        <View style={s.scanResultContainer}>
+                                            <View style={s.scanHeader}>
+                                                <Ionicons name="shield-checkmark" size={16} color="#F5C518" />
+                                                <Text style={s.scanTitle}>AI TRUST ANALYSIS</Text>
+                                                <View style={[s.trustBadge, { backgroundColor: scanResults[item._id || item.id].trustScore > 70 ? 'rgba(76,175,80,0.15)' : 'rgba(255,59,48,0.15)' }]}>
+                                                    <Text style={[s.trustBadgeTxt, { color: scanResults[item._id || item.id].trustScore > 70 ? '#4CAF50' : '#FF3B30' }]}>
+                                                        {scanResults[item._id || item.id].trustScore}% TRUST
+                                                    </Text>
+                                                </View>
+                                            </View>
+                                            
+                                            {scanResults[item._id || item.id].warnings.map((w, idx) => (
+                                                <Text key={idx} style={s.scanWarning}>⚠️ {w}</Text>
+                                            ))}
+                                            
+                                            <View style={s.checkGrid}>
+                                                {scanResults[item._id || item.id].checks.map(c => (
+                                                    <View key={c.id} style={s.checkItem}>
+                                                        <Text style={s.checkLabel}>{c.label.toUpperCase()}</Text>
+                                                        <View style={[s.statusDot, { backgroundColor: c.status === 'PASS' ? '#4CAF50' : c.status === 'WARN' ? '#F5C518' : '#FF3B30' }]} />
+                                                        <Text style={[s.checkStatusTxt, { color: c.status === 'PASS' ? '#4CAF50' : c.status === 'WARN' ? '#F5C518' : '#FF3B30' }]}>
+                                                            {c.status}
+                                                        </Text>
+                                                    </View>
+                                                ))}
+                                            </View>
+                                        </View>
+                                    ) : (
+                                        <TouchableOpacity 
+                                            style={s.scanBtn} 
+                                            onPress={() => handleRunScan(item._id || item.id)}
+                                            disabled={scanningId === (item._id || item.id)}
+                                        >
+                                            {scanningId === (item._id || item.id) ? (
+                                                <ActivityIndicator size="small" color="#000" />
+                                            ) : (
+                                                <>
+                                                    <Ionicons name="shield-outline" size={14} color="#000" />
+                                                    <Text style={s.scanBtnTxt}>RUN AI VERIFICATION SCAN</Text>
+                                                </>
+                                            )}
+                                        </TouchableOpacity>
                                     )}
                                 </View>
                                 <View style={s.listActions}>
@@ -359,6 +423,37 @@ const s = StyleSheet.create({
     proofImage: { width: '100%', height: '100%', resizeMode: 'cover' },
     viewOverlay: { position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.3)', alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6 },
     viewTxt: { color: '#fff', fontSize: 10, fontWeight: '900' },
+    
+    // AI Scan Styles
+    scanBtn: { 
+        height: 36, 
+        backgroundColor: '#F5C518', 
+        borderRadius: 10, 
+        flexDirection: 'row', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        gap: 8, 
+        marginTop: 15,
+        paddingHorizontal: 12
+    },
+    scanBtnTxt: { color: '#000', fontSize: 10, fontWeight: '900', letterSpacing: 0.5 },
+    scanResultContainer: { 
+        marginTop: 15, 
+        padding: 15, 
+        backgroundColor: 'rgba(255,255,255,0.03)', 
+        borderRadius: 12, 
+        borderWidth: 1, 
+        borderColor: 'rgba(255,255,255,0.08)' 
+    },
+    scanHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+    scanTitle: { color: '#fff', fontSize: 11, fontWeight: '900', letterSpacing: 1, flex: 1 },
+    trustBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+    trustBadgeTxt: { fontSize: 10, fontWeight: '900' },
+    scanWarning: { color: '#FF3B30', fontSize: 11, fontWeight: '700', lineHeight: 16, marginBottom: 8, backgroundColor: 'rgba(255,59,48,0.1)', padding: 8, borderRadius: 6 },
+    checkGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 4 },
+    checkItem: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(255,255,255,0.05)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+    checkLabel: { color: '#8E8E93', fontSize: 9, fontWeight: '800' },
+    checkStatusTxt: { fontSize: 9, fontWeight: '900' }
 });
 
 export default AdminDashboardScreen;
