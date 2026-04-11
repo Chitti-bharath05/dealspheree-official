@@ -78,6 +78,10 @@ router.post('/register', validateRequest('register'), async (req, res) => {
         const { name, email, password, role, mobileNumber } = req.body;
         console.log(`Registration attempt for: ${email}`);
 
+        if (!name || !email || !password || !role || !mobileNumber) {
+            return res.status(400).json({ success: false, message: 'All fields including name and mobile number are required' });
+        }
+
         const existingUser = await User.findOne({ email: email.toLowerCase() });
         if (existingUser) {
             return res.status(400).json({ success: false, message: 'User already exists' });

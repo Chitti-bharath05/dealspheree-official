@@ -37,8 +37,8 @@ const RegisterScreen = ({ navigation }) => {
     };
 
     const handleRegister = async () => {
-        if (!name.trim() || !email.trim() || !password.trim()) {
-            showError('Please fill in all required fields.');
+        if (!name.trim() || !email.trim() || !password.trim() || !mobileNumber.trim()) {
+            showError('Please fill in all fields including name and phone number.');
             return;
         }
         if (!email.includes('@')) {
