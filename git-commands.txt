@@ -1,3 +1,4 @@
 Learning git commit command
 hello 
 welcome to github
+learning git diff command
