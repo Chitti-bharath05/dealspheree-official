@@ -1,0 +1,3 @@
+Learning git commit command
+hello 
+switched to first feature using branch command
