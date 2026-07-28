@@ -1,2 +1,3 @@
 Learning git commit command
 hello 
+welcome to github
