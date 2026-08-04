@@ -1,4 +1,7 @@
 Learning git commit command
 hello 
+doing merge 
 welcome to github
 learning git diff command
+switched to first feature using branch command
+
